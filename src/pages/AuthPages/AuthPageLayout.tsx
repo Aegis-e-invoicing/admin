@@ -26,7 +26,10 @@ export default function AuthLayout({
                 />
               </Link>
               <p className="text-center text-gray-400 dark:text-white/60">
-                Free and Open-Source Tailwind CSS Admin Dashboard Template
+                Nigeria Revenue Service — Merchant Buyer Solution
+              </p>
+              <p className="text-center text-gray-500 dark:text-white/40 text-sm mt-2">
+                Compliant e-invoicing for NRS pre-clearance
               </p>
             </div>
           </div>

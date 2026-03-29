@@ -1,21 +1,23 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router";
 
-// Assume these icons are imported from an icon library
 import {
-  BoxCubeIcon,
-  CalenderIcon,
+  BoxIcon,
   ChevronDownIcon,
+  FileIcon,
   GridIcon,
+  GroupIcon,
   HorizontaLDots,
-  ListIcon,
-  PageIcon,
-  PieChartIcon,
-  PlugInIcon,
   TableIcon,
   UserCircleIcon,
+  UserIcon,
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
+import {
+  useIsAegisAdmin,
+  useIsClientAdmin,
+  useCanCreateInvoice,
+} from "../context/AuthContext";
 import SidebarWidget from "./SidebarWidget";
 
 type NavItem = {
@@ -25,76 +27,56 @@ type NavItem = {
   subItems?: { name: string; path: string; pro?: boolean; new?: boolean }[];
 };
 
-const navItems: NavItem[] = [
-  {
-    icon: <GridIcon />,
-    name: "Dashboard",
-    subItems: [{ name: "Ecommerce", path: "/", pro: false }],
-  },
-  {
-    icon: <CalenderIcon />,
-    name: "Calendar",
-    path: "/calendar",
-  },
-  {
-    icon: <UserCircleIcon />,
-    name: "User Profile",
-    path: "/profile",
-  },
-  {
-    name: "Forms",
-    icon: <ListIcon />,
-    subItems: [{ name: "Form Elements", path: "/form-elements", pro: false }],
-  },
-  {
-    name: "Tables",
-    icon: <TableIcon />,
-    subItems: [{ name: "Basic Tables", path: "/basic-tables", pro: false }],
-  },
-  {
-    name: "Pages",
-    icon: <PageIcon />,
-    subItems: [
-      { name: "Blank Page", path: "/blank", pro: false },
-      { name: "404 Error", path: "/error-404", pro: false },
-    ],
-  },
-];
-
-const othersItems: NavItem[] = [
-  {
-    icon: <PieChartIcon />,
-    name: "Charts",
-    subItems: [
-      { name: "Line Chart", path: "/line-chart", pro: false },
-      { name: "Bar Chart", path: "/bar-chart", pro: false },
-    ],
-  },
-  {
-    icon: <BoxCubeIcon />,
-    name: "UI Elements",
-    subItems: [
-      { name: "Alerts", path: "/alerts", pro: false },
-      { name: "Avatar", path: "/avatars", pro: false },
-      { name: "Badge", path: "/badge", pro: false },
-      { name: "Buttons", path: "/buttons", pro: false },
-      { name: "Images", path: "/images", pro: false },
-      { name: "Videos", path: "/videos", pro: false },
-    ],
-  },
-  {
-    icon: <PlugInIcon />,
-    name: "Authentication",
-    subItems: [
-      { name: "Sign In", path: "/signin", pro: false },
-      { name: "Sign Up", path: "/signup", pro: false },
-    ],
-  },
-];
-
 const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
   const location = useLocation();
+  const isAegis = useIsAegisAdmin();
+  const isClientAdmin = useIsClientAdmin();
+  const canCreateInvoice = useCanCreateInvoice();
+
+  // Build role/plan-aware nav items
+  const navItems: NavItem[] = [
+    {
+      icon: <GridIcon />,
+      name: "Dashboard",
+      path: "/",
+    },
+    // Invoices section
+    {
+      icon: <FileIcon />,
+      name: "Invoices",
+      subItems: [
+        { name: "My Invoices", path: "/invoices" },
+        { name: "Received", path: "/received-invoices" },
+        ...(canCreateInvoice ? [{ name: "Create Invoice", path: "/invoices/create" }] : []),
+      ],
+    },
+    // Parties & Items — not relevant for Aegis platform admin
+    ...(!isAegis
+      ? [
+          { icon: <GroupIcon />, name: "Parties", path: "/parties" },
+          { icon: <BoxIcon />, name: "Items", path: "/items" },
+        ]
+      : []),
+    // Users — only admins
+    ...(isAegis || isClientAdmin
+      ? [{ icon: <UserCircleIcon />, name: "Users", path: "/users" }]
+      : []),
+    // Settings
+    {
+      icon: <TableIcon />,
+      name: "Settings",
+      path: "/settings",
+    },
+  ];
+
+  const othersItems: NavItem[] = [
+    {
+      icon: <UserIcon />,
+      name: "Profile",
+      path: "/profile",
+    },
+  ];
 
   const [openSubmenu, setOpenSubmenu] = useState<{
     type: "main" | "others";
@@ -303,31 +285,17 @@ const AppSidebar: React.FC = () => {
           !isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
         }`}
       >
-        <Link to="/">
-          {isExpanded || isHovered || isMobileOpen ? (
-            <>
-              <img
-                className="dark:hidden"
-                src="/images/logo/logo.svg"
-                alt="Logo"
-                width={150}
-                height={40}
-              />
-              <img
-                className="hidden dark:block"
-                src="/images/logo/logo-dark.svg"
-                alt="Logo"
-                width={150}
-                height={40}
-              />
-            </>
-          ) : (
-            <img
-              src="/images/logo/logo-icon.svg"
-              alt="Logo"
-              width={32}
-              height={32}
-            />
+        <Link to="/" className="flex items-center gap-2">
+          <img
+            src="/images/logo/logo-icon.svg"
+            alt="Aegis"
+            width={32}
+            height={32}
+          />
+          {(isExpanded || isHovered || isMobileOpen) && (
+            <span className="text-base font-bold text-gray-800 dark:text-white whitespace-nowrap">
+              Aegis EInvoicing
+            </span>
           )}
         </Link>
       </div>

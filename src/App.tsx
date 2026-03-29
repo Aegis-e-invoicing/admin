@@ -1,23 +1,23 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router";
 import SignIn from "./pages/AuthPages/SignIn";
 import SignUp from "./pages/AuthPages/SignUp";
+import ForgotPassword from "./pages/AuthPages/ForgotPassword";
+import ChangePassword from "./pages/AuthPages/ChangePassword";
 import NotFound from "./pages/OtherPage/NotFound";
-import UserProfiles from "./pages/UserProfiles";
-import Videos from "./pages/UiElements/Videos";
-import Images from "./pages/UiElements/Images";
-import Alerts from "./pages/UiElements/Alerts";
-import Badges from "./pages/UiElements/Badges";
-import Avatars from "./pages/UiElements/Avatars";
-import Buttons from "./pages/UiElements/Buttons";
-import LineChart from "./pages/Charts/LineChart";
-import BarChart from "./pages/Charts/BarChart";
-import Calendar from "./pages/Calendar";
-import BasicTables from "./pages/Tables/BasicTables";
-import FormElements from "./pages/Forms/FormElements";
-import Blank from "./pages/Blank";
-import AppLayout from "./layout/AppLayout";
-import { ScrollToTop } from "./components/common/ScrollToTop";
+import Profile from "./pages/Profile/Profile";
 import Home from "./pages/Dashboard/Home";
+import InvoiceList from "./pages/Invoices/InvoiceList";
+import CreateInvoice from "./pages/Invoices/CreateInvoice";
+import ReceivedInvoiceList from "./pages/Invoices/ReceivedInvoiceList";
+import PartyList from "./pages/Parties/PartyList";
+import ItemList from "./pages/Items/ItemList";
+import UserList from "./pages/Users/UserList";
+import Settings from "./pages/Settings/Settings";
+import Onboarding from "./pages/Onboarding";
+import PaymentCallback from "./pages/PaymentCallback";
+import AppLayout from "./layout/AppLayout";
+import { PrivateRoute } from "./components/common/PrivateRoute";
+import { ScrollToTop } from "./components/common/ScrollToTop";
 
 export default function App() {
   return (
@@ -25,39 +25,33 @@ export default function App() {
       <Router>
         <ScrollToTop />
         <Routes>
-          {/* Dashboard Layout */}
-          <Route element={<AppLayout />}>
-            <Route index path="/" element={<Home />} />
+          {/* Protected routes — require authentication */}
+          <Route element={<PrivateRoute />}>
+            {/* Main app layout (sidebar + header) */}
+            <Route element={<AppLayout />}>
+              <Route index path="/" element={<Home />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/invoices" element={<InvoiceList />} />
+              <Route path="/invoices/create" element={<CreateInvoice />} />
+              <Route path="/received-invoices" element={<ReceivedInvoiceList />} />
+              <Route path="/parties" element={<PartyList />} />
+              <Route path="/items" element={<ItemList />} />
+              <Route path="/users" element={<UserList />} />
+              <Route path="/settings" element={<Settings />} />
+            </Route>
 
-            {/* Others Page */}
-            <Route path="/profile" element={<UserProfiles />} />
-            <Route path="/calendar" element={<Calendar />} />
-            <Route path="/blank" element={<Blank />} />
-
-            {/* Forms */}
-            <Route path="/form-elements" element={<FormElements />} />
-
-            {/* Tables */}
-            <Route path="/basic-tables" element={<BasicTables />} />
-
-            {/* Ui Elements */}
-            <Route path="/alerts" element={<Alerts />} />
-            <Route path="/avatars" element={<Avatars />} />
-            <Route path="/badge" element={<Badges />} />
-            <Route path="/buttons" element={<Buttons />} />
-            <Route path="/images" element={<Images />} />
-            <Route path="/videos" element={<Videos />} />
-
-            {/* Charts */}
-            <Route path="/line-chart" element={<LineChart />} />
-            <Route path="/bar-chart" element={<BarChart />} />
+            {/* Routes that use their own full-screen layout */}
+            <Route path="/onboarding" element={<Onboarding />} />
+            <Route path="/change-password" element={<ChangePassword />} />
           </Route>
 
-          {/* Auth Layout */}
+          {/* Public auth routes */}
           <Route path="/signin" element={<SignIn />} />
           <Route path="/signup" element={<SignUp />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/payment/callback" element={<PaymentCallback />} />
 
-          {/* Fallback Route */}
+          {/* Fallback */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Router>
