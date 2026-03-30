@@ -161,7 +161,6 @@ export default function InvoiceList() {
     setDragOver(false);
   };
 
-  // â”€â”€ Approvals + Push-to-NRS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const isAdmin = useIsAdmin();
   const [activeTab, setActiveTab] = useState<"all" | "approvals">("all");
   const [pendingInvoices, setPendingInvoices] = useState<InvoiceSummary[]>([]);
@@ -172,23 +171,33 @@ export default function InvoiceList() {
   const [rejectReason, setRejectReason] = useState("");
   const [processing, setProcessing] = useState(false);
   const [submissionResult, setSubmissionResult] = useState<SubmitInvoiceResult | null>(null);
+  const [pendingPage, setPendingPage] = useState(1);
+  const [pendingPageSize, setPendingPageSize] = useState(10);
+  const [pendingTotalPages, setPendingTotalPages] = useState(1);
 
-  const loadPendingApprovals = () => {
+  const loadPendingApprovals = (p = pendingPage, ps = pendingPageSize) => {
     if (USE_MOCK) {
-      setPendingInvoices(MOCK_INVOICES.filter(i => i.status === "PENDING_APPROVAL") as InvoiceSummary[]);
+      const all = MOCK_INVOICES.filter(i => i.status === "PENDING_APPROVAL") as InvoiceSummary[];
+      setPendingTotalPages(Math.ceil(all.length / ps) || 1);
+      setPendingInvoices(all.slice((p - 1) * ps, p * ps));
       setLoadingPending(false);
       return;
     }
     setLoadingPending(true);
-    invoiceApi.pendingApproval({ pageSize: 50 })
-      .then(r => setPendingInvoices(r.items))
+    invoiceApi.pendingApproval({ page: p, pageSize: ps })
+      .then(r => { setPendingInvoices(r.items); setPendingTotalPages(r.totalPages); })
       .catch(() => toast.error("Failed to load pending approvals."))
       .finally(() => setLoadingPending(false));
   };
 
+  const handlePendingPageSizeChange = (ps: number) => {
+    setPendingPageSize(ps);
+    setPendingPage(1);
+  };
+
   useEffect(() => {
-    if (isAdmin && activeTab === "approvals") loadPendingApprovals();
-  }, [activeTab, isAdmin]);
+    if (isAdmin && activeTab === "approvals") loadPendingApprovals(pendingPage, pendingPageSize);
+  }, [activeTab, isAdmin, pendingPage, pendingPageSize]);
 
   const handlePushToNRS = async (id: string, code: string) => {
     setPushingNRS(prev => new Set(prev).add(id));
@@ -520,25 +529,8 @@ export default function InvoiceList() {
             )}
 
             {totalPages > 1 && (
-              <div className="flex items-center justify-between mt-6">
-                <div className="flex items-center gap-3">
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Page {page} of {totalPages}
-                  </p>
-                  <div className="flex items-center gap-2 text-sm">
-                    <select
-                      id="pageSize"
-                      value={pageSize}
-                      onChange={e => handlePageSizeChange(Number(e.target.value))}
-                      className="block w-full pl-2 pr-8 py-1.5 border border-gray-300 rounded-md shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300"
-                    >
-                      <option value={10}>10 / page</option>
-                      <option value={20}>20 / page</option>
-                      <option value={50}>50 / page</option>
-                      <option value={100}>100 / page</option>
-                    </select>
-                  </div>
-                </div>
+              <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+                <p className="text-sm text-gray-500 dark:text-gray-400">Page {page} of {totalPages}</p>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setPage(p => Math.max(1, p - 1))}
@@ -564,6 +556,25 @@ export default function InvoiceList() {
       {/* -- Pending Approval tab -- */}
       {activeTab === "approvals" && (
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+          {/* Table toolbar */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              {pendingInvoices.length > 0 ? `${pendingInvoices.length} invoice${pendingInvoices.length !== 1 ? "s" : ""}` : ""}
+            </p>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-gray-500 dark:text-gray-400">Rows</label>
+              <select
+                value={pendingPageSize}
+                onChange={e => handlePendingPageSizeChange(Number(e.target.value))}
+                className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-500"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </div>
+          </div>
           {loadingPending ? (
             <div className="flex items-center justify-center py-16">
               <div className="w-8 h-8 border-4 border-brand-500 border-t-transparent rounded-full animate-spin" />
@@ -620,6 +631,25 @@ export default function InvoiceList() {
               </table>
             </div>
           )}
+          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+            <p className="text-sm text-gray-500 dark:text-gray-400">Page {pendingPage} of {pendingTotalPages}</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPendingPage(p => Math.max(1, p - 1))}
+                disabled={pendingPage === 1}
+                className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
+              >
+                Previous
+              </button>
+              <button
+                onClick={() => setPendingPage(p => Math.min(pendingTotalPages, p + 1))}
+                disabled={pendingPage === pendingTotalPages}
+                className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
+              >
+                Next
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
