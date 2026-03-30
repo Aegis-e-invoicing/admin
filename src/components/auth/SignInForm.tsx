@@ -50,9 +50,9 @@ export default function SignInForm() {
   return (
     <div className="flex flex-col flex-1">
       <div className="w-full max-w-md pt-10 mx-auto">
-        <div className="mb-2">
-          <img src="/images/logo/logo.svg" alt="Aegis NRS" className="h-10 dark:hidden" />
-          <img src="/images/logo/logo-dark.svg" alt="Aegis NRS" className="h-10 hidden dark:block" />
+        <div className="mb-2 flex items-center gap-2">
+          <img src="/images/logo/logo-icon.svg" alt="Aegis" className="h-8" />
+          <span className="text-lg font-bold text-gray-800 dark:text-white">Aegis EInvoicing</span>
         </div>
       </div>
       <div className="flex flex-col justify-center flex-1 w-full max-w-md mx-auto">

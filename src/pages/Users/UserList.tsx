@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import PageMeta from "../../components/common/PageMeta";
 import { userMgmtApi, type UserSummary, type CreateUserPayload } from "../../lib/api";
-import { USE_MOCK, MOCK_USERS } from "../../lib/mockData";
+import { USE_MOCK, MOCK_USERS, MOCK_PAGE_SIZE } from "../../lib/mockData";
 import { useIsClientAdmin, useIsAegisAdmin } from "../../context/AuthContext";
 
 const inputCls =
@@ -34,13 +34,20 @@ export default function UserList() {
 
   const [users, setUsers] = useState<UserSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<CreateUserPayload>(emptyForm);
   const [actioning, setActioning] = useState<string | null>(null);
 
-  const load = () => {
-    if (USE_MOCK) { setUsers(MOCK_USERS as UserSummary[]); setLoading(false); return; }
+  const load = (p: number) => {
+    if (USE_MOCK) {
+      setTotalPages(Math.ceil(MOCK_USERS.length / MOCK_PAGE_SIZE));
+      setUsers(MOCK_USERS.slice((p - 1) * MOCK_PAGE_SIZE, p * MOCK_PAGE_SIZE) as UserSummary[]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     userMgmtApi
       .list()
@@ -50,8 +57,8 @@ export default function UserList() {
   };
 
   useEffect(() => {
-    load();
-  }, []);
+    load(page);
+  }, [page]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,7 +72,7 @@ export default function UserList() {
       toast.success("User created. They will receive a temporary password by email.");
       setShowForm(false);
       setForm(emptyForm);
-      load();
+      load(page);
     } catch {
       toast.error("Failed to create user.");
     } finally {
@@ -83,7 +90,7 @@ export default function UserList() {
         await userMgmtApi.activate(user.id);
         toast.success(`${user.NRStName} activated.`);
       }
-      load();
+      load(page);
     } catch {
       toast.error("Action failed.");
     } finally {
@@ -314,6 +321,28 @@ export default function UserList() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+            <p className="text-sm text-gray-500 dark:text-gray-400">Page {page} of {totalPages}</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
+              >
+                Previous
+              </button>
+              <button
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
+              >
+                Next
+              </button>
+            </div>
           </div>
         )}
       </div>

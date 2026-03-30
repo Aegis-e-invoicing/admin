@@ -6,12 +6,16 @@ import {
   invoiceApi,
   partyApi,
   businessItemApi,
+  firsApi,
   type Party,
   type BusinessItem,
+  type TaxCategory,
   type CreateInvoicePayload,
   type InvoiceItemPayload,
+  type DocumentReferenceDto,
+  type InvoiceSummary,
 } from "../../lib/api";
-import { USE_MOCK, MOCK_PARTIES, MOCK_ITEMS } from "../../lib/mockData";
+import { USE_MOCK, MOCK_INVOICES, MOCK_PARTIES, MOCK_ITEMS, MOCK_TAX_CATEGORIES } from "../../lib/mockData";
 
 const inputCls =
   "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-500";
@@ -37,15 +41,38 @@ const CURRENCIES = ["NGN", "USD", "GBP", "EUR"];
 interface LineItem extends InvoiceItemPayload {
   _itemCode?: string;
   _description?: string;
-  _unitPriceDisplay?: number;
+  _taxCategoryCode?: string;
+  _discountType: "amount" | "percent";
+  _discountPercent: number;
+}
+
+function parseTaxPercent(percent: string): number {
+  const n = parseFloat(percent);
+  return isNaN(n) ? 0 : n;
+}
+
+function InfoTooltip({ text }: { text: string }) {
+  return (
+    <span className="group relative ml-1 inline-block cursor-help align-middle">
+      <svg className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-60 rounded-lg bg-gray-800 dark:bg-gray-700 px-3 py-2 text-xs text-gray-100 opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow-lg leading-relaxed">
+        {text}
+      </span>
+    </span>
+  );
 }
 
 export default function CreateInvoice() {
   const navigate = useNavigate();
   const [parties, setParties] = useState<Party[]>([]);
   const [items, setItems] = useState<BusinessItem[]>([]);
+  const [taxCategories, setTaxCategories] = useState<TaxCategory[]>([]);
+  const [invoices, setInvoices] = useState<InvoiceSummary[]>([]);
   const [loadingLookups, setLoadingLookups] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [showDocRefs, setShowDocRefs] = useState(false);
 
   const [form, setForm] = useState({
     partyId: "",
@@ -55,25 +82,52 @@ export default function CreateInvoice() {
     invoiceTypeCode: "380",
     paymentMeansCode: "30",
     note: "",
+    orderReference: "",
+  });
+
+  const [docRefs, setDocRefs] = useState<{
+    billingReference: DocumentReferenceDto[];
+    dispatchDocumentReference: DocumentReferenceDto | null;
+    receiptDocumentReference: DocumentReferenceDto | null;
+    originatorDocumentReference: DocumentReferenceDto | null;
+    contractDocumentReference: DocumentReferenceDto | null;
+    additionalDocumentReferences: DocumentReferenceDto[];
+  }>({
+    billingReference: [],
+    dispatchDocumentReference: null,
+    receiptDocumentReference: null,
+    originatorDocumentReference: null,
+    contractDocumentReference: null,
+    additionalDocumentReferences: [],
   });
 
   const [lineItems, setLineItems] = useState<LineItem[]>([
-    { businessItemId: "", quantity: 1, unitPrice: 0, lineDiscount: 0, _description: "", _itemCode: "", _unitPriceDisplay: 0 },
+    {
+      businessItemId: "", quantity: 1, unitPrice: 0, lineDiscount: 0,
+      _description: "", _itemCode: "", _taxCategoryCode: "",
+      _discountType: "amount", _discountPercent: 0,
+    },
   ]);
 
   useEffect(() => {
     if (USE_MOCK) {
       setParties(MOCK_PARTIES as Party[]);
       setItems(MOCK_ITEMS as BusinessItem[]);
+      setTaxCategories(MOCK_TAX_CATEGORIES as TaxCategory[]);
+      setInvoices(MOCK_INVOICES as InvoiceSummary[]);
       setLoadingLookups(false);
       return;
     }
     Promise.all([
       partyApi.list({ pageSize: 200 }).then(r => r.items).catch(() => [] as Party[]),
       businessItemApi.list({ pageSize: 200 }).then(r => r.items).catch(() => [] as BusinessItem[]),
-    ]).then(([p, bi]) => {
+      firsApi.getTaxCategories().catch(() => [] as TaxCategory[]),
+      invoiceApi.list({ pageSize: 500 }).then(r => r.items).catch(() => [] as InvoiceSummary[]),
+    ]).then(([p, bi, tc, inv]) => {
       setParties(p);
       setItems(bi);
+      setTaxCategories(tc);
+      setInvoices(inv);
     }).finally(() => setLoadingLookups(false));
   }, []);
 
@@ -81,32 +135,77 @@ export default function CreateInvoice() {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => setForm(prev => ({ ...prev, [field]: e.target.value }));
 
+  const invoicesWithIRN = invoices.filter(inv => !!inv.irn);
+  const irnToRef = (irn: string): DocumentReferenceDto | null => {
+    const inv = invoicesWithIRN.find(i => i.irn === irn);
+    return inv ? { irn, issueDate: inv.issueDate } : null;
+  };
+  const setSingleRef = (
+    key: "dispatchDocumentReference" | "receiptDocumentReference" | "originatorDocumentReference" | "contractDocumentReference",
+    irn: string
+  ) => setDocRefs(prev => ({ ...prev, [key]: irn ? irnToRef(irn) : null }));
+  const addToArrayRef = (key: "billingReference" | "additionalDocumentReferences", irn: string) => {
+    const ref = irnToRef(irn);
+    if (!ref) return;
+    setDocRefs(prev => ({
+      ...prev,
+      [key]: (prev[key] as DocumentReferenceDto[]).some(r => r.irn === irn)
+        ? prev[key]
+        : [...(prev[key] as DocumentReferenceDto[]), ref],
+    }));
+  };
+  const removeFromArrayRef = (key: "billingReference" | "additionalDocumentReferences", irn: string) =>
+    setDocRefs(prev => ({ ...prev, [key]: (prev[key] as DocumentReferenceDto[]).filter(r => r.irn !== irn) }));
+
   const handleItemSelect = (index: number, businessItemId: string) => {
     const selected = items.find(i => i.id === businessItemId);
+    const taxCode = selected?.taxCategories?.[0] ?? "";
     setLineItems(prev => prev.map((li, i) =>
       i === index
         ? {
             ...li,
             businessItemId,
             unitPrice: selected?.unitPrice ?? 0,
-            _unitPriceDisplay: selected?.unitPrice ?? 0,
             _description: selected?.description ?? "",
             _itemCode: selected?.itemCode ?? "",
+            _taxCategoryCode: taxCode,
+            lineDiscount: 0,
+            _discountPercent: 0,
           }
         : li
     ));
   };
 
   const handleLineChange = (index: number, field: keyof LineItem, value: string | number) => {
-    setLineItems(prev => prev.map((li, i) =>
-      i === index ? { ...li, [field]: value } : li
-    ));
+    setLineItems(prev => prev.map((li, i) => {
+      if (i !== index) return li;
+      const updated = { ...li, [field]: value };
+      if (field === "_discountPercent") {
+        const pct = value as number;
+        if (li._discountType === "percent") {
+          updated.lineDiscount = (updated.unitPrice * updated.quantity) * (pct / 100);
+        }
+      }
+      return updated;
+    }));
+  };
+
+  const toggleDiscountType = (index: number) => {
+    setLineItems(prev => prev.map((li, i) => {
+      if (i !== index) return li;
+      const newType = li._discountType === "amount" ? "percent" : "amount";
+      return { ...li, _discountType: newType, lineDiscount: 0, _discountPercent: 0 };
+    }));
   };
 
   const addLine = () => {
     setLineItems(prev => [
       ...prev,
-      { businessItemId: "", quantity: 1, unitPrice: 0, lineDiscount: 0, _description: "", _itemCode: "", _unitPriceDisplay: 0 },
+      {
+        businessItemId: "", quantity: 1, unitPrice: 0, lineDiscount: 0,
+        _description: "", _itemCode: "", _taxCategoryCode: "",
+        _discountType: "amount", _discountPercent: 0,
+      },
     ]);
   };
 
@@ -115,11 +214,31 @@ export default function CreateInvoice() {
     setLineItems(prev => prev.filter((_, i) => i !== index));
   };
 
-  const lineTotal = (li: LineItem) =>
-    (li.unitPrice * li.quantity) - (li.lineDiscount ?? 0);
+  const lineSubtotal = (li: LineItem) => li.unitPrice * li.quantity;
+  const lineDiscountAmt = (li: LineItem) =>
+    li._discountType === "percent"
+      ? lineSubtotal(li) * (li._discountPercent / 100)
+      : (li.lineDiscount ?? 0);
+  const lineNet = (li: LineItem) => lineSubtotal(li) - lineDiscountAmt(li);
+  const lineTax = (li: LineItem) => {
+    const tc = taxCategories.find(t => t.code === li._taxCategoryCode);
+    const rate = tc ? parseTaxPercent(tc.percent) : 0;
+    return lineNet(li) * (rate / 100);
+  };
 
-  const grandTotal = lineItems.reduce((s, li) => s + lineTotal(li), 0);
-  const vatAmount = grandTotal * 0.075;
+  const grandSubtotal = lineItems.reduce((s, li) => s + lineNet(li), 0);
+
+  const taxBreakdown = lineItems.reduce<Record<string, { label: string; amount: number }>>((acc, li) => {
+    const tc = taxCategories.find(t => t.code === li._taxCategoryCode);
+    if (!tc || parseTaxPercent(tc.percent) === 0) return acc;
+    const key = tc.code;
+    if (!acc[key]) acc[key] = { label: `${tc.value} (${tc.percent}%)`, amount: 0 };
+    acc[key].amount += lineTax(li);
+    return acc;
+  }, {});
+
+  const totalTax = Object.values(taxBreakdown).reduce((s, v) => s + v.amount, 0);
+  const grandTotal = grandSubtotal + totalTax;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -135,12 +254,19 @@ export default function CreateInvoice() {
       invoiceTypeCode: form.invoiceTypeCode,
       paymentMeansCode: form.paymentMeansCode || undefined,
       note: form.note || undefined,
+      orderReference: form.orderReference || undefined,
+      billingReference: docRefs.billingReference.length > 0 ? docRefs.billingReference : undefined,
+      dispatchDocumentReference: docRefs.dispatchDocumentReference ?? undefined,
+      receiptDocumentReference: docRefs.receiptDocumentReference ?? undefined,
+      originatorDocumentReference: docRefs.originatorDocumentReference ?? undefined,
+      contractDocumentReference: docRefs.contractDocumentReference ?? undefined,
+      additionalDocumentReferences: docRefs.additionalDocumentReferences.length > 0 ? docRefs.additionalDocumentReferences : undefined,
       items: lineItems.map(li => ({
         businessItemId: li.businessItemId,
         quantity: li.quantity,
         unitPrice: li.unitPrice,
-        lineDiscount: li.lineDiscount,
-      })),
+        lineDiscount: lineDiscountAmt(li) || undefined,
+      } satisfies InvoiceItemPayload)),
     };
 
     setSubmitting(true);
@@ -169,45 +295,39 @@ export default function CreateInvoice() {
     <>
       <PageMeta title="Create Invoice | Aegis NRS Portal" description="Create a new e-invoice" />
 
-      <div className="flex items-center gap-3 mb-6">
+      <div className="mb-6">
         <button
           onClick={() => navigate("/invoices")}
-          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+          className="group flex items-center gap-1.5 text-sm font-medium text-gray-400 hover:text-brand-500 dark:hover:text-brand-400 transition-colors mb-3"
         >
-          ← Back
+          <svg
+            className="w-4 h-4 transition-transform group-hover:-translate-x-0.5"
+            fill="none" stroke="currentColor" viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          Back to Invoices
         </button>
-        <div>
-          <h1 className="text-xl font-semibold text-gray-800 dark:text-white">Create Invoice</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-            Invoices will be submitted for approval then sent to NRS/NRS
-          </p>
-        </div>
+        <h1 className="text-xl font-semibold text-gray-800 dark:text-white">Create Invoice</h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Invoice will go through approval then be submitted to NRS</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Header fields */}
+        {/* Invoice Details */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 lg:p-6">
           <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Invoice Details</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="sm:col-span-2 lg:col-span-1">
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                Buyer / Party <span className="text-error-500">*</span>
-              </label>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Buyer / Party <span className="text-error-500">*</span></label>
               <select value={form.partyId} onChange={handleFieldChange("partyId")} className={inputCls} required>
                 <option value="">Select party...</option>
-                {parties.map(p => (
-                  <option key={p.id} value={p.id}>{p.name} — {p.tin}</option>
-                ))}
+                {parties.map(p => <option key={p.id} value={p.id}>{p.name} — {p.taxIdentificationNumber}</option>)}
               </select>
-              {parties.length === 0 && (
-                <p className="text-xs text-amber-600 mt-1">No parties found. <a href="/parties" className="underline">Add one NRSt.</a></p>
-              )}
+              {parties.length === 0 && <p className="text-xs text-amber-600 mt-1">No parties found. <a href="/parties" className="underline">Add one first.</a></p>}
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                Invoice Type <span className="text-error-500">*</span>
-              </label>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Invoice Type <span className="text-error-500">*</span></label>
               <select value={form.invoiceTypeCode} onChange={handleFieldChange("invoiceTypeCode")} className={inputCls}>
                 {INVOICE_TYPES.map(t => <option key={t.code} value={t.code}>{t.label}</option>)}
               </select>
@@ -221,9 +341,7 @@ export default function CreateInvoice() {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                Issue Date <span className="text-error-500">*</span>
-              </label>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Issue Date <span className="text-error-500">*</span></label>
               <input type="date" value={form.issueDate} onChange={handleFieldChange("issueDate")} className={inputCls} required />
             </div>
 
@@ -242,14 +360,140 @@ export default function CreateInvoice() {
 
             <div className="sm:col-span-2 lg:col-span-3">
               <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Note (optional)</label>
-              <textarea
-                value={form.note}
-                onChange={handleFieldChange("note")}
-                rows={2}
-                placeholder="Any notes to the buyer..."
-                className={`${inputCls} resize-none`}
-              />
+              <textarea value={form.note} onChange={handleFieldChange("note")} rows={2} placeholder="Any notes to the buyer..." className={`${inputCls} resize-none`} />
             </div>
+          </div>
+
+          {/* Document References */}
+          <div className="mt-4 border-t border-gray-100 dark:border-gray-700 pt-4">
+            <button
+              type="button"
+              onClick={() => setShowDocRefs(v => !v)}
+              className="flex items-center gap-2 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+            >
+              <svg className={`w-3.5 h-3.5 transition-transform ${showDocRefs ? "rotate-90" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+              Document References (optional)
+            </button>
+            {showDocRefs && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+
+                {/* Order Reference */}
+                <div>
+                  <label className="flex items-center text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                    Order Reference
+                    <InfoTooltip text="The order number tied to an invoice." />
+                  </label>
+                  <input value={form.orderReference} onChange={handleFieldChange("orderReference")} className={inputCls} placeholder="PO-2025-001" />
+                </div>
+
+                {/* Contract Document Reference */}
+                <div>
+                  <label className="flex items-center text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                    Contract Reference
+                    <InfoTooltip text="Links the invoice to a contract governing the transaction." />
+                  </label>
+                  <select value={docRefs.contractDocumentReference?.irn ?? ""} onChange={e => setSingleRef("contractDocumentReference", e.target.value)} className={inputCls}>
+                    <option value="">— None —</option>
+                    {invoicesWithIRN.map(inv => <option key={inv.irn} value={inv.irn!}>{inv.partyName} — {inv.irn}</option>)}
+                  </select>
+                </div>
+
+                {/* Dispatch Document Reference */}
+                <div>
+                  <label className="flex items-center text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                    Dispatch Document Reference
+                    <InfoTooltip text="Refers to the document used to track the dispatch of goods." />
+                  </label>
+                  <select value={docRefs.dispatchDocumentReference?.irn ?? ""} onChange={e => setSingleRef("dispatchDocumentReference", e.target.value)} className={inputCls}>
+                    <option value="">— None —</option>
+                    {invoicesWithIRN.map(inv => <option key={inv.irn} value={inv.irn!}>{inv.partyName} — {inv.irn}</option>)}
+                  </select>
+                </div>
+
+                {/* Receipt Document Reference */}
+                <div>
+                  <label className="flex items-center text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                    Receipt Document Reference
+                    <InfoTooltip text="Links the invoice to a receipt document associated with this invoice." />
+                  </label>
+                  <select value={docRefs.receiptDocumentReference?.irn ?? ""} onChange={e => setSingleRef("receiptDocumentReference", e.target.value)} className={inputCls}>
+                    <option value="">— None —</option>
+                    {invoicesWithIRN.map(inv => <option key={inv.irn} value={inv.irn!}>{inv.partyName} — {inv.irn}</option>)}
+                  </select>
+                </div>
+
+                {/* Originator Document Reference */}
+                <div>
+                  <label className="flex items-center text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                    Originator Document Reference
+                    <InfoTooltip text="Identifies the original document that initiated this invoice." />
+                  </label>
+                  <select value={docRefs.originatorDocumentReference?.irn ?? ""} onChange={e => setSingleRef("originatorDocumentReference", e.target.value)} className={inputCls}>
+                    <option value="">— None —</option>
+                    {invoicesWithIRN.map(inv => <option key={inv.irn} value={inv.irn!}>{inv.partyName} — {inv.irn}</option>)}
+                  </select>
+                </div>
+
+                {/* Billing Reference — multi */}
+                <div className="sm:col-span-2">
+                  <label className="flex items-center text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                    Billing Reference
+                    <InfoTooltip text="Links this invoice to previous billing documents, e.g. credit notes, debit notes, or prior invoices." />
+                  </label>
+                  <select
+                    value=""
+                    onChange={e => { if (e.target.value) addToArrayRef("billingReference", e.target.value); }}
+                    className={inputCls}
+                  >
+                    <option value="">+ Select to add billing reference...</option>
+                    {invoicesWithIRN
+                      .filter(inv => !docRefs.billingReference.some(r => r.irn === inv.irn))
+                      .map(inv => <option key={inv.irn} value={inv.irn!}>{inv.partyName} — {inv.irn}</option>)}
+                  </select>
+                  {docRefs.billingReference.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {docRefs.billingReference.map(ref => (
+                        <span key={ref.irn} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-300 rounded-full text-xs border border-brand-200 dark:border-brand-800">
+                          {invoicesWithIRN.find(i => i.irn === ref.irn)?.partyName} — {ref.irn}
+                          <button type="button" onClick={() => removeFromArrayRef("billingReference", ref.irn)} className="text-brand-400 hover:text-red-500 transition-colors leading-none">&times;</button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Additional Document References — multi */}
+                <div className="sm:col-span-2">
+                  <label className="flex items-center text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                    Additional Document References
+                    <InfoTooltip text="General reference field for any additional documents related to this invoice." />
+                  </label>
+                  <select
+                    value=""
+                    onChange={e => { if (e.target.value) addToArrayRef("additionalDocumentReferences", e.target.value); }}
+                    className={inputCls}
+                  >
+                    <option value="">+ Select to add additional reference...</option>
+                    {invoicesWithIRN
+                      .filter(inv => !docRefs.additionalDocumentReferences.some(r => r.irn === inv.irn))
+                      .map(inv => <option key={inv.irn} value={inv.irn!}>{inv.partyName} — {inv.irn}</option>)}
+                  </select>
+                  {docRefs.additionalDocumentReferences.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {docRefs.additionalDocumentReferences.map(ref => (
+                        <span key={ref.irn} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full text-xs border border-gray-200 dark:border-gray-600">
+                          {invoicesWithIRN.find(i => i.irn === ref.irn)?.partyName} — {ref.irn}
+                          <button type="button" onClick={() => removeFromArrayRef("additionalDocumentReferences", ref.irn)} className="text-gray-400 hover:text-red-500 transition-colors leading-none">&times;</button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+              </div>
+            )}
           </div>
         </div>
 
@@ -257,115 +501,122 @@ export default function CreateInvoice() {
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 lg:p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Line Items</h2>
-            <button
-              type="button"
-              onClick={addLine}
-              className="text-xs text-brand-500 hover:text-brand-600 font-medium"
-            >
-              + Add Line
-            </button>
+            <button type="button" onClick={addLine} className="text-xs text-brand-500 hover:text-brand-600 font-medium">+ Add Line</button>
           </div>
 
           <div className="space-y-3">
-            {/* Header row */}
             <div className="hidden lg:grid lg:grid-cols-12 gap-2 text-xs font-medium text-gray-400 dark:text-gray-500 px-1">
               <div className="col-span-4">Item</div>
               <div className="col-span-2 text-right">Unit Price (₦)</div>
-              <div className="col-span-2 text-center">Qty</div>
-              <div className="col-span-2 text-right">Discount (₦)</div>
-              <div className="col-span-1 text-right">Subtotal</div>
-              <div className="col-span-1" />
+              <div className="col-span-1 text-center">Qty</div>
+              <div className="col-span-3">Discount (₦ or %)</div>
+              <div className="col-span-1 text-right">Net</div>
+              <div className="col-span-1 text-right">Tax</div>
             </div>
 
-            {lineItems.map((li, index) => (
-              <div key={index} className="grid grid-cols-12 gap-2 items-start border border-gray-100 dark:border-gray-700 rounded-xl p-3 lg:border-0 lg:p-0 lg:rounded-none">
-                {/* Item select */}
-                <div className="col-span-12 lg:col-span-4">
-                  <label className="text-xs text-gray-400 lg:hidden mb-0.5 block">Item</label>
-                  <select
-                    value={li.businessItemId}
-                    onChange={e => handleItemSelect(index, e.target.value)}
-                    className={inputCls}
-                    required
-                  >
-                    <option value="">Select item...</option>
-                    {items.map(it => (
-                      <option key={it.id} value={it.id}>{it.itemCode} — {it.description}</option>
-                    ))}
-                  </select>
-                  {li._description && (
-                    <p className="text-xs text-gray-400 mt-0.5 truncate">{li._description}</p>
-                  )}
-                </div>
+            {lineItems.map((li, index) => {
+              const tc = taxCategories.find(t => t.code === li._taxCategoryCode);
+              const taxRate = tc ? parseTaxPercent(tc.percent) : 0;
+              const net = lineNet(li);
+              const tax = lineTax(li);
+              return (
+                <div key={index} className="grid grid-cols-12 gap-2 items-start border border-gray-100 dark:border-gray-700 rounded-xl p-3 lg:border-0 lg:p-0 lg:rounded-none">
+                  {/* Item */}
+                  <div className="col-span-12 lg:col-span-4">
+                    <label className="text-xs text-gray-400 lg:hidden mb-0.5 block">Item</label>
+                    <select value={li.businessItemId} onChange={e => handleItemSelect(index, e.target.value)} className={inputCls} required>
+                      <option value="">Select item...</option>
+                      {items.map(it => <option key={it.id} value={it.id}>{it.itemCode} — {it.description}</option>)}
+                    </select>
+                    {tc && (
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {tc.value}{taxRate > 0 ? ` · ${taxRate}%` : " · Tax exempt"}
+                      </p>
+                    )}
+                  </div>
 
-                {/* Unit Price */}
-                <div className="col-span-6 lg:col-span-2">
-                  <label className="text-xs text-gray-400 lg:hidden mb-0.5 block">Unit Price</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={li.unitPrice}
-                    onChange={e => handleLineChange(index, "unitPrice", parseFloat(e.target.value) || 0)}
-                    className={`${inputCls} text-right`}
-                    required
-                  />
-                </div>
+                  {/* Unit Price */}
+                  <div className="col-span-6 lg:col-span-2">
+                    <label className="text-xs text-gray-400 lg:hidden mb-0.5 block">Unit Price</label>
+                    <input type="number" min="0" step="0.01" value={li.unitPrice}
+                      onChange={e => handleLineChange(index, "unitPrice", parseFloat(e.target.value) || 0)}
+                      className={`${inputCls} text-right`} required />
+                  </div>
 
-                {/* Quantity */}
-                <div className="col-span-6 lg:col-span-2">
-                  <label className="text-xs text-gray-400 lg:hidden mb-0.5 block">Qty</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={li.quantity}
-                    onChange={e => handleLineChange(index, "quantity", parseInt(e.target.value) || 1)}
-                    className={`${inputCls} text-center`}
-                    required
-                  />
-                </div>
+                  {/* Qty */}
+                  <div className="col-span-6 lg:col-span-1">
+                    <label className="text-xs text-gray-400 lg:hidden mb-0.5 block">Qty</label>
+                    <input type="number" min="1" value={li.quantity}
+                      onChange={e => handleLineChange(index, "quantity", parseInt(e.target.value) || 1)}
+                      className={`${inputCls} text-center`} required />
+                  </div>
 
-                {/* Discount */}
-                <div className="col-span-6 lg:col-span-2">
-                  <label className="text-xs text-gray-400 lg:hidden mb-0.5 block">Discount (₦)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={li.lineDiscount ?? 0}
-                    onChange={e => handleLineChange(index, "lineDiscount", parseFloat(e.target.value) || 0)}
-                    className={`${inputCls} text-right`}
-                  />
-                </div>
+                  {/* Discount */}
+                  <div className="col-span-11 lg:col-span-3">
+                    <label className="text-xs text-gray-400 lg:hidden mb-0.5 block">Discount</label>
+                    <div className="flex gap-1">
+                      <button
+                        type="button"
+                        onClick={() => toggleDiscountType(index)}
+                        title="Toggle between fixed amount and percentage"
+                        className="flex-shrink-0 w-10 px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-xs font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-center"
+                      >
+                        {li._discountType === "percent" ? "%" : "₦"}
+                      </button>
+                      <input
+                        type="number" min="0" step="0.01"
+                        value={li._discountType === "percent" ? li._discountPercent : (li.lineDiscount ?? 0)}
+                        onChange={e => {
+                          const val = parseFloat(e.target.value) || 0;
+                          if (li._discountType === "percent") {
+                            handleLineChange(index, "_discountPercent", val);
+                          } else {
+                            handleLineChange(index, "lineDiscount", val);
+                          }
+                        }}
+                        className={`${inputCls} text-right`}
+                      />
+                    </div>
+                    {li._discountType === "percent" && li._discountPercent > 0 && (
+                      <p className="text-xs text-gray-400 mt-0.5 text-right">
+                        = ₦{lineDiscountAmt(li).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                      </p>
+                    )}
+                  </div>
 
-                {/* Subtotal */}
-                <div className="col-span-5 lg:col-span-1 flex items-center justify-end">
-                  <span className="text-sm font-semibold text-gray-800 dark:text-white">
-                    ₦{lineTotal(li).toLocaleString()}
-                  </span>
-                </div>
+                  {/* Net */}
+                  <div className="col-span-6 lg:col-span-1 flex flex-col items-end justify-center">
+                    <label className="text-xs text-gray-400 lg:hidden mb-0.5">Net</label>
+                    <span className="text-sm font-semibold text-gray-800 dark:text-white">
+                      ₦{net.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    </span>
+                  </div>
 
-                {/* Remove */}
-                <div className="col-span-1 flex items-center justify-center">
-                  <button
-                    type="button"
-                    onClick={() => removeLine(index)}
-                    disabled={lineItems.length === 1}
-                    className="text-gray-300 hover:text-red-500 disabled:opacity-20 transition-colors"
-                    title="Remove line"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
+                  {/* Tax */}
+                  <div className="col-span-5 lg:col-span-1 flex flex-col items-end justify-center">
+                    <label className="text-xs text-gray-400 lg:hidden mb-0.5">Tax</label>
+                    <span className={`text-xs font-medium ${taxRate > 0 ? "text-amber-600 dark:text-amber-400" : "text-gray-400"}`}>
+                      {taxRate > 0 ? `₦${tax.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : "Exempt"}
+                    </span>
+                  </div>
+
+                  {/* Remove */}
+                  <div className="col-span-1 flex items-center justify-center pt-1">
+                    <button type="button" onClick={() => removeLine(index)} disabled={lineItems.length === 1}
+                      className="text-gray-300 hover:text-red-500 disabled:opacity-20 transition-colors">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {items.length === 0 && (
             <div className="mt-3 text-xs text-amber-600 dark:text-amber-400">
-              No business items found. <a href="/items" className="underline">Add items NRSt.</a>
+              No business items found. <a href="/items" className="underline">Add items first.</a>
             </div>
           )}
         </div>
@@ -374,34 +625,35 @@ export default function CreateInvoice() {
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
           <div className="max-w-xs ml-auto space-y-2 text-sm">
             <div className="flex justify-between text-gray-600 dark:text-gray-400">
-              <span>Subtotal</span>
-              <span className="font-medium text-gray-800 dark:text-white">₦{grandTotal.toLocaleString()}</span>
+              <span>Subtotal (after discounts)</span>
+              <span className="font-medium text-gray-800 dark:text-white">₦{grandSubtotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
             </div>
-            <div className="flex justify-between text-gray-600 dark:text-gray-400">
-              <span>VAT (7.5%)</span>
-              <span className="font-medium text-gray-800 dark:text-white">₦{vatAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
-            </div>
+            {Object.entries(taxBreakdown).map(([code, { label, amount }]) => (
+              <div key={code} className="flex justify-between text-gray-600 dark:text-gray-400">
+                <span>{label}</span>
+                <span className="font-medium text-gray-800 dark:text-white">₦{amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+              </div>
+            ))}
+            {Object.keys(taxBreakdown).length === 0 && (
+              <div className="flex justify-between text-gray-400 dark:text-gray-500">
+                <span>Tax</span><span>—</span>
+              </div>
+            )}
             <div className="flex justify-between border-t border-gray-200 dark:border-gray-700 pt-2 font-semibold text-gray-900 dark:text-white">
-              <span>Total</span>
-              <span className="text-brand-500">₦{(grandTotal + vatAmount).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+              <span>Total (incl. tax)</span>
+              <span className="text-brand-500">₦{grandTotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
             </div>
           </div>
         </div>
 
         {/* Actions */}
         <div className="flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={() => navigate("/invoices")}
-            className="px-5 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-          >
+          <button type="button" onClick={() => navigate("/invoices")}
+            className="px-5 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
             Cancel
           </button>
-          <button
-            type="submit"
-            disabled={submitting}
-            className="px-6 py-2.5 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-xl disabled:opacity-50 transition-colors"
-          >
+          <button type="submit" disabled={submitting}
+            className="px-6 py-2.5 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-xl disabled:opacity-50 transition-colors">
             {submitting ? "Creating..." : "Create Invoice"}
           </button>
         </div>

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import PageMeta from "../../components/common/PageMeta";
 import { invoiceApi, type InvoiceSummary } from "../../lib/api";
-import { USE_MOCK, MOCK_RECEIVED_INVOICES } from "../../lib/mockData";
+import { USE_MOCK, MOCK_RECEIVED_INVOICES, MOCK_PAGE_SIZE } from "../../lib/mockData";
 
 
 const STATUS_COLORS: Record<string, string> = {
@@ -22,8 +22,8 @@ export default function ReceivedInvoiceList() {
 
   const fetchInvoices = (p: number) => {
     if (USE_MOCK) {
-      setInvoices(MOCK_RECEIVED_INVOICES as InvoiceSummary[]);
-      setTotalPages(1);
+      setTotalPages(Math.ceil(MOCK_RECEIVED_INVOICES.length / MOCK_PAGE_SIZE));
+      setInvoices(MOCK_RECEIVED_INVOICES.slice((p - 1) * MOCK_PAGE_SIZE, p * MOCK_PAGE_SIZE) as InvoiceSummary[]);
       setLoading(false);
       return;
     }

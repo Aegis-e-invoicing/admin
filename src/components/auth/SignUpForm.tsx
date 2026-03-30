@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router";
 import toast from "react-hot-toast";
-import { EyeCloseIcon, EyeIcon } from "../../icons";
 import Label from "../form/Label";
 import Input from "../form/input/InputField";
 import Button from "../ui/button/Button";
@@ -29,7 +28,6 @@ export default function SignUpForm() {
     adminPhone: "",
     businessName: "",
   });
-  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -96,9 +94,9 @@ export default function SignUpForm() {
       <div className="w-full max-w-2xl mx-auto py-8 px-4">
 
         {/* Logo */}
-        <div className="mb-6">
-          <img src="/images/logo/logo.svg" alt="Aegis NRS" className="h-10 dark:hidden" />
-          <img src="/images/logo/logo-dark.svg" alt="Aegis NRS" className="h-10 hidden dark:block" />
+        <div className="mb-6 flex items-center gap-2">
+          <img src="/images/logo/logo-icon.svg" alt="Aegis" className="h-8" />
+          <span className="text-lg font-bold text-gray-800 dark:text-white">Aegis EInvoicing</span>
         </div>
 
         {/* Progress */}
@@ -128,15 +126,16 @@ export default function SignUpForm() {
 
             {/* Billing toggle */}
             <div className="flex items-center gap-3 mb-6">
-              <span className={`text-sm font-medium ${billingCycle === 0 ? "text-brand-500" : "text-gray-500"}`}>Monthly</span>
+              <span className={`text-sm font-medium ${billingCycle === 0 ? "text-brand-500 dark:text-brand-400" : "text-gray-400 dark:text-gray-500"}`}>Monthly</span>
               <button
+                type="button"
                 onClick={() => setBillingCycle(billingCycle === 0 ? 1 : 0)}
-                className={`relative w-12 h-6 rounded-full transition-colors ${billingCycle === 1 ? "bg-brand-500" : "bg-gray-300"}`}
+                className={`relative w-12 h-6 rounded-full transition-colors cursor-pointer focus:outline-none ${billingCycle === 1 ? "bg-brand-500" : "bg-gray-300 dark:bg-gray-600"}`}
               >
-                <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${billingCycle === 1 ? "translate-x-7" : "translate-x-1"}`} />
+                <span className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${billingCycle === 1 ? "translate-x-6" : "translate-x-0"}`} />
               </button>
-              <span className={`text-sm font-medium ${billingCycle === 1 ? "text-brand-500" : "text-gray-500"}`}>
-                Annual <span className="text-green-500 text-xs ml-1">(Save ~17%)</span>
+              <span className={`text-sm font-medium ${billingCycle === 1 ? "text-brand-500 dark:text-brand-400" : "text-gray-400 dark:text-gray-500"}`}>
+                Annual <span className="text-green-500 dark:text-green-400 text-xs ml-1">(Save ~17%)</span>
               </span>
             </div>
 
@@ -145,7 +144,7 @@ export default function SignUpForm() {
                 <div className="w-8 h-8 border-4 border-brand-500 border-t-transparent rounded-full animate-spin" />
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
                 {plans.map(plan => {
                   const price = billingCycle === 1 ? plan.annualPrice : plan.monthlyPrice;
                   const isSelected = selectedPlan?.id === plan.id;

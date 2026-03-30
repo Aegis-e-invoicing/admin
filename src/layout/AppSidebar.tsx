@@ -46,9 +46,9 @@ const AppSidebar: React.FC = () => {
       icon: <FileIcon />,
       name: "Invoices",
       subItems: [
+        ...(canCreateInvoice ? [{ name: "Create Invoice", path: "/invoices/create" }] : []),
         { name: "My Invoices", path: "/invoices" },
         { name: "Received", path: "/received-invoices" },
-        ...(canCreateInvoice ? [{ name: "Create Invoice", path: "/invoices/create" }] : []),
       ],
     },
     // Parties & Items — not relevant for Aegis platform admin

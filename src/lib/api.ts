@@ -182,6 +182,11 @@ export interface InvoiceSummary {
   partyName?: string;
 }
 export interface PaginatedResult<T> { items: T[]; totalCount: number; pageNumber: number; pageSize: number; totalPages: number; }
+export interface DocumentReferenceDto {
+  irn: string;
+  issueDate: string;
+}
+
 export interface CreateInvoicePayload {
   partyId: string;
   issueDate: string;
@@ -190,6 +195,13 @@ export interface CreateInvoicePayload {
   invoiceTypeCode: string;
   paymentMeansCode?: string;
   note?: string;
+  orderReference?: string;
+  billingReference?: DocumentReferenceDto[];
+  dispatchDocumentReference?: DocumentReferenceDto;
+  receiptDocumentReference?: DocumentReferenceDto;
+  originatorDocumentReference?: DocumentReferenceDto;
+  contractDocumentReference?: DocumentReferenceDto;
+  additionalDocumentReferences?: DocumentReferenceDto[];
   items: InvoiceItemPayload[];
 }
 export interface InvoiceItemPayload {
@@ -197,6 +209,27 @@ export interface InvoiceItemPayload {
   quantity: number;
   unitPrice: number;
   lineDiscount?: number;
+}
+
+// ── FIRS ──────────────────────────────────────────────────────────────────────
+export interface TaxCategory {
+  code: string;
+  value: string;
+  percent: string; // "7.5", "0.0", "Not Available", or ""
+}
+export const firsApi = {
+  getTaxCategories: () =>
+    api.get<ApiResponse<TaxCategory[]>>("/FIRS/gettaxcategories").then(unwrap),
+};
+
+export interface UploadInvoiceResult {
+  isSuccess: boolean;
+  totalObjects: number;
+  successfulUploads: number;
+  failedUploads: number;
+  failedUploadDetails: Record<string, string>;
+  message: string;
+  statusCodes: number;
 }
 
 export const invoiceApi = {
@@ -217,32 +250,66 @@ export const invoiceApi = {
 
   receivedList: (params?: { page?: number; pageSize?: number }) =>
     api.get<ApiResponse<PaginatedResult<InvoiceSummary>>>("/invoice/received-invoices", { params }).then(unwrap),
+
+  /** Upload an Excel file of invoices. Returns a summary of successes/failures. */
+  bulkUpload: (file: File) => {
+    const formData = new FormData();
+    formData.append("invoicesUpload", file);
+    return api
+      .post<ApiResponse<UploadInvoiceResult>>("/invoice/upload", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      })
+      .then(unwrap);
+  },
+
+  /**
+   * Export invoices to Excel. Passing no params produces a blank-data template
+   * (headers only) that matches the upload format.
+   */
+  exportTemplate: (params?: {
+    status?: string;
+    paymentStatus?: string;
+    startDate?: string;
+    endDate?: string;
+    searchTerm?: string;
+    paymentReference?: string;
+  }) =>
+    api.get("/invoice/export", {
+      params,
+      responseType: "blob",
+    }),
 };
 
 // ── Parties ───────────────────────────────────────────────────────────────────
+/** Shape returned by GET /party (list summary) */
 export interface Party {
   id: string;
   name: string;
-  tin: string;
-  contactEmail?: string;
-  contactPhone?: string;
-  role: string;
-  address?: Address;
+  email: string;
+  phone: string;
+  taxIdentificationNumber: string;
+  createdAt?: string;
 }
 export interface CreatePartyPayload {
   name: string;
-  tin: string;
-  contactEmail?: string;
-  contactPhone?: string;
-  role: string;
-  address?: Address;
+  phone: string;
+  email: string;
+  taxIdentificationNumber: string;
+  description: string;
+  address: {
+    street: string;
+    city: string;
+    state: string;
+    country: string;
+    postalCode?: string;
+  };
 }
 
 export const partyApi = {
-  list: (params?: { page?: number; pageSize?: number }) =>
+  list: (params?: { page?: number; pageSize?: number; searchTerm?: string }) =>
     api.get<ApiResponse<PaginatedResult<Party>>>("/party", { params }).then(unwrap),
   create: (payload: CreatePartyPayload) => api.post<ApiResponse<Party>>("/party", payload).then(unwrap),
-  update: (id: string, payload: Partial<CreatePartyPayload>) => api.put(`/party/${id}`, payload),
+  update: (id: string, payload: Partial<Omit<CreatePartyPayload, "description">>) => api.put(`/party/${id}`, payload),
   delete: (id: string) => api.delete(`/party/${id}`),
 };
 
