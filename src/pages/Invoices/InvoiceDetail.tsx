@@ -262,6 +262,29 @@ export default function InvoiceDetail() {
 
         {/* Right: Financials + Actions */}
         <div className="space-y-5">
+          {/* QR Code */}
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 flex flex-col items-center gap-3">
+            <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 self-start">FIRS QR Code</h2>
+            {invoice.qrCodeImage ? (
+              <img
+                src={`data:image/png;base64,${invoice.qrCodeImage}`}
+                alt="Invoice QR Code"
+                className="w-40 h-40 rounded-lg border border-gray-100 dark:border-gray-700"
+              />
+            ) : (
+              <div className="w-40 h-40 rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-600 flex flex-col items-center justify-center gap-2 bg-gray-50 dark:bg-gray-700/30">
+                <svg className="w-10 h-10 text-gray-300 dark:text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+                  <rect x="3" y="3" width="7" height="7" rx="1" />
+                  <rect x="14" y="3" width="7" height="7" rx="1" />
+                  <rect x="3" y="14" width="7" height="7" rx="1" />
+                  <path strokeLinecap="round" d="M14 14h2m2 0h1M14 17v1m0 2v1M17 14v3h3M17 20h3" />
+                </svg>
+                <p className="text-xs text-gray-400 dark:text-gray-500 text-center px-2">Generated after FIRS signing</p>
+              </div>
+            )}
+            <p className="text-xs text-gray-400 dark:text-gray-500 text-center">Scan to verify on FIRS NRS</p>
+          </div>
+
           {/* Financials */}
           <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
             <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Financial Summary</h2>
@@ -311,6 +334,16 @@ export default function InvoiceDetail() {
                 Update Payment Status
               </button>
             )}
+
+            <button
+              onClick={() => window.print()}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Download PDF
+            </button>
 
             <Link
               to="/invoices"

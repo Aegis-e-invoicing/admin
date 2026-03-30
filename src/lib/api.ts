@@ -181,6 +181,7 @@ export interface InvoiceSummary {
   paymentStatus: string;
   source: string;
   partyName?: string;
+  qrCodeImage?: string;
 }
 export interface PaginatedResult<T> { items: T[]; totalCount: number; pageNumber: number; pageSize: number; totalPages: number; }
 export interface DocumentReferenceDto {

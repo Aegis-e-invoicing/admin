@@ -127,7 +127,7 @@ export default function Analytics() {
 
   // Aggregate sales by party (top 10)
   const partyMap: Record<string, number> = {};
-  g?.salesByParty.forEach(d => {
+  g?.salesByParty?.forEach(d => {
     partyMap[d.partyName] = (partyMap[d.partyName] ?? 0) + d.salesAmount;
   });
   const partyEntries = Object.entries(partyMap).sort((a, b) => b[1] - a[1]).slice(0, 10);
