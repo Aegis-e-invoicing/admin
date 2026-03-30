@@ -535,12 +535,16 @@ export default function CreateInvoice() {
                     )}
                   </div>
 
-                  {/* Unit Price */}
+                  {/* Unit Price — read-only, snapshotted from business item */}
                   <div className="col-span-6 lg:col-span-2">
                     <label className="text-xs text-gray-400 lg:hidden mb-0.5 block">Unit Price</label>
-                    <input type="number" min="0" step="0.01" value={li.unitPrice}
-                      onChange={e => handleLineChange(index, "unitPrice", parseFloat(e.target.value) || 0)}
-                      className={`${inputCls} text-right`} required />
+                    <input
+                      type="number"
+                      value={li.unitPrice}
+                      readOnly
+                      tabIndex={-1}
+                      className={`${inputCls} text-right bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 cursor-default select-none`}
+                    />
                   </div>
 
                   {/* Qty */}

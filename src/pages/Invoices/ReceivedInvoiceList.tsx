@@ -18,18 +18,19 @@ export default function ReceivedInvoiceList() {
   const [invoices, setInvoices] = useState<InvoiceSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
 
-  const fetchInvoices = (p: number) => {
+  const fetchInvoices = (p: number, ps: number) => {
     if (USE_MOCK) {
-      setTotalPages(Math.ceil(MOCK_RECEIVED_INVOICES.length / MOCK_PAGE_SIZE));
-      setInvoices(MOCK_RECEIVED_INVOICES.slice((p - 1) * MOCK_PAGE_SIZE, p * MOCK_PAGE_SIZE) as InvoiceSummary[]);
+      setTotalPages(Math.ceil(MOCK_RECEIVED_INVOICES.length / ps));
+      setInvoices(MOCK_RECEIVED_INVOICES.slice((p - 1) * ps, p * ps) as InvoiceSummary[]);
       setLoading(false);
       return;
     }
     setLoading(true);
     invoiceApi
-      .receivedList({ page: p, pageSize: 15 })
+      .receivedList({ page: p, pageSize: ps })
       .then((result) => {
         setInvoices(result.items);
         setTotalPages(result.totalPages);
@@ -39,8 +40,13 @@ export default function ReceivedInvoiceList() {
   };
 
   useEffect(() => {
-    fetchInvoices(page);
-  }, [page]);
+    fetchInvoices(page, pageSize);
+  }, [page, pageSize]);
+
+  const handlePageSizeChange = (ps: number) => {
+    setPageSize(ps);
+    setPage(1);
+  };
 
   return (
     <>
@@ -121,9 +127,24 @@ export default function ReceivedInvoiceList() {
 
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700">
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Page {page} of {totalPages}
-            </p>
+            <div className="flex items-center gap-3">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Page {page} of {totalPages}
+                </p>
+                <div className="flex items-center gap-2 text-sm">
+                  <select
+                    id="pageSize"
+                    value={pageSize}
+                    onChange={e => handlePageSizeChange(Number(e.target.value))}
+                    className="block w-full pl-2 pr-8 py-1.5 border border-gray-300 rounded-md shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300"
+                  >
+                    <option value={10}>10 / page</option>
+                    <option value={20}>20 / page</option>
+                    <option value={50}>50 / page</option>
+                    <option value={100}>100 / page</option>
+                  </select>
+                </div>
+              </div>
             <div className="flex gap-2">
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}

@@ -19,7 +19,7 @@ export const MOCK_USER_CLIENT_ADMIN = {
   firstName: "Chidi",
   lastName: "Okonkwo",
   email: "chidi.okonkwo@acmeng.com",
-  roles: ["ClientAdmin"],
+  roles: ["Admin"],
   permissions: ["invoice:create", "invoice:approve", "party:manage", "user:manage"],
   isAegisUser: false,
   aegisRole: undefined as string | undefined,
@@ -33,7 +33,7 @@ export const MOCK_USER_CLIENT_USER = {
   firstName: "Ngozi",
   lastName: "Eze",
   email: "ngozi.eze@acmeng.com",
-  roles: ["ClientUser"],
+  roles: ["User"],
   permissions: ["invoice:view", "party:view"],
   isAegisUser: false,
   aegisRole: undefined as string | undefined,
@@ -47,7 +47,7 @@ export const MOCK_USER_AEGIS_ADMIN = {
   firstName: "Emeka",
   lastName: "Adeyemi",
   email: "emeka.adeyemi@aegisnrs.com",
-  roles: ["AegisAdmin"],
+  roles: ["Aegis"],
   permissions: [],
   isAegisUser: true,
   aegisRole: "SuperAdmin",
@@ -103,22 +103,52 @@ export const MOCK_DASHBOARD_STATS = {
 
 // ─── Invoices (15 rows → 3 pages of 5) ───────────────────────────────────────
 export const MOCK_INVOICES = [
-  { id: "inv-001", invoiceCode: "INV-2025-0042", irn: "FIR20250042ACME0000001", issueDate: "2025-03-20", dueDate: "2025-04-20", totalAmount: 4_720_000, totalTaxAmount: 354_000, status: "ConfirmedByNRS", paymentStatus: "Paid", source: "Portal", partyName: "Dangote Industries Ltd" },
-  { id: "inv-002", invoiceCode: "INV-2025-0041", irn: "FIR20250041ACME0000002", issueDate: "2025-03-18", dueDate: "2025-04-18", totalAmount: 1_850_000, totalTaxAmount: 138_750, status: "SubmittedToNRS", paymentStatus: "Unpaid", source: "Portal", partyName: "MTN Nigeria Comm. Plc" },
-  { id: "inv-003", invoiceCode: "INV-2025-0040", irn: undefined, issueDate: "2025-03-15", dueDate: "2025-04-15", totalAmount: 920_000, totalTaxAmount: 69_000, status: "PendingApproval", paymentStatus: "Unpaid", source: "Portal", partyName: "Zenith Bank Plc" },
-  { id: "inv-004", invoiceCode: "INV-2025-0039", irn: undefined, issueDate: "2025-03-10", dueDate: "2025-04-10", totalAmount: 560_000, totalTaxAmount: 42_000, status: "Draft", paymentStatus: "Unpaid", source: "Portal", partyName: "First Bank of Nigeria" },
-  { id: "inv-005", invoiceCode: "INV-2025-0038", irn: "FIR20250038ACME0000005", issueDate: "2025-03-05", dueDate: "2025-04-05", totalAmount: 2_300_000, totalTaxAmount: 172_500, status: "ConfirmedByNRS", paymentStatus: "PartiallyPaid", source: "Portal", partyName: "Airtel Nigeria Ltd" },
-  { id: "inv-006", invoiceCode: "INV-2025-0037", irn: "FIR20250037ACME0000006", issueDate: "2025-02-28", dueDate: "2025-03-28", totalAmount: 780_000, totalTaxAmount: 58_500, status: "Rejected", paymentStatus: "Unpaid", source: "Portal", partyName: "Nestle Nigeria Plc" },
-  { id: "inv-007", invoiceCode: "INV-2025-0036", irn: "FIR20250036ACME0000007", issueDate: "2025-02-20", dueDate: "2025-03-20", totalAmount: 3_120_000, totalTaxAmount: 234_000, status: "ConfirmedByNRS", paymentStatus: "Paid", source: "Portal", partyName: "Dangote Industries Ltd" },
-  { id: "inv-008", invoiceCode: "INV-2025-0035", irn: undefined, issueDate: "2025-02-15", dueDate: undefined, totalAmount: 490_000, totalTaxAmount: 36_750, status: "Approved", paymentStatus: "Unpaid", source: "Portal", partyName: "Unilever Nigeria Plc" },
-  { id: "inv-009", invoiceCode: "INV-2025-0034", irn: "FIR20250034ACME0000009", issueDate: "2025-02-10", dueDate: "2025-03-10", totalAmount: 6_400_000, totalTaxAmount: 480_000, status: "ConfirmedByNRS", paymentStatus: "Paid", source: "Portal", partyName: "Stanbic IBTC Bank Plc" },
-  { id: "inv-010", invoiceCode: "INV-2025-0033", irn: undefined, issueDate: "2025-02-05", dueDate: "2025-03-05", totalAmount: 1_100_000, totalTaxAmount: 82_500, status: "Draft", paymentStatus: "Unpaid", source: "Portal", partyName: "Access Bank Plc" },
-  { id: "inv-011", invoiceCode: "INV-2025-0032", irn: "FIR20250032ACME0000011", issueDate: "2025-01-28", dueDate: "2025-02-28", totalAmount: 3_750_000, totalTaxAmount: 281_250, status: "ConfirmedByNRS", paymentStatus: "Paid", source: "Portal", partyName: "Guaranty Trust Bank Plc" },
-  { id: "inv-012", invoiceCode: "INV-2025-0031", irn: "FIR20250031ACME0000012", issueDate: "2025-01-20", dueDate: "2025-02-20", totalAmount: 870_000, totalTaxAmount: 65_250, status: "SubmittedToNRS", paymentStatus: "Unpaid", source: "Portal", partyName: "Nigerian Breweries Plc" },
-  { id: "inv-013", invoiceCode: "INV-2025-0030", irn: undefined, issueDate: "2025-01-15", dueDate: "2025-02-15", totalAmount: 2_050_000, totalTaxAmount: 153_750, status: "PendingApproval", paymentStatus: "Unpaid", source: "Portal", partyName: "Lafarge Africa Plc" },
-  { id: "inv-014", invoiceCode: "INV-2025-0029", irn: "FIR20250029ACME0000014", issueDate: "2025-01-10", dueDate: "2025-02-10", totalAmount: 5_200_000, totalTaxAmount: 390_000, status: "ConfirmedByNRS", paymentStatus: "PartiallyPaid", source: "Portal", partyName: "Flour Mills of Nigeria" },
-  { id: "inv-015", invoiceCode: "INV-2025-0028", irn: undefined, issueDate: "2025-01-05", dueDate: "2025-02-05", totalAmount: 330_000, totalTaxAmount: 24_750, status: "Draft", paymentStatus: "Unpaid", source: "Portal", partyName: "Zenith Bank Plc" },
+  { id: "inv-001", invoiceCode: "INV-2025-0042", irn: "FIR20250042ACME0000001", issueDate: "2025-03-20", dueDate: "2025-04-20", totalAmount: 4_720_000, totalTaxAmount: 354_000, status: "TRANSMITTED", paymentStatus: "PAID", source: "Portal", partyName: "Dangote Industries Ltd" },
+  { id: "inv-002", invoiceCode: "INV-2025-0041", irn: "FIR20250041ACME0000002", issueDate: "2025-03-18", dueDate: "2025-04-18", totalAmount: 1_850_000, totalTaxAmount: 138_750, status: "SUBMITTED", paymentStatus: "PENDING", source: "Portal", partyName: "MTN Nigeria Comm. Plc" },
+  { id: "inv-003", invoiceCode: "INV-2025-0040", irn: "FIR20250040ACME0000003", issueDate: "2025-03-15", dueDate: "2025-04-15", totalAmount: 920_000, totalTaxAmount: 69_000, status: "PENDING_APPROVAL", paymentStatus: "PENDING", source: "Portal", partyName: "Zenith Bank Plc" },
+  { id: "inv-004", invoiceCode: "INV-2025-0039", irn: "FIR20250039ACME0000004", issueDate: "2025-03-10", dueDate: "2025-04-10", totalAmount: 560_000, totalTaxAmount: 42_000, status: "DRAFT", paymentStatus: "PENDING", source: "Portal", partyName: "First Bank of Nigeria" },
+  { id: "inv-005", invoiceCode: "INV-2025-0038", irn: "FIR20250038ACME0000005", issueDate: "2025-03-05", dueDate: "2025-04-05", totalAmount: 2_300_000, totalTaxAmount: 172_500, status: "TRANSMITTED", paymentStatus: "PENDING", source: "Portal", partyName: "Airtel Nigeria Ltd" },
+  { id: "inv-006", invoiceCode: "INV-2025-0037", irn: "FIR20250037ACME0000006", issueDate: "2025-02-28", dueDate: "2025-03-28", totalAmount: 780_000, totalTaxAmount: 58_500, status: "REJECTED", paymentStatus: "PENDING", source: "Portal", partyName: "Nestle Nigeria Plc" },
+  { id: "inv-007", invoiceCode: "INV-2025-0036", irn: "FIR20250036ACME0000007", issueDate: "2025-02-20", dueDate: "2025-03-20", totalAmount: 3_120_000, totalTaxAmount: 234_000, status: "TRANSMITTED", paymentStatus: "PAID", source: "Portal", partyName: "Dangote Industries Ltd" },
+  { id: "inv-008", invoiceCode: "INV-2025-0035", irn: "FIR20250035ACME0000008", issueDate: "2025-02-15", dueDate: undefined, totalAmount: 490_000, totalTaxAmount: 36_750, status: "APPROVED", paymentStatus: "PENDING", source: "Portal", partyName: "Unilever Nigeria Plc" },
+  { id: "inv-009", invoiceCode: "INV-2025-0034", irn: "FIR20250034ACME0000009", issueDate: "2025-02-10", dueDate: "2025-03-10", totalAmount: 6_400_000, totalTaxAmount: 480_000, status: "TRANSMITTED", paymentStatus: "PAID", source: "Portal", partyName: "Stanbic IBTC Bank Plc" },
+  { id: "inv-010", invoiceCode: "INV-2025-0033", irn: "FIR20250033ACME0000010", issueDate: "2025-02-05", dueDate: "2025-03-05", totalAmount: 1_100_000, totalTaxAmount: 82_500, status: "DRAFT", paymentStatus: "PENDING", source: "Portal", partyName: "Access Bank Plc" },
+  { id: "inv-011", invoiceCode: "INV-2025-0032", irn: "FIR20250032ACME0000011", issueDate: "2025-01-28", dueDate: "2025-02-28", totalAmount: 3_750_000, totalTaxAmount: 281_250, status: "TRANSMITTED", paymentStatus: "PAID", source: "Portal", partyName: "Guaranty Trust Bank Plc" },
+  { id: "inv-012", invoiceCode: "INV-2025-0031", irn: "FIR20250031ACME0000012", issueDate: "2025-01-20", dueDate: "2025-02-20", totalAmount: 870_000, totalTaxAmount: 65_250, status: "SUBMITTED", paymentStatus: "PENDING", source: "Portal", partyName: "Nigerian Breweries Plc" },
+  { id: "inv-013", invoiceCode: "INV-2025-0030", irn: "FIR20250030ACME0000013", issueDate: "2025-01-15", dueDate: "2025-02-15", totalAmount: 2_050_000, totalTaxAmount: 153_750, status: "PENDING_APPROVAL", paymentStatus: "PENDING", source: "Portal", partyName: "Lafarge Africa Plc" },
+  { id: "inv-014", invoiceCode: "INV-2025-0029", irn: "FIR20250029ACME0000014", issueDate: "2025-01-10", dueDate: "2025-02-10", totalAmount: 5_200_000, totalTaxAmount: 390_000, status: "TRANSMITTED", paymentStatus: "PAID", source: "Portal", partyName: "Flour Mills of Nigeria" },
+  { id: "inv-015", invoiceCode: "INV-2025-0028", irn: "FIR20250028ACME0000015", issueDate: "2025-01-05", dueDate: "2025-02-05", totalAmount: 330_000, totalTaxAmount: 24_750, status: "DRAFT", paymentStatus: "PENDING", source: "Portal", partyName: "Zenith Bank Plc" },
 ];
+
+// ─── Flow Rule ───────────────────────────────────────────────────────────────
+export const MOCK_FLOW_RULE = {
+  id: "rule-001",
+  name: "Standard Approval Threshold",
+  description: "Invoices above this amount require admin approval",
+  minAmount: 1_000_000,
+  maxAmount: 999_999_999_999,
+  requiresClientAdminApproval: true,
+  priority: 1,
+};
+
+// ─── VAT Remittance Report ────────────────────────────────────────────────────
+const _y = new Date().getFullYear();
+export const MOCK_VAT_REPORT = {
+  startDate: `${_y}-01-01`,
+  endDate: `${_y}-12-31`,
+  totalInvoiceCount: 32,
+  totalTaxableAmount: 15_840_000,
+  totalVatAmount: 1_188_000,
+  periods: [
+    { year: _y, month: 1, monthName: "January",  invoiceCount: 5, taxableAmount: 2_100_000, vatAmount: 157_500 },
+    { year: _y, month: 2, monthName: "February", invoiceCount: 4, taxableAmount: 1_840_000, vatAmount: 138_000 },
+    { year: _y, month: 3, monthName: "March",    invoiceCount: 8, taxableAmount: 4_720_000, vatAmount: 354_000 },
+    { year: _y, month: 4, monthName: "April",    invoiceCount: 3, taxableAmount: 1_560_000, vatAmount: 117_000 },
+    { year: _y, month: 5, monthName: "May",      invoiceCount: 6, taxableAmount: 2_300_000, vatAmount: 172_500 },
+    { year: _y, month: 6, monthName: "June",     invoiceCount: 3, taxableAmount: 1_850_000, vatAmount: 138_750 },
+    { year: _y, month: 7, monthName: "July",     invoiceCount: 3, taxableAmount: 1_470_000, vatAmount: 110_250 },
+  ],
+};
 
 // ─── Received Invoices (8 rows → 2 pages of 5) ────────────────────────────────
 export const MOCK_RECEIVED_INVOICES = [
@@ -195,14 +225,14 @@ export const MOCK_TAX_CATEGORIES = [
 
 // ─── Users (8 rows → 2 pages of 5) ───────────────────────────────────────────
 export const MOCK_USERS = [
-  { id: "user-001", NRStName: "Chidi", lastName: "Okonkwo", email: "chidi.okonkwo@acmeng.com", status: "Active", roles: ["ClientAdmin"], lastLogin: "2025-03-29T08:30:00Z" },
-  { id: "user-002", NRStName: "Ngozi", lastName: "Eze", email: "ngozi.eze@acmeng.com", status: "Active", roles: ["ClientUser"], lastLogin: "2025-03-28T14:15:00Z" },
-  { id: "user-003", NRStName: "Babatunde", lastName: "Adewale", email: "bade.adewale@acmeng.com", status: "Active", roles: ["ClientUser"], lastLogin: "2025-03-27T10:00:00Z" },
-  { id: "user-004", NRStName: "Amaka", lastName: "Obi", email: "amaka.obi@acmeng.com", status: "Inactive", roles: ["ClientUser"], lastLogin: "2025-02-10T09:00:00Z" },
-  { id: "user-005", NRStName: "Tunde", lastName: "Bakare", email: "tunde.bakare@acmeng.com", status: "Active", roles: ["ClientUser"], lastLogin: "2025-03-26T16:45:00Z" },
-  { id: "user-006", NRStName: "Chisom", lastName: "Nwosu", email: "chisom.nwosu@acmeng.com", status: "Active", roles: ["ClientUser"], lastLogin: "2025-03-25T11:20:00Z" },
-  { id: "user-007", NRStName: "Yetunde", lastName: "Afolabi", email: "yetunde.afolabi@acmeng.com", status: "Suspended", roles: ["ClientUser"], lastLogin: "2025-01-15T08:00:00Z" },
-  { id: "user-008", NRStName: "Emeka", lastName: "Onyekwere", email: "emeka.onyekwere@acmeng.com", status: "Active", roles: ["ClientAdmin"], lastLogin: "2025-03-28T09:10:00Z" },
+  { id: "user-001", NRStName: "Chidi", lastName: "Okonkwo", email: "chidi.okonkwo@acmeng.com", status: "Active", roles: ["Admin"], lastLogin: "2025-03-29T08:30:00Z" },
+  { id: "user-002", NRStName: "Ngozi", lastName: "Eze", email: "ngozi.eze@acmeng.com", status: "Active", roles: ["User"], lastLogin: "2025-03-28T14:15:00Z" },
+  { id: "user-003", NRStName: "Babatunde", lastName: "Adewale", email: "bade.adewale@acmeng.com", status: "Active", roles: ["User"], lastLogin: "2025-03-27T10:00:00Z" },
+  { id: "user-004", NRStName: "Amaka", lastName: "Obi", email: "amaka.obi@acmeng.com", status: "Inactive", roles: ["User"], lastLogin: "2025-02-10T09:00:00Z" },
+  { id: "user-005", NRStName: "Tunde", lastName: "Bakare", email: "tunde.bakare@acmeng.com", status: "Active", roles: ["User"], lastLogin: "2025-03-26T16:45:00Z" },
+  { id: "user-006", NRStName: "Chisom", lastName: "Nwosu", email: "chisom.nwosu@acmeng.com", status: "Active", roles: ["User"], lastLogin: "2025-03-25T11:20:00Z" },
+  { id: "user-007", NRStName: "Yetunde", lastName: "Afolabi", email: "yetunde.afolabi@acmeng.com", status: "Suspended", roles: ["User"], lastLogin: "2025-01-15T08:00:00Z" },
+  { id: "user-008", NRStName: "Emeka", lastName: "Onyekwere", email: "emeka.onyekwere@acmeng.com", status: "Active", roles: ["Admin"], lastLogin: "2025-03-28T09:10:00Z" },
 ];
 
 // ─── Businesses (for Aegis admin, 12 rows → 3 pages of 5) ────────────────────
@@ -260,3 +290,167 @@ export const MOCK_INDUSTRIES = [
   { name: "Mining" }, { name: "Oil & Gas" }, { name: "Real Estate" },
   { name: "Retail & FMCG" }, { name: "Telecommunications" }, { name: "Transportation & Logistics" },
 ];
+
+// ─── VAT Schedule Types & Mock Data ──────────────────────────────────────────
+export interface MockScheduleItem {
+  id: string;
+  invoiceCode: string;
+  irn: string;
+  partyName: string;
+  partyTin: string;
+  issueDate: string;
+  taxableAmount: number;
+  vatAmount: number;
+  totalAmount: number;
+  paymentStatus: string;
+}
+
+export interface MockSchedule {
+  id: string;
+  year: number;
+  month: number;
+  monthName: string;
+  periodStart: string;
+  periodEnd: string;
+  dueDate: string; // always 14th of month+1
+  status: "Generated" | "Filed";
+  filedAt?: string;
+  generatedAt: string;
+  totalInvoiceCount: number;
+  totalTaxableAmount: number;
+  totalVatAmount: number;
+  items: MockScheduleItem[];
+}
+
+const _marchItems: MockScheduleItem[] = [
+  { id: "si-m01", invoiceCode: "INV-2026-0042", irn: "FIR20260042ACME0000001", partyName: "Dangote Industries Ltd",    partyTin: "12345678-0001", issueDate: "2026-03-20", taxableAmount: 4_365_116, vatAmount: 327_384, totalAmount: 4_692_500, paymentStatus: "PAID" },
+  { id: "si-m02", invoiceCode: "INV-2026-0038", irn: "FIR20260038ACME0000002", partyName: "Airtel Nigeria Ltd",       partyTin: "12345678-0005", issueDate: "2026-03-05", taxableAmount: 2_093_023, vatAmount: 156_977, totalAmount: 2_250_000, paymentStatus: "PENDING" },
+  { id: "si-m03", invoiceCode: "INV-2026-0035", irn: "FIR20260035ACME0000003", partyName: "MTN Nigeria Comm. Plc",   partyTin: "12345678-0002", issueDate: "2026-03-10", taxableAmount: 1_720_930, vatAmount: 129_070, totalAmount: 1_850_000, paymentStatus: "PENDING" },
+  { id: "si-m04", invoiceCode: "INV-2026-0033", irn: "FIR20260033ACME0000004", partyName: "Guaranty Trust Bank Plc", partyTin: "12345678-0008", issueDate: "2026-03-18", taxableAmount: 3_488_372, vatAmount: 261_628, totalAmount: 3_750_000, paymentStatus: "PAID" },
+  { id: "si-m05", invoiceCode: "INV-2026-0030", irn: "FIR20260030ACME0000005", partyName: "Zenith Bank Plc",         partyTin: "12345678-0003", issueDate: "2026-03-22", taxableAmount:   855_814, vatAmount:  64_186, totalAmount:   920_000, paymentStatus: "PENDING" },
+  { id: "si-m06", invoiceCode: "INV-2026-0028", irn: "FIR20260028ACME0000006", partyName: "Flour Mills of Nigeria",  partyTin: "12345678-0014", issueDate: "2026-03-25", taxableAmount: 4_837_209, vatAmount: 362_791, totalAmount: 5_200_000, paymentStatus: "PAID" },
+  { id: "si-m07", invoiceCode: "INV-2026-0025", irn: "FIR20260025ACME0000007", partyName: "Lafarge Africa Plc",      partyTin: "12345678-0010", issueDate: "2026-03-08", taxableAmount: 1_906_977, vatAmount: 143_023, totalAmount: 2_050_000, paymentStatus: "PENDING" },
+  { id: "si-m08", invoiceCode: "INV-2026-0020", irn: "FIR20260020ACME0000008", partyName: "Stanbic IBTC Bank Plc",   partyTin: "12345678-0012", issueDate: "2026-03-14", taxableAmount: 5_953_488, vatAmount: 446_512, totalAmount: 6_400_000, paymentStatus: "PAID" },
+];
+
+const _febItems: MockScheduleItem[] = [
+  { id: "si-f01", invoiceCode: "INV-2026-0019", irn: "FIR20260019ACME0000001", partyName: "Nigerian Breweries Plc",  partyTin: "12345678-0009", issueDate: "2026-02-28", taxableAmount:   809_302, vatAmount:  60_698, totalAmount:   870_000, paymentStatus: "PAID" },
+  { id: "si-f02", invoiceCode: "INV-2026-0017", irn: "FIR20260017ACME0000002", partyName: "Access Bank Plc",         partyTin: "12345678-0011", issueDate: "2026-02-20", taxableAmount: 1_023_256, vatAmount:  76_744, totalAmount: 1_100_000, paymentStatus: "PENDING" },
+  { id: "si-f03", invoiceCode: "INV-2026-0015", irn: "FIR20260015ACME0000003", partyName: "Dangote Industries Ltd",  partyTin: "12345678-0001", issueDate: "2026-02-14", taxableAmount: 2_906_977, vatAmount: 218_023, totalAmount: 3_125_000, paymentStatus: "PAID" },
+  { id: "si-f04", invoiceCode: "INV-2026-0012", irn: "FIR20260012ACME0000004", partyName: "Nestle Nigeria Plc",      partyTin: "12345678-0006", issueDate: "2026-02-08", taxableAmount:   725_581, vatAmount:  54_419, totalAmount:   780_000, paymentStatus: "PAID" },
+  { id: "si-f05", invoiceCode: "INV-2026-0010", irn: "FIR20260010ACME0000005", partyName: "Unilever Nigeria Plc",    partyTin: "12345678-0007", issueDate: "2026-02-03", taxableAmount:   455_814, vatAmount:  34_186, totalAmount:   490_000, paymentStatus: "PENDING" },
+  { id: "si-f06", invoiceCode: "INV-2026-0008", irn: "FIR20260008ACME0000006", partyName: "Stanbic IBTC Bank Plc",  partyTin: "12345678-0012", issueDate: "2026-02-18", taxableAmount: 5_953_488, vatAmount: 446_512, totalAmount: 6_400_000, paymentStatus: "PAID" },
+];
+
+const _janItems: MockScheduleItem[] = [
+  { id: "si-j01", invoiceCode: "INV-2026-0007", irn: "FIR20260007ACME0000001", partyName: "Guaranty Trust Bank Plc", partyTin: "12345678-0008", issueDate: "2026-01-28", taxableAmount: 3_488_372, vatAmount: 261_628, totalAmount: 3_750_000, paymentStatus: "PAID" },
+  { id: "si-j02", invoiceCode: "INV-2026-0005", irn: "FIR20260005ACME0000002", partyName: "Flour Mills of Nigeria",  partyTin: "12345678-0014", issueDate: "2026-01-10", taxableAmount: 4_837_209, vatAmount: 362_791, totalAmount: 5_200_000, paymentStatus: "PAID" },
+  { id: "si-j03", invoiceCode: "INV-2026-0003", irn: "FIR20260003ACME0000003", partyName: "Lafarge Africa Plc",      partyTin: "12345678-0010", issueDate: "2026-01-15", taxableAmount: 1_906_977, vatAmount: 143_023, totalAmount: 2_050_000, paymentStatus: "PENDING" },
+  { id: "si-j04", invoiceCode: "INV-2026-0001", irn: "FIR20260001ACME0000004", partyName: "MTN Nigeria Comm. Plc",   partyTin: "12345678-0002", issueDate: "2026-01-22", taxableAmount: 1_720_930, vatAmount: 129_070, totalAmount: 1_850_000, paymentStatus: "PAID" },
+  { id: "si-j05", invoiceCode: "INV-2025-0098", irn: "FIR20250098ACME0000005", partyName: "First Bank of Nigeria",   partyTin: "12345678-0004", issueDate: "2026-01-05", taxableAmount:   520_930, vatAmount:  39_070, totalAmount:   560_000, paymentStatus: "PAID" },
+];
+
+export const MOCK_VAT_SCHEDULES: MockSchedule[] = [
+  {
+    id: "sch-mar-2026", year: 2026, month: 3, monthName: "March",
+    periodStart: "2026-03-01", periodEnd: "2026-03-31",
+    dueDate: "2026-04-14", status: "Generated",
+    generatedAt: "2026-03-30T09:15:00Z",
+    totalInvoiceCount: 8,
+    totalTaxableAmount: _marchItems.reduce((s, i) => s + i.taxableAmount, 0),
+    totalVatAmount: _marchItems.reduce((s, i) => s + i.vatAmount, 0),
+    items: _marchItems,
+  },
+  {
+    id: "sch-feb-2026", year: 2026, month: 2, monthName: "February",
+    periodStart: "2026-02-01", periodEnd: "2026-02-28",
+    dueDate: "2026-03-14", status: "Filed", filedAt: "2026-03-13T14:30:00Z",
+    generatedAt: "2026-02-28T10:00:00Z",
+    totalInvoiceCount: 6,
+    totalTaxableAmount: _febItems.reduce((s, i) => s + i.taxableAmount, 0),
+    totalVatAmount: _febItems.reduce((s, i) => s + i.vatAmount, 0),
+    items: _febItems,
+  },
+  {
+    id: "sch-jan-2026", year: 2026, month: 1, monthName: "January",
+    periodStart: "2026-01-01", periodEnd: "2026-01-31",
+    dueDate: "2026-02-14", status: "Filed", filedAt: "2026-02-12T11:00:00Z",
+    generatedAt: "2026-01-31T10:00:00Z",
+    totalInvoiceCount: 5,
+    totalTaxableAmount: _janItems.reduce((s, i) => s + i.taxableAmount, 0),
+    totalVatAmount: _janItems.reduce((s, i) => s + i.vatAmount, 0),
+    items: _janItems,
+  },
+  {
+    id: "sch-dec-2025", year: 2025, month: 12, monthName: "December",
+    periodStart: "2025-12-01", periodEnd: "2025-12-31",
+    dueDate: "2026-01-14", status: "Filed", filedAt: "2026-01-13T09:00:00Z",
+    generatedAt: "2025-12-31T10:00:00Z",
+    totalInvoiceCount: 7, totalTaxableAmount: 33_153_488, totalVatAmount: 2_486_512,
+    items: [],
+  },
+  {
+    id: "sch-nov-2025", year: 2025, month: 11, monthName: "November",
+    periodStart: "2025-11-01", periodEnd: "2025-11-30",
+    dueDate: "2025-12-14", status: "Filed", filedAt: "2025-12-12T10:00:00Z",
+    generatedAt: "2025-11-30T10:00:00Z",
+    totalInvoiceCount: 6, totalTaxableAmount: 28_400_000, totalVatAmount: 2_130_000,
+    items: [],
+  },
+];
+
+// ─── Analytics V2 Mock Data ───────────────────────────────────────────────────
+const _m12 = [
+  { y: 2025, m: 4,  name: "Apr" }, { y: 2025, m: 5,  name: "May" },
+  { y: 2025, m: 6,  name: "Jun" }, { y: 2025, m: 7,  name: "Jul" },
+  { y: 2025, m: 8,  name: "Aug" }, { y: 2025, m: 9,  name: "Sep" },
+  { y: 2025, m: 10, name: "Oct" }, { y: 2025, m: 11, name: "Nov" },
+  { y: 2025, m: 12, name: "Dec" }, { y: 2026, m: 1,  name: "Jan" },
+  { y: 2026, m: 2,  name: "Feb" }, { y: 2026, m: 3,  name: "Mar" },
+];
+const _sales   = [8_200_000, 9_400_000, 7_800_000, 11_200_000, 13_500_000, 10_800_000, 12_400_000,  9_600_000, 15_200_000, 14_800_000, 11_765_000, 24_315_000];
+const _purch   = [3_100_000, 2_800_000, 3_400_000,  4_200_000,  5_100_000,  3_900_000,  4_600_000,  3_700_000,  5_800_000,  5_400_000,  4_765_000,  6_400_000];
+const _payment = [6_800_000, 7_200_000, 6_500_000,  9_100_000, 11_200_000,  8_900_000, 10_300_000,  7_800_000, 12_400_000, 11_500_000,  9_200_000, 18_400_000];
+const _outVat  = [  615_000,   705_000,   585_000,    840_000,  1_012_500,    810_000,    930_000,    720_000,  1_140_000,  1_110_000,    882_375,  1_823_625];
+const _inVat   = [  232_500,   210_000,   255_000,    315_000,    382_500,    292_500,    345_000,    277_500,    435_000,    405_000,    357_375,    480_000];
+
+export const MOCK_ANALYTICS_V2 = {
+  generalDashboard: {
+    metrics: {
+      totalCustomerInvoicesCount: 284, totalCustomerInvoicesAmount: 185_400_000,
+      totalVendorInvoicesCount: 76,    totalVendorInvoicesAmount: 47_200_000,
+      totalVATOnCustomerInvoices: 13_905_000,  totalVATOnVendorInvoices: 3_540_000,
+      totalInvoiceValue: 232_600_000,
+      vatOnCustomerPercentageChange: 12.5, vatOnVendorPercentageChange: -3.2,
+      totalInvoiceValuePercentageChange: 8.7,
+    },
+    salesVsPurchases: _m12.map((m, i) => ({ year: m.y, month: m.m, monthName: m.name, name: m.name, salesAmount: _sales[i], purchasesAmount: _purch[i] })),
+    vatTrendAnalysis: _m12.map((m, i) => ({ year: m.y, month: m.m, monthName: m.name, name: m.name, outputVAT: _outVat[i], inputVAT: _inVat[i] })),
+    salesAndPaymentPerMonth: _m12.map((m, i) => ({ year: m.y, month: m.m, monthName: m.name, name: m.name, sales: _sales[i], payment: _payment[i] })),
+    salesPerRegion: [
+      { region: "Lagos", salesAmount: 98_400_000 }, { region: "FCT", salesAmount: 32_100_000 },
+      { region: "Rivers", salesAmount: 18_600_000 }, { region: "Kano", salesAmount: 12_300_000 },
+      { region: "Ogun", salesAmount: 8_200_000 },    { region: "Others", salesAmount: 15_800_000 },
+    ].map(r => ({ year: 2026, month: 3, monthName: "Mar", name: "Mar", region: r.region, salesAmount: r.salesAmount })),
+  },
+  vatTableDashboard: {
+    vatTableByCurrency: _m12.map((m, i) => ({
+      year: m.y, month: m.m, monthName: m.name, name: m.name,
+      currencyAmounts: [
+        { currency: "NGN", currencyName: "Nigerian Naira", amount: Math.round(_outVat[i] * 0.97) },
+        { currency: "USD", currencyName: "US Dollar",      amount: Math.round(_outVat[i] * 0.03) },
+      ],
+    })),
+    exemptVATTableByCurrency: _m12.map((m, i) => ({
+      year: m.y, month: m.m, monthName: m.name, name: m.name,
+      currencyAmounts: [
+        { currency: "NGN", currencyName: "Nigerian Naira", amount: Math.round(_sales[i] * 0.008) },
+      ],
+    })),
+    vatTableVsNonVATTable: _m12.map((m, i) => ({
+      year: m.y, month: m.m, monthName: m.name, name: m.name,
+      salesVatable: Math.round(_sales[i] * 0.925),    salesNonVatable: Math.round(_sales[i] * 0.075),
+      purchaseVatable: Math.round(_purch[i] * 0.9),   purchaseNonVatable: Math.round(_purch[i] * 0.1),
+    })),
+  },
+};

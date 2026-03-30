@@ -32,6 +32,7 @@ export interface RegisterPayload {
   adminEmail: string;
   adminPhone: string;
   businessName: string;
+  tin?: string;
   platformSubscriptionId: string;
   billingCycle: number; // 0=Monthly, 1=Annual
 }
@@ -231,6 +232,38 @@ export interface UploadInvoiceResult {
   message: string;
   statusCodes: number;
 }
+export interface PipelineStepResult {
+  success: boolean;
+  message?: string;
+}
+export interface SubmitInvoiceResult {
+  invoiceId: string;
+  irn: string;
+  currentStatus: string;
+  message: string;
+  pipeline: {
+    validate: PipelineStepResult;
+    sign: PipelineStepResult;
+    transmit: PipelineStepResult;
+  };
+}
+export interface FlowRule {
+  id: string;
+  name: string;
+  description: string;
+  minAmount: number;
+  maxAmount: number;
+  requiresClientAdminApproval: boolean;
+  priority: number;
+}
+export interface FlowRulePayload {
+  name: string;
+  description: string;
+  minAmount: number;
+  maxAmount: number;
+  requiresClientAdminApproval: boolean;
+  priority: number;
+}
 
 export const invoiceApi = {
   list: (params?: { page?: number; pageSize?: number; status?: string }) =>
@@ -241,9 +274,15 @@ export const invoiceApi = {
   create: (payload: CreateInvoicePayload) =>
     api.post<ApiResponse<unknown>>("/invoice", payload).then(unwrap),
 
-  approve: (id: string) => api.post(`/invoice/${id}/approve`),
+  approve: (id: string, comments?: string) => api.post(`/invoice/${id}/approve`, comments ? { comments } : {}),
 
   reject: (id: string, reason: string) => api.post(`/invoice/${id}/reject`, { reason }),
+
+  pendingApproval: (params?: { page?: number; pageSize?: number }) =>
+    api.get<ApiResponse<PaginatedResult<InvoiceSummary>>>("/invoice/pending-approval", { params }).then(unwrap),
+
+  submitToNRS: (id: string) =>
+    api.post<ApiResponse<SubmitInvoiceResult>>(`/invoice/submit-invoice/${id}`).then(unwrap),
 
   updatePaymentStatus: (payload: { invoiceId: string; paymentStatus: string; paymentReference?: string }) =>
     api.put("/invoice/update-invoice-payment-status", payload),
@@ -278,6 +317,20 @@ export const invoiceApi = {
       params,
       responseType: "blob",
     }),
+};
+
+// ── TIN Validation ────────────────────────────────────────────────────────────
+export interface TinValidationResult {
+  isValid: boolean;
+  isEnrolled: boolean;
+  status: string; // "ValidAndEnrolled" | "InvalidOrNotEnrolled" | "Error"
+  message: string;
+  businessName?: string;
+}
+
+export const tinValidationApi = {
+  validate: (tin: string) =>
+    api.post<ApiResponse<TinValidationResult>>("/TinValidation/validate", { tin }).then(unwrap),
 };
 
 // ── Parties ───────────────────────────────────────────────────────────────────
@@ -370,8 +423,136 @@ export const miscApi = {
   getCities: (state: string) => api.get<ApiResponse<{ name: string }[]>>(`/miscellenous/cities/${state}`).then(unwrap),
 };
 
+// ── Flow Rules ───────────────────────────────────────────────────────────────
+export const flowRuleApi = {
+  getAll: () => api.get<ApiResponse<FlowRule[]>>("/Business/flowrules").then(unwrap),
+  upsert: (payload: FlowRulePayload) =>
+    api.post<ApiResponse<{ flowRuleId: string; message: string }>>("/Business/upsert-flowrule", payload).then(unwrap),
+  delete: (id: string) => api.delete(`/Business/delete-flowrule/${id}`),
+};
+
+export interface VatRemittancePeriod {
+  year: number;
+  month: number;
+  monthName: string;
+  invoiceCount: number;
+  taxableAmount: number;
+  vatAmount: number;
+}
+
+export interface VatRemittanceReport {
+  startDate: string;
+  endDate: string;
+  periods: VatRemittancePeriod[];
+  totalTaxableAmount: number;
+  totalVatAmount: number;
+  totalInvoiceCount: number;
+}
+
+export const vatApi = {
+  getReport: (startDate: string, endDate: string) =>
+    api.get<ApiResponse<VatRemittanceReport>>("/invoice/vat-remittance", { params: { startDate, endDate } }).then(unwrap),
+};
+
 // ── Profile ───────────────────────────────────────────────────────────────────
 export const profileApi = {
   get: () => api.get<ApiResponse<unknown>>("/userprofile").then(unwrap),
   update: (payload: unknown) => api.put("/userprofile", payload),
+};
+
+// ── VAT Schedule ──────────────────────────────────────────────────────────────
+export interface VatScheduleItem {
+  id: string;
+  invoiceId: string;
+  invoiceCode: string;
+  irn?: string;
+  partyName: string;
+  partyTin?: string;
+  issueDate: string;
+  taxableAmount: number;
+  vatAmount: number;
+  totalAmount: number;
+  paymentStatus: string;
+}
+
+export interface VatSchedule {
+  id: string;
+  year: number;
+  month: number;
+  monthName: string;
+  periodStart: string;
+  periodEnd: string;
+  dueDate: string;
+  status: "Generated" | "Filed";
+  filedAt?: string;
+  generatedAt: string;
+  totalInvoiceCount: number;
+  totalTaxableAmount: number;
+  totalVatAmount: number;
+  items?: VatScheduleItem[];
+}
+
+export const scheduleApi = {
+  list: (year?: number) =>
+    api.get<ApiResponse<VatSchedule[]>>("/vat-schedule", { params: year ? { year } : undefined }).then(unwrap),
+
+  generate: (year: number, month: number) =>
+    api.post<ApiResponse<VatSchedule>>("/vat-schedule/generate", { year, month }).then(unwrap),
+
+  getWithItems: (id: string) =>
+    api.get<ApiResponse<VatSchedule>>(`/vat-schedule/${id}`).then(unwrap),
+
+  markFiled: (id: string) =>
+    api.patch<ApiResponse<VatSchedule>>(`/vat-schedule/${id}/mark-filed`).then(unwrap),
+
+  /** Returns an XLSX blob */
+  export: (id: string) =>
+    api.get(`/vat-schedule/${id}/export`, { responseType: "blob" }),
+};
+
+// ── Analytics V2 ─────────────────────────────────────────────────────────────
+export interface InvoiceSummaryMetrics {
+  totalCustomerInvoicesCount: number;
+  totalCustomerInvoicesAmount: number;
+  totalVendorInvoicesCount: number;
+  totalVendorInvoicesAmount: number;
+  totalVATOnCustomerInvoices: number;
+  totalVATOnVendorInvoices: number;
+  totalInvoiceValue: number;
+  vatOnCustomerPercentageChange: number;
+  vatOnVendorPercentageChange: number;
+  totalInvoiceValuePercentageChange: number;
+}
+export interface MonthlyBase { year: number; month: number; monthName: string; name: string; }
+export interface SalesVsPurchasesMonthly    extends MonthlyBase { salesAmount: number; purchasesAmount: number; }
+export interface VATTrendMonthly            extends MonthlyBase { inputVAT: number; outputVAT: number; }
+export interface SalesAndPaymentMonthly     extends MonthlyBase { sales: number; payment: number; }
+export interface SalesPerPartyMonthly      extends MonthlyBase { partyName: string; salesAmount: number; }
+export interface CurrencyAmount { currency: string; currencyName: string; amount: number; }
+export interface VATByCurrencyMonthly       extends MonthlyBase { currencyAmounts: CurrencyAmount[]; }
+export interface VATVsNonVATMonthly         extends MonthlyBase { salesVatable: number; salesNonVatable: number; purchaseVatable: number; purchaseNonVatable: number; }
+
+export interface AnalyticsV2Result {
+  generalDashboard?: {
+    metrics: InvoiceSummaryMetrics;
+    salesVsPurchases: SalesVsPurchasesMonthly[];
+    vatTrendAnalysis: VATTrendMonthly[];
+    salesAndPaymentPerMonth: SalesAndPaymentMonthly[];
+    salesByParty: SalesPerPartyMonthly[];
+  };
+  vatTableDashboard?: {
+    vatTableByCurrency: VATByCurrencyMonthly[];
+    exemptVATTableByCurrency: VATByCurrencyMonthly[];
+    vatTableVsNonVATTable: VATVsNonVATMonthly[];
+  };
+}
+
+export const analyticsV2Api = {
+  get: (dashboardType: 0 | 1) => {
+    // v2 endpoint — base URL is /api/v1, so swap to /api/v2
+    const root = (import.meta.env.VITE_API_BASE_URL as string || "http://localhost:5000/api/v1").replace(/\/v1$/, "");
+    return api
+      .get<ApiResponse<AnalyticsV2Result>>(`${root}/v2/business/dashboard-analytics`, { params: { dashboardType } })
+      .then(unwrap);
+  },
 };

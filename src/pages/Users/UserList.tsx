@@ -3,7 +3,7 @@ import toast from "react-hot-toast";
 import PageMeta from "../../components/common/PageMeta";
 import { userMgmtApi, type UserSummary, type CreateUserPayload } from "../../lib/api";
 import { USE_MOCK, MOCK_USERS, MOCK_PAGE_SIZE } from "../../lib/mockData";
-import { useIsClientAdmin, useIsAegisAdmin } from "../../context/AuthContext";
+import { useIsAdmin, useIsAegis } from "../../context/AuthContext";
 
 const inputCls =
   "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-500";
@@ -15,8 +15,8 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const ROLE_OPTIONS = [
-  { id: "ClientAdmin", label: "Client Admin" },
-  { id: "ClientUser", label: "Client User" },
+  { id: "Admin", label: "Client Admin" },
+  { id: "User", label: "Client User" },
 ];
 
 const emptyForm: CreateUserPayload = {
@@ -24,41 +24,54 @@ const emptyForm: CreateUserPayload = {
   lastName: "",
   email: "",
   phoneNumber: "",
-  roleId: "ClientUser",
+  roleId: "User",
 };
 
 export default function UserList() {
-  const isClientAdmin = useIsClientAdmin();
-  const isAegis = useIsAegisAdmin();
-  const canManage = isClientAdmin || isAegis;
+  const isAdmin = useIsAdmin();
+  const isAegis = useIsAegis();
+  const canManage = isAdmin || isAegis;
 
   const [users, setUsers] = useState<UserSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<CreateUserPayload>(emptyForm);
   const [actioning, setActioning] = useState<string | null>(null);
 
-  const load = (p: number) => {
+  const [allUsers, setAllUsers] = useState<UserSummary[]>([]);
+
+  const load = () => {
     if (USE_MOCK) {
-      setTotalPages(Math.ceil(MOCK_USERS.length / MOCK_PAGE_SIZE));
-      setUsers(MOCK_USERS.slice((p - 1) * MOCK_PAGE_SIZE, p * MOCK_PAGE_SIZE) as UserSummary[]);
+      setAllUsers(MOCK_USERS as UserSummary[]);
       setLoading(false);
       return;
     }
     setLoading(true);
     userMgmtApi
       .list()
-      .then(setUsers)
+      .then(setAllUsers)
       .catch(() => toast.error("Failed to load users."))
       .finally(() => setLoading(false));
   };
 
   useEffect(() => {
-    load(page);
-  }, [page]);
+    load();
+  }, []);
+
+  useEffect(() => {
+    const total = Math.ceil(allUsers.length / pageSize);
+    setTotalPages(total > 0 ? total : 1);
+    setUsers(allUsers.slice((page - 1) * pageSize, page * pageSize));
+  }, [page, pageSize, allUsers]);
+
+  const handlePageSizeChange = (ps: number) => {
+    setPageSize(ps);
+    setPage(1);
+  };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,7 +85,7 @@ export default function UserList() {
       toast.success("User created. They will receive a temporary password by email.");
       setShowForm(false);
       setForm(emptyForm);
-      load(page);
+      load();
     } catch {
       toast.error("Failed to create user.");
     } finally {
@@ -90,7 +103,7 @@ export default function UserList() {
         await userMgmtApi.activate(user.id);
         toast.success(`${user.NRStName} activated.`);
       }
-      load(page);
+      load();
     } catch {
       toast.error("Action failed.");
     } finally {
@@ -236,9 +249,9 @@ export default function UserList() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-800">
+                <tr>
                   <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">Name</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">Email</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">Roles</th>
@@ -325,20 +338,37 @@ export default function UserList() {
         )}
 
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700">
-            <p className="text-sm text-gray-500 dark:text-gray-400">Page {page} of {totalPages}</p>
-            <div className="flex gap-2">
+          <div className="flex items-center justify-between mt-4">
+            <div className="flex items-center gap-3">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Page {page} of {totalPages}
+              </p>
+              <div className="flex items-center gap-2 text-sm">
+                <select
+                  id="pageSize"
+                  value={pageSize}
+                  onChange={e => handlePageSizeChange(Number(e.target.value))}
+                  className="block w-full pl-2 pr-8 py-1.5 border border-gray-300 rounded-md shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300"
+                >
+                  <option value={10}>10 / page</option>
+                  <option value={20}>20 / page</option>
+                  <option value={50}>50 / page</option>
+                  <option value={100}>100 / page</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
               <button
-                onClick={() => setPage(p => Math.max(1, p - 1))}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
+                className="px-3 py-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-700"
               >
                 Previous
               </button>
               <button
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
-                className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
+                className="px-3 py-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-700"
               >
                 Next
               </button>

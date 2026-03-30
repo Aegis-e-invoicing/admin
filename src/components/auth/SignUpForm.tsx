@@ -4,10 +4,11 @@ import toast from "react-hot-toast";
 import Label from "../form/Label";
 import Input from "../form/input/InputField";
 import Button from "../ui/button/Button";
-import { authApi, paymentApi, type SubscriptionPlan } from "../../lib/api";
+import { authApi, paymentApi, tinValidationApi, type SubscriptionPlan } from "../../lib/api";
 import { USE_MOCK, MOCK_PLANS } from "../../lib/mockData";
 
 type Step = "plan" | "details" | "confirm";
+type TinStatus = "idle" | "checking" | "valid" | "invalid" | "error";
 
 const BILLING_LABELS: Record<number, string> = { 0: "Monthly", 1: "Annual" };
 
@@ -27,8 +28,40 @@ export default function SignUpForm() {
     adminEmail: "",
     adminPhone: "",
     businessName: "",
+    tin: "",
   });
   const [loading, setLoading] = useState(false);
+
+  // TIN validation
+  const [tinStatus, setTinStatus] = useState<TinStatus>("idle");
+  const [tinBusinessName, setTinBusinessName] = useState("");
+
+  useEffect(() => {
+    const tin = form.tin.trim();
+    if (!tin) { setTinStatus("idle"); setTinBusinessName(""); return; }
+    setTinStatus("checking");
+    const timer = setTimeout(async () => {
+      if (USE_MOCK) {
+        setTinStatus("valid");
+        setTinBusinessName(form.businessName || "Verified Business");
+        return;
+      }
+      try {
+        const result = await tinValidationApi.validate(tin);
+        if (result.isValid && result.isEnrolled) {
+          setTinStatus("valid");
+          setTinBusinessName(result.businessName ?? "");
+        } else {
+          setTinStatus("invalid");
+          setTinBusinessName("");
+        }
+      } catch {
+        setTinStatus("error");
+        setTinBusinessName("");
+      }
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [form.tin]);
 
   useEffect(() => {
     if (USE_MOCK) {
@@ -51,13 +84,21 @@ export default function SignUpForm() {
   };
 
   const handleDetailsNext = () => {
-    const { adminNRStName, adminLastName, adminEmail, adminPhone, businessName } = form;
-    if (!adminNRStName || !adminLastName || !adminEmail || !adminPhone || !businessName) {
+    const { adminNRStName, adminLastName, adminEmail, adminPhone, businessName, tin } = form;
+    if (!adminNRStName || !adminLastName || !adminEmail || !adminPhone || !businessName || !tin) {
       toast.error("Please fill in all required fields.");
       return;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(adminEmail)) {
       toast.error("Please enter a valid email address.");
+      return;
+    }
+    if (tinStatus === "checking") {
+      toast.error("TIN validation is in progress. Please wait.");
+      return;
+    }
+    if (tinStatus !== "valid") {
+      toast.error("Please provide a valid and NRS-enrolled TIN before continuing.");
       return;
     }
     setStep("confirm");
@@ -215,6 +256,27 @@ export default function SignUpForm() {
                 <Input placeholder="Acme Nigeria Ltd" value={form.businessName} onChange={handleFieldChange("businessName")} />
               </div>
               <div>
+                <Label>Tax Identification Number (TIN) <span className="text-error-500">*</span></Label>
+                <Input placeholder="e.g. 12345678-0001" value={form.tin} onChange={handleFieldChange("tin")} />
+                {tinStatus === "checking" && (
+                  <p className="text-xs text-gray-400 mt-1 flex items-center gap-1.5">
+                    <span className="inline-block w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                    Validating TIN...
+                  </p>
+                )}
+                {tinStatus === "valid" && (
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                    ✓ TIN verified{tinBusinessName ? ` — ${tinBusinessName}` : ""}
+                  </p>
+                )}
+                {tinStatus === "invalid" && (
+                  <p className="text-xs text-red-500 mt-1">✕ TIN not found or not enrolled on NRS</p>
+                )}
+                {tinStatus === "error" && (
+                  <p className="text-xs text-orange-500 mt-1">⚠ Could not verify TIN right now. Please try again.</p>
+                )}
+              </div>
+              <div>
                 <Label>Email <span className="text-error-500">*</span></Label>
                 <Input type="email" placeholder="admin@company.com" value={form.adminEmail} onChange={handleFieldChange("adminEmail")} />
               </div>
@@ -225,7 +287,22 @@ export default function SignUpForm() {
             </div>
             <div className="flex gap-3 mt-6">
               <Button variant="outline" className="flex-1" size="sm" onClick={() => setStep("plan")}>← Back</Button>
-              <Button className="flex-1" size="sm" onClick={handleDetailsNext}>Continue →</Button>
+              <Button
+                className="flex-1"
+                size="sm"
+                onClick={handleDetailsNext}
+                disabled={
+                  !form.adminNRStName ||
+                  !form.adminLastName ||
+                  !form.adminEmail ||
+                  !form.adminPhone ||
+                  !form.businessName ||
+                  !form.tin ||
+                  tinStatus !== "valid"
+                }
+              >
+                Continue →
+              </Button>
             </div>
           </div>
         )}
@@ -240,6 +317,10 @@ export default function SignUpForm() {
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Business</span>
                 <span className="font-medium text-gray-800 dark:text-white">{form.businessName}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">TIN</span>
+                <span className="font-medium text-gray-800 dark:text-white font-mono">{form.tin}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Admin</span>

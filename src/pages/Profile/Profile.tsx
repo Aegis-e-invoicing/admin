@@ -68,9 +68,9 @@ export default function Profile() {
 
   const roleLabel = user?.isAegisUser
     ? "Aegis Platform Admin"
-    : user?.roles.includes("ClientAdmin")
+    : user?.roles.includes("Admin")
     ? "Business Admin"
-    : user?.roles.includes("ClientUser")
+    : user?.roles.includes("User")
     ? "Business User"
     : "User";
 

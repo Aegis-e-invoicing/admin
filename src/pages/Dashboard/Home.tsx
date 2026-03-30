@@ -4,7 +4,7 @@ import Chart from "react-apexcharts";
 import { ApexOptions } from "apexcharts";
 import PageMeta from "../../components/common/PageMeta";
 import { businessApi, invoiceApi, type DashboardStats, type InvoiceSummary } from "../../lib/api";
-import { useAuth, useIsAegisAdmin, useSubscriptionTier, useCanCreateInvoice } from "../../context/AuthContext";
+import { useAuth, useIsAegis, useSubscriptionTier, useCanCreateInvoice } from "../../context/AuthContext";
 import { USE_MOCK, MOCK_DASHBOARD_STATS, MOCK_INVOICES } from "../../lib/mockData";
 
 // ─── Reusable Stat Card ──────────────────────────────────────────────────────
@@ -214,7 +214,7 @@ function RecentInvoicesTable({ invoices }: { invoices: InvoiceSummary[] }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function Home() {
   const { user } = useAuth();
-  const isAegis = useIsAegisAdmin();
+  const isAegis = useIsAegis();
   const tier = useSubscriptionTier();
   const canCreate = useCanCreateInvoice();
   const [stats, setStats] = useState<DashboardStats | null>(null);

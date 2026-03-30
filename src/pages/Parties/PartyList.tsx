@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import PageMeta from "../../components/common/PageMeta";
-import { partyApi, type Party, type CreatePartyPayload } from "../../lib/api";
+import { partyApi, tinValidationApi, type Party, type CreatePartyPayload } from "../../lib/api";
 import { USE_MOCK, MOCK_PARTIES, MOCK_PAGE_SIZE } from "../../lib/mockData";
-import { useIsClientAdmin, useIsAegisAdmin } from "../../context/AuthContext";
+import { useIsAdmin, useIsAegis } from "../../context/AuthContext";
+
+type TinStatus = "idle" | "checking" | "valid" | "invalid" | "error";
 
 const inputCls =
   "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-500";
@@ -24,23 +26,60 @@ const emptyForm: CreatePartyPayload = {
 };
 
 export default function PartyList() {
-  const isClientAdmin = useIsClientAdmin();
-  const isAegis = useIsAegisAdmin();
-  const canManage = isClientAdmin || isAegis;
+  const isAdmin = useIsAdmin();
+  const isAegis = useIsAegis();
+  const canManage = isAdmin || isAegis;
 
   const [parties, setParties] = useState<Party[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<CreatePartyPayload>(emptyForm);
 
-  const load = (p: number) => {
-    if (USE_MOCK) { setTotalPages(Math.ceil(MOCK_PARTIES.length / MOCK_PAGE_SIZE)); setParties(MOCK_PARTIES.slice((p - 1) * MOCK_PAGE_SIZE, p * MOCK_PAGE_SIZE) as Party[]); setLoading(false); return; }
+  // TIN validation
+  const [tinStatus, setTinStatus] = useState<TinStatus>("idle");
+  const [tinBusinessName, setTinBusinessName] = useState("");
+
+  useEffect(() => {
+    const tin = form.taxIdentificationNumber.trim();
+    if (!tin) { setTinStatus("idle"); setTinBusinessName(""); return; }
+    setTinStatus("checking");
+    const timer = setTimeout(async () => {
+      if (USE_MOCK) {
+        setTinStatus("valid");
+        setTinBusinessName(form.name || "Verified Business");
+        return;
+      }
+      try {
+        const result = await tinValidationApi.validate(tin);
+        if (result.isValid && result.isEnrolled) {
+          setTinStatus("valid");
+          setTinBusinessName(result.businessName ?? "");
+        } else {
+          setTinStatus("invalid");
+          setTinBusinessName("");
+        }
+      } catch {
+        setTinStatus("error");
+        setTinBusinessName("");
+      }
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [form.taxIdentificationNumber]);
+
+  const load = (p: number, ps: number) => {
+    if (USE_MOCK) {
+      setTotalPages(Math.ceil(MOCK_PARTIES.length / ps));
+      setParties(MOCK_PARTIES.slice((p - 1) * ps, p * ps) as Party[]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     partyApi
-      .list({ page: p, pageSize: 15 })
+      .list({ page: p, pageSize: ps })
       .then((r) => {
         setParties(r.items);
         setTotalPages(r.totalPages);
@@ -50,8 +89,13 @@ export default function PartyList() {
   };
 
   useEffect(() => {
-    load(page);
-  }, [page]);
+    load(page, pageSize);
+  }, [page, pageSize]);
+
+  const handlePageSizeChange = (ps: number) => {
+    setPageSize(ps);
+    setPage(1);
+  };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,13 +107,23 @@ export default function PartyList() {
       toast.error("Street, City, State and Country are required.");
       return;
     }
+    if (tinStatus === "checking") {
+      toast.error("TIN validation is in progress. Please wait.");
+      return;
+    }
+    if (tinStatus !== "valid") {
+      toast.error("Please provide a valid and NRS-enrolled TIN.");
+      return;
+    }
     setSaving(true);
     try {
       await partyApi.create(form);
       toast.success("Party created successfully.");
       setShowForm(false);
       setForm(emptyForm);
-      load(page);
+      setTinStatus("idle");
+      setTinBusinessName("");
+      load(page, pageSize);
     } catch {
       toast.error("Failed to create party.");
     } finally {
@@ -82,7 +136,7 @@ export default function PartyList() {
     try {
       await partyApi.delete(id);
       toast.success("Party deleted.");
-      load(page);
+      load(page, pageSize);
     } catch {
       toast.error("Failed to delete party.");
     }
@@ -138,6 +192,23 @@ export default function PartyList() {
                 placeholder="e.g. 12345678-0001"
                 required
               />
+              {tinStatus === "checking" && (
+                <p className="text-xs text-gray-400 mt-1 flex items-center gap-1.5">
+                  <span className="inline-block w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                  Validating TIN...
+                </p>
+              )}
+              {tinStatus === "valid" && (
+                <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                  ✓ TIN verified{tinBusinessName ? ` — ${tinBusinessName}` : ""}
+                </p>
+              )}
+              {tinStatus === "invalid" && (
+                <p className="text-xs text-red-500 mt-1">✕ TIN not found or not enrolled on NRS</p>
+              )}
+              {tinStatus === "error" && (
+                <p className="text-xs text-orange-500 mt-1">⚠ Could not verify TIN right now. Please try again.</p>
+              )}
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Email *</label>
@@ -264,9 +335,9 @@ export default function PartyList() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-800">
+                <tr>
                   <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">Name</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">TIN</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">Email</th>
@@ -309,14 +380,27 @@ export default function PartyList() {
               </tbody>
             </table>
           </div>
-        )}
 
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700">
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Page {page} of {totalPages}
-            </p>
-            <div className="flex gap-2">
+          <div className="flex items-center justify-between mt-4">
+            <div className="flex items-center gap-3">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Page {page} of {totalPages}
+              </p>
+              <div className="flex items-center gap-2 text-sm">
+                <select
+                  id="pageSize"
+                  value={pageSize}
+                  onChange={e => handlePageSizeChange(Number(e.target.value))}
+                  className="block w-full pl-2 pr-8 py-1.5 border border-gray-300 rounded-md shadow-sm focus:ring-brand-500 focus:border-brand-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300"
+                >
+                  <option value={10}>10 / page</option>
+                  <option value={20}>20 / page</option>
+                  <option value={50}>50 / page</option>
+                  <option value={100}>100 / page</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
@@ -333,8 +417,8 @@ export default function PartyList() {
               </button>
             </div>
           </div>
-        )}
-      </div>
+        </>
+      )}
     </>
   );
 }

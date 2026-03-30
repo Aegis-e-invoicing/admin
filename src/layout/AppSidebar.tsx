@@ -14,8 +14,8 @@ import {
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
 import {
-  useIsAegisAdmin,
-  useIsClientAdmin,
+  useIsAegis,
+  useIsAdmin,
   useCanCreateInvoice,
 } from "../context/AuthContext";
 import SidebarWidget from "./SidebarWidget";
@@ -30,8 +30,8 @@ type NavItem = {
 const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
   const location = useLocation();
-  const isAegis = useIsAegisAdmin();
-  const isClientAdmin = useIsClientAdmin();
+  const isAegis = useIsAegis();
+  const isAdmin = useIsAdmin();
   const canCreateInvoice = useCanCreateInvoice();
 
   // Build role/plan-aware nav items
@@ -51,6 +51,21 @@ const AppSidebar: React.FC = () => {
         { name: "Received", path: "/received-invoices" },
       ],
     },
+    // Reports section — only for non-Aegis users (business clients)
+    ...(!isAegis
+      ? [{
+          icon: (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          ),
+          name: "Reports",
+          subItems: [
+            { name: "Analytics", path: "/reports/analytics" },
+            { name: "VAT Schedule", path: "/reports/schedules" },
+          ],
+        }]
+      : []),
     // Parties & Items — not relevant for Aegis platform admin
     ...(!isAegis
       ? [
@@ -59,7 +74,7 @@ const AppSidebar: React.FC = () => {
         ]
       : []),
     // Users — only admins
-    ...(isAegis || isClientAdmin
+    ...(isAegis || isAdmin
       ? [{ icon: <UserCircleIcon />, name: "Users", path: "/users" }]
       : []),
     // Settings

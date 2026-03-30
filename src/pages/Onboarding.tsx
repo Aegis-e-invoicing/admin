@@ -4,7 +4,7 @@ import toast from "react-hot-toast";
 import Label from "../components/form/Label";
 import Input from "../components/form/input/InputField";
 import Button from "../components/ui/button/Button";
-import { businessApi, miscApi } from "../lib/api";
+import { businessApi, miscApi, tinValidationApi } from "../lib/api";
 import { USE_MOCK, MOCK_INDUSTRIES } from "../lib/mockData";
 import { useAuth } from "../context/AuthContext";
 
@@ -26,6 +26,8 @@ interface ProfileForm {
   postalCode: string;
 }
 
+type TinStatus = "idle" | "checking" | "valid" | "invalid" | "error";
+
 export default function Onboarding() {
   const navigate = useNavigate();
   const { refreshUser } = useAuth();
@@ -33,6 +35,37 @@ export default function Onboarding() {
   const [industries, setIndustries] = useState<string[]>([]);
   const [loadingIndustries, setLoadingIndustries] = useState(true);
   const [loading, setLoading] = useState(false);
+
+  // TIN validation
+  const [tinStatus, setTinStatus] = useState<TinStatus>("idle");
+  const [tinBusinessName, setTinBusinessName] = useState("");
+
+  useEffect(() => {
+    const tin = profile.taxIdentificationNumber.trim();
+    if (!tin) { setTinStatus("idle"); setTinBusinessName(""); return; }
+    setTinStatus("checking");
+    const timer = setTimeout(async () => {
+      if (USE_MOCK) {
+        setTinStatus("valid");
+        setTinBusinessName("Verified Business");
+        return;
+      }
+      try {
+        const result = await tinValidationApi.validate(tin);
+        if (result.isValid && result.isEnrolled) {
+          setTinStatus("valid");
+          setTinBusinessName(result.businessName ?? "");
+        } else {
+          setTinStatus("invalid");
+          setTinBusinessName("");
+        }
+      } catch {
+        setTinStatus("error");
+        setTinBusinessName("");
+      }
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [profile.taxIdentificationNumber]);
 
   const [profile, setProfile] = useState<ProfileForm>({
     taxIdentificationNumber: "",
@@ -73,6 +106,14 @@ export default function Onboarding() {
     const required: (keyof ProfileForm)[] = ["taxIdentificationNumber", "businessRegistrationNumber", "serviceId", "NRSBusinessId", "industry", "contactEmail", "contactPhone"];
     if (required.some(k => !profile[k])) {
       toast.error("Please fill in all required fields.");
+      return;
+    }
+    if (tinStatus === "checking") {
+      toast.error("TIN validation is in progress. Please wait.");
+      return;
+    }
+    if (tinStatus !== "valid") {
+      toast.error("Please provide a valid and NRS-enrolled TIN before continuing.");
       return;
     }
     setLoading(true);
@@ -203,6 +244,23 @@ export default function Onboarding() {
               <div>
                 <Label>TIN <span className="text-error-500">*</span></Label>
                 <Input placeholder="Tax ID Number" value={profile.taxIdentificationNumber} onChange={pf("taxIdentificationNumber")} />
+                {tinStatus === "checking" && (
+                  <p className="text-xs text-gray-400 mt-1 flex items-center gap-1.5">
+                    <span className="inline-block w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                    Validating TIN...
+                  </p>
+                )}
+                {tinStatus === "valid" && (
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                    ✓ TIN verified{tinBusinessName ? ` — ${tinBusinessName}` : ""}
+                  </p>
+                )}
+                {tinStatus === "invalid" && (
+                  <p className="text-xs text-red-500 mt-1">✕ TIN not found or not enrolled on NRS</p>
+                )}
+                {tinStatus === "error" && (
+                  <p className="text-xs text-orange-500 mt-1">⚠ Could not verify TIN right now. Please try again.</p>
+                )}
               </div>
               <div>
                 <Label>BRN <span className="text-error-500">*</span></Label>

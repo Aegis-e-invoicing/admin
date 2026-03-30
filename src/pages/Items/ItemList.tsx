@@ -3,7 +3,7 @@ import toast from "react-hot-toast";
 import PageMeta from "../../components/common/PageMeta";
 import { businessItemApi, firsApi, type BusinessItem, type CreateBusinessItemPayload, type TaxCategory } from "../../lib/api";
 import { USE_MOCK, MOCK_ITEMS, MOCK_TAX_CATEGORIES } from "../../lib/mockData";
-import { useIsClientAdmin, useIsAegisAdmin } from "../../context/AuthContext";
+import { useIsAdmin, useIsAegis } from "../../context/AuthContext";
 
 const inputCls =
   "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-500";
@@ -18,9 +18,9 @@ const emptyForm: CreateBusinessItemPayload = {
 };
 
 export default function ItemList() {
-  const isClientAdmin = useIsClientAdmin();
-  const isAegis = useIsAegisAdmin();
-  const canManage = isClientAdmin || isAegis;
+  const isAdmin = useIsAdmin();
+  const isAegis = useIsAegis();
+  const canManage = isAdmin || isAegis;
 
   const [items, setItems] = useState<BusinessItem[]>([]);
   const [loading, setLoading] = useState(true);

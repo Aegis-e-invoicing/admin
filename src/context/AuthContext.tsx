@@ -119,19 +119,19 @@ export const useAuth = () => {
 };
 
 // Convenience role helpers
-export const useIsAegisAdmin = () => {
+export const useIsAegis = () => {
   const { user } = useAuth();
-  return user?.isAegisUser === true || user?.roles.includes("AegisAdmin") === true;
+  return user?.isAegisUser === true || user?.roles.includes("Aegis") === true;
 };
 
-export const useIsClientAdmin = () => {
+export const useIsAdmin = () => {
   const { user } = useAuth();
-  return user?.roles.includes("ClientAdmin") === true;
+  return user?.roles.includes("Admin") === true;
 };
 
-export const useIsClientUser = () => {
+export const useIsUser = () => {
   const { user } = useAuth();
-  return user?.roles.includes("ClientUser") === true;
+  return user?.roles.includes("User") === true;
 };
 
 export const useCanCreateInvoice = () => {

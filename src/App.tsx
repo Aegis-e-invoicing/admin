@@ -13,6 +13,9 @@ import PartyList from "./pages/Parties/PartyList";
 import ItemList from "./pages/Items/ItemList";
 import UserList from "./pages/Users/UserList";
 import Settings from "./pages/Settings/Settings";
+import Analytics from "./pages/Reports/Analytics";
+import Schedules from "./pages/Reports/Schedules";
+import InvoiceDetail from "./pages/Invoices/InvoiceDetail";
 import Onboarding from "./pages/Onboarding";
 import PaymentCallback from "./pages/PaymentCallback";
 import AppLayout from "./layout/AppLayout";
@@ -38,6 +41,10 @@ export default function App() {
               <Route path="/items" element={<ItemList />} />
               <Route path="/users" element={<UserList />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/reports/vat-analytics" element={<Analytics />} />
+              <Route path="/invoices/:id" element={<InvoiceDetail />} />
+              <Route path="/reports/analytics" element={<Analytics />} />
+              <Route path="/reports/schedules" element={<Schedules />} />
             </Route>
 
             {/* Routes that use their own full-screen layout */}

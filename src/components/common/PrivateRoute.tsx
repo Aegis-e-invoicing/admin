@@ -30,7 +30,7 @@ export const PrivateRoute: React.FC<PrivateRouteProps> = ({ requiredRoles }) => 
   }
 
   if (requiredRoles && requiredRoles.length > 0) {
-    const hasRole = requiredRoles.some(r => user?.roles.includes(r) || (r === "AegisAdmin" && user?.isAegisUser));
+    const hasRole = requiredRoles.some(r => user?.roles.includes(r) || (r === "Aegis" && user?.isAegisUser));
     if (!hasRole) {
       return <Navigate to="/unauthorized" replace />;
     }
