@@ -342,6 +342,14 @@ export interface Party {
   email: string;
   phone: string;
   taxIdentificationNumber: string;
+  description?: string;
+  address?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    postalCode?: string;
+  };
   createdAt?: string;
 }
 export interface CreatePartyPayload {

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import PageMeta from "../../components/common/PageMeta";
 import { partyApi, tinValidationApi, type Party, type CreatePartyPayload } from "../../lib/api";
-import { USE_MOCK, MOCK_PARTIES, MOCK_PAGE_SIZE } from "../../lib/mockData";
+import { USE_MOCK, MOCK_PARTIES } from "../../lib/mockData";
 import { useIsAdmin, useIsAegis } from "../../context/AuthContext";
 
 type TinStatus = "idle" | "checking" | "valid" | "invalid" | "error";
@@ -38,8 +38,9 @@ export default function PartyList() {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<CreatePartyPayload>(emptyForm);
+  const [editingParty, setEditingParty] = useState<Party | null>(null);
 
-  // TIN validation
+  // TIN validation (skipped in edit mode)
   const [tinStatus, setTinStatus] = useState<TinStatus>("idle");
   const [tinBusinessName, setTinBusinessName] = useState("");
 
@@ -97,7 +98,36 @@ export default function PartyList() {
     setPage(1);
   };
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const handleEdit = (party: Party) => {
+    setEditingParty(party);
+    setForm({
+      name: party.name,
+      phone: party.phone ?? "",
+      email: party.email ?? "",
+      taxIdentificationNumber: party.taxIdentificationNumber ?? "",
+      description: party.description ?? "",
+      address: {
+        street: party.address?.street ?? "",
+        city: party.address?.city ?? "",
+        state: party.address?.state ?? "",
+        country: party.address?.country ?? "",
+        postalCode: party.address?.postalCode ?? "",
+      },
+    });
+    setTinStatus("valid");
+    setTinBusinessName(party.name);
+    setShowForm(true);
+  };
+
+  const handleCancelForm = () => {
+    setShowForm(false);
+    setEditingParty(null);
+    setForm(emptyForm);
+    setTinStatus("idle");
+    setTinBusinessName("");
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.taxIdentificationNumber || !form.email || !form.phone || !form.description) {
       toast.error("Please fill in all required fields.");
@@ -107,25 +137,29 @@ export default function PartyList() {
       toast.error("Street, City, State and Country are required.");
       return;
     }
-    if (tinStatus === "checking") {
-      toast.error("TIN validation is in progress. Please wait.");
-      return;
-    }
-    if (tinStatus !== "valid") {
-      toast.error("Please provide a valid and NRS-enrolled TIN.");
-      return;
+    if (!editingParty) {
+      if (tinStatus === "checking") {
+        toast.error("TIN validation is in progress. Please wait.");
+        return;
+      }
+      if (tinStatus !== "valid") {
+        toast.error("Please provide a valid and NRS-enrolled TIN.");
+        return;
+      }
     }
     setSaving(true);
     try {
-      await partyApi.create(form);
-      toast.success("Party created successfully.");
-      setShowForm(false);
-      setForm(emptyForm);
-      setTinStatus("idle");
-      setTinBusinessName("");
+      if (editingParty) {
+        await partyApi.update(editingParty.id, form);
+        toast.success("Party updated successfully.");
+      } else {
+        await partyApi.create(form);
+        toast.success("Party created successfully.");
+      }
+      handleCancelForm();
       load(page, pageSize);
     } catch {
-      toast.error("Failed to create party.");
+      toast.error(editingParty ? "Failed to update party." : "Failed to create party.");
     } finally {
       setSaving(false);
     }
@@ -165,10 +199,12 @@ export default function PartyList() {
 
       {showForm && (
         <form
-          onSubmit={handleCreate}
+          onSubmit={handleSubmit}
           className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 mb-6"
         >
-          <h2 className="text-base font-semibold text-gray-700 dark:text-white mb-4">New Party</h2>
+          <h2 className="text-base font-semibold text-gray-700 dark:text-white mb-4">
+            {editingParty ? "Edit Party" : "New Party"}
+          </h2>
 
           {/* Core info */}
           <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-3">Basic Information</p>
@@ -188,8 +224,9 @@ export default function PartyList() {
               <input
                 value={form.taxIdentificationNumber}
                 onChange={(e) => setForm((f) => ({ ...f, taxIdentificationNumber: e.target.value }))}
-                className={inputCls}
+                className={editingParty ? `${inputCls} opacity-60 cursor-not-allowed` : inputCls}
                 placeholder="e.g. 12345678-0001"
+                readOnly={!!editingParty}
                 required
               />
               {tinStatus === "checking" && (
@@ -300,7 +337,7 @@ export default function PartyList() {
           <div className="flex gap-3 justify-end mt-4">
             <button
               type="button"
-              onClick={() => setShowForm(false)}
+              onClick={handleCancelForm}
               className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
               Cancel
@@ -310,7 +347,7 @@ export default function PartyList() {
               disabled={saving}
               className="px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm rounded-xl disabled:opacity-50 transition-colors"
             >
-              {saving ? "Saving…" : "Create Party"}
+              {saving ? "Saving…" : editingParty ? "Update Party" : "Create Party"}
             </button>
           </div>
         </form>
@@ -368,12 +405,20 @@ export default function PartyList() {
                     </td>
                     {canManage && (
                       <td className="px-4 py-3 text-right">
-                        <button
-                          onClick={() => handleDelete(p.id, p.name)}
-                          className="text-red-500 hover:text-red-600 text-xs font-medium"
-                        >
-                          Delete
-                        </button>
+                        <div className="flex items-center justify-end gap-3">
+                          <button
+                            onClick={() => handleEdit(p)}
+                            className="text-brand-500 hover:text-brand-600 text-xs font-medium"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDelete(p.id, p.name)}
+                            className="text-red-500 hover:text-red-600 text-xs font-medium"
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </td>
                     )}
                   </tr>

@@ -267,7 +267,7 @@ export default function InvoiceDetail() {
             <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 self-start">FIRS QR Code</h2>
             {invoice.qrCodeImage ? (
               <img
-                src={`data:image/png;base64,${invoice.qrCodeImage}`}
+                src={invoice.qrCodeImage.startsWith('data:') ? invoice.qrCodeImage : `data:image/png;base64,${invoice.qrCodeImage}`}
                 alt="Invoice QR Code"
                 className="w-40 h-40 rounded-lg border border-gray-100 dark:border-gray-700"
               />

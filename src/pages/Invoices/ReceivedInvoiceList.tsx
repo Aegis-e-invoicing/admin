@@ -5,13 +5,12 @@ import { invoiceApi, type InvoiceSummary } from "../../lib/api";
 import { USE_MOCK, MOCK_RECEIVED_INVOICES, MOCK_PAGE_SIZE } from "../../lib/mockData";
 
 
-const STATUS_COLORS: Record<string, string> = {
-  Draft: "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300",
-  PendingApproval: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-  Approved: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-  SubmittedToNRS: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
-  ConfirmedByNRS: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-  Rejected: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+const PAY_STATUS_COLORS: Record<string, string> = {
+  PAID: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+  PENDING: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+  REJECTED: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+  CANCELLED: "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400",
+  FAILED: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
 };
 
 export default function ReceivedInvoiceList() {
@@ -42,7 +41,6 @@ export default function ReceivedInvoiceList() {
   useEffect(() => {
     fetchInvoices(page, pageSize);
   }, [page, pageSize]);
-
   const handlePageSizeChange = (ps: number) => {
     setPageSize(ps);
     setPage(1);
@@ -80,7 +78,7 @@ export default function ReceivedInvoiceList() {
                   <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">Sender</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">Date</th>
                   <th className="px-4 py-3 text-right font-medium text-gray-500 dark:text-gray-400">Amount</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">Status</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">Payment Status</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">IRN</th>
                 </tr>
               </thead>
@@ -109,10 +107,10 @@ export default function ReceivedInvoiceList() {
                     <td className="px-4 py-3">
                       <span
                         className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
-                          STATUS_COLORS[inv.status] ?? "bg-gray-100 text-gray-600"
+                          PAY_STATUS_COLORS[inv.paymentStatus] ?? "bg-gray-100 text-gray-600"
                         }`}
                       >
-                        {inv.status}
+                        {inv.paymentStatus}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-gray-400 dark:text-gray-500 text-xs font-mono">
