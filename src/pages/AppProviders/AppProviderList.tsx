@@ -9,6 +9,7 @@ import {
   type UpdateAppProviderPayload,
 } from "../../lib/api";
 import { useIsAegis } from "../../context/AuthContext";
+import { USE_MOCK, MOCK_ADAPTER_OPTIONS } from "../../lib/mockData";
 
 // ── Shared styles ─────────────────────────────────────────────────────────────
 const inputCls =
@@ -103,6 +104,11 @@ function CreateModal({ onClose, onSaved }: { onClose: () => void; onSaved: () =>
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    if (USE_MOCK) {
+      setAdapterOptions(MOCK_ADAPTER_OPTIONS);
+      setForm((f) => ({ ...f, adapterKey: MOCK_ADAPTER_OPTIONS[0].adapterKey }));
+      return;
+    }
     appProviderApi.getAdapterOptions().then((opts) => {
       setAdapterOptions(opts);
       if (opts.length > 0) setForm((f) => ({ ...f, adapterKey: opts[0].adapterKey }));

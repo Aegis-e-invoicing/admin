@@ -3,10 +3,13 @@ import toast from "react-hot-toast";
 import PageMeta from "../../components/common/PageMeta";
 import {
   userMgmtApi,
+  aegisUserApi,
   type UserSummary,
+  type AegisUserSummary,
   type CreateUserPayload,
+  type CreateAegisUserPayload,
 } from "../../lib/api";
-import { USE_MOCK, MOCK_USERS } from "../../lib/mockData";
+import { USE_MOCK, MOCK_USERS, MOCK_AEGIS_USERS } from "../../lib/mockData";
 import { useIsAdmin, useIsAegis } from "../../context/AuthContext";
 
 const inputCls =
@@ -19,12 +22,18 @@ const STATUS_COLORS: Record<string, string> = {
   Suspended: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
 };
 
-const ROLE_OPTIONS = [
+const CLIENT_ROLE_OPTIONS = [
   { id: "Admin", label: "Client Admin" },
   { id: "User", label: "Client User" },
 ];
 
-const emptyForm: CreateUserPayload = {
+const AEGIS_ROLE_OPTIONS = [
+  { id: "SuperAdmin", label: "Super Admin" },
+  { id: "Operations", label: "Operations" },
+  { id: "Support", label: "Support" },
+];
+
+const emptyClientForm: CreateUserPayload = {
   NRStName: "",
   lastName: "",
   email: "",
@@ -32,32 +41,41 @@ const emptyForm: CreateUserPayload = {
   roleId: "User",
 };
 
+const emptyAegisForm: CreateAegisUserPayload = {
+  NRStName: "",
+  lastName: "",
+  email: "",
+  phoneNumber: "",
+  aegisRole: "Support",
+};
+
 export default function UserList() {
   const isAdmin = useIsAdmin();
   const isAegis = useIsAegis();
   const canManage = isAdmin || isAegis;
 
-  const [users, setUsers] = useState<UserSummary[]>([]);
+  const [users, setUsers] = useState<(UserSummary | AegisUserSummary)[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState<CreateUserPayload>(emptyForm);
+  const [clientForm, setClientForm] = useState<CreateUserPayload>(emptyClientForm);
+  const [aegisForm, setAegisForm] = useState<CreateAegisUserPayload>(emptyAegisForm);
   const [actioning, setActioning] = useState<string | null>(null);
 
-  const [allUsers, setAllUsers] = useState<UserSummary[]>([]);
+  const [allUsers, setAllUsers] = useState<(UserSummary | AegisUserSummary)[]>([]);
 
   const load = () => {
     if (USE_MOCK) {
-      setAllUsers(MOCK_USERS as UserSummary[]);
+      setAllUsers(isAegis ? (MOCK_AEGIS_USERS as AegisUserSummary[]) : (MOCK_USERS as UserSummary[]));
       setLoading(false);
       return;
     }
     setLoading(true);
-    userMgmtApi
-      .list()
+    const fetchPromise = isAegis ? aegisUserApi.list() : userMgmtApi.list();
+    fetchPromise
       .then(setAllUsers)
       .catch(() => toast.error("Failed to load users."))
       .finally(() => setLoading(false));
@@ -80,18 +98,23 @@ export default function UserList() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    const form = isAegis ? aegisForm : clientForm;
     if (!form.NRStName || !form.lastName || !form.email) {
       toast.error("NRSt name, last name and email are required.");
       return;
     }
     setSaving(true);
     try {
-      await userMgmtApi.create(form);
-      toast.success(
-        "User created. They will receive a temporary password by email.",
-      );
+      if (isAegis) {
+        if (!USE_MOCK) await aegisUserApi.create(aegisForm);
+        toast.success("Aegis staff user created. They will receive a temporary password by email.");
+        setAegisForm(emptyAegisForm);
+      } else {
+        if (!USE_MOCK) await userMgmtApi.create(clientForm);
+        toast.success("User created. They will receive a temporary password by email.");
+        setClientForm(emptyClientForm);
+      }
       setShowForm(false);
-      setForm(emptyForm);
       load();
     } catch {
       toast.error("Failed to create user.");
@@ -100,14 +123,18 @@ export default function UserList() {
     }
   };
 
-  const handleToggleStatus = async (user: UserSummary) => {
+  const handleToggleStatus = async (user: UserSummary | AegisUserSummary) => {
     setActioning(user.id);
     try {
       if (user.status === "Active") {
-        await userMgmtApi.deactivate(user.id);
+        if (!USE_MOCK) {
+          isAegis ? await aegisUserApi.deactivate(user.id) : await userMgmtApi.deactivate(user.id);
+        }
         toast.success(`${user.NRStName} deactivated.`);
       } else {
-        await userMgmtApi.activate(user.id);
+        if (!USE_MOCK) {
+          isAegis ? await aegisUserApi.activate(user.id) : await userMgmtApi.activate(user.id);
+        }
         toast.success(`${user.NRStName} activated.`);
       }
       load();
@@ -118,14 +145,14 @@ export default function UserList() {
     }
   };
 
-  const handleResetPassword = async (user: UserSummary) => {
-    if (
-      !window.confirm(`Reset password for ${user.NRStName} ${user.lastName}?`)
-    )
+  const handleResetPassword = async (user: UserSummary | AegisUserSummary) => {
+    if (!window.confirm(`Reset password for ${user.NRStName} ${user.lastName}?`))
       return;
     setActioning(user.id);
     try {
-      await userMgmtApi.resetPassword(user.id);
+      if (!USE_MOCK) {
+        isAegis ? await aegisUserApi.resetPassword(user.id) : await userMgmtApi.resetPassword(user.id);
+      }
       toast.success(`Password reset email sent to ${user.email}.`);
     } catch {
       toast.error("Failed to reset password.");
@@ -137,17 +164,19 @@ export default function UserList() {
   return (
     <>
       <PageMeta
-        title="Users | Aegis EInvoicing Portal"
-        description="Manage portal users"
+        title={isAegis ? "Aegis Staff | Aegis EInvoicing Platform" : "Users | Aegis EInvoicing Portal"}
+        description={isAegis ? "Manage Aegis platform staff users" : "Manage portal users"}
       />
 
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-semibold text-gray-800 dark:text-white">
-            Users
+            {isAegis ? "Aegis Staff" : "Users"}
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-            Manage portal access and user roles
+            {isAegis
+              ? "Manage Aegis platform staff accounts and roles"
+              : "Manage portal access and user roles"}
           </p>
         </div>
         {canManage && (
@@ -155,7 +184,7 @@ export default function UserList() {
             onClick={() => setShowForm((v) => !v)}
             className="px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-xl transition-colors"
           >
-            + Invite User
+            + Invite {isAegis ? "Staff" : "User"}
           </button>
         )}
       </div>
@@ -166,20 +195,22 @@ export default function UserList() {
           className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 mb-6"
         >
           <h2 className="text-base font-semibold text-gray-700 dark:text-white mb-4">
-            Invite New User
+            Invite {isAegis ? "New Staff" : "New User"}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                NRSt Name *
+                First Name *
               </label>
               <input
-                value={form.NRStName}
+                value={isAegis ? aegisForm.NRStName : clientForm.NRStName}
                 onChange={(e) =>
-                  setForm((f) => ({ ...f, NRStName: e.target.value }))
+                  isAegis
+                    ? setAegisForm((f) => ({ ...f, NRStName: e.target.value }))
+                    : setClientForm((f) => ({ ...f, NRStName: e.target.value }))
                 }
                 className={inputCls}
-                placeholder="NRSt name"
+                placeholder="First name"
                 required
               />
             </div>
@@ -188,9 +219,11 @@ export default function UserList() {
                 Last Name *
               </label>
               <input
-                value={form.lastName}
+                value={isAegis ? aegisForm.lastName : clientForm.lastName}
                 onChange={(e) =>
-                  setForm((f) => ({ ...f, lastName: e.target.value }))
+                  isAegis
+                    ? setAegisForm((f) => ({ ...f, lastName: e.target.value }))
+                    : setClientForm((f) => ({ ...f, lastName: e.target.value }))
                 }
                 className={inputCls}
                 placeholder="Last name"
@@ -202,12 +235,14 @@ export default function UserList() {
                 Email *
               </label>
               <input
-                value={form.email}
+                value={isAegis ? aegisForm.email : clientForm.email}
                 onChange={(e) =>
-                  setForm((f) => ({ ...f, email: e.target.value }))
+                  isAegis
+                    ? setAegisForm((f) => ({ ...f, email: e.target.value }))
+                    : setClientForm((f) => ({ ...f, email: e.target.value }))
                 }
                 className={inputCls}
-                placeholder="user@example.com"
+                placeholder={isAegis ? "staff@aegisnrs.com" : "user@example.com"}
                 type="email"
                 required
               />
@@ -217,9 +252,11 @@ export default function UserList() {
                 Phone
               </label>
               <input
-                value={form.phoneNumber ?? ""}
+                value={(isAegis ? aegisForm.phoneNumber : clientForm.phoneNumber) ?? ""}
                 onChange={(e) =>
-                  setForm((f) => ({ ...f, phoneNumber: e.target.value }))
+                  isAegis
+                    ? setAegisForm((f) => ({ ...f, phoneNumber: e.target.value }))
+                    : setClientForm((f) => ({ ...f, phoneNumber: e.target.value }))
                 }
                 className={inputCls}
                 placeholder="+234..."
@@ -229,19 +266,27 @@ export default function UserList() {
               <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
                 Role
               </label>
-              <select
-                value={form.roleId}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, roleId: e.target.value }))
-                }
-                className={inputCls}
-              >
-                {ROLE_OPTIONS.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.label}
-                  </option>
-                ))}
-              </select>
+              {isAegis ? (
+                <select
+                  value={aegisForm.aegisRole}
+                  onChange={(e) => setAegisForm((f) => ({ ...f, aegisRole: e.target.value }))}
+                  className={inputCls}
+                >
+                  {AEGIS_ROLE_OPTIONS.map((r) => (
+                    <option key={r.id} value={r.id}>{r.label}</option>
+                  ))}
+                </select>
+              ) : (
+                <select
+                  value={clientForm.roleId}
+                  onChange={(e) => setClientForm((f) => ({ ...f, roleId: e.target.value }))}
+                  className={inputCls}
+                >
+                  {CLIENT_ROLE_OPTIONS.map((r) => (
+                    <option key={r.id} value={r.id}>{r.label}</option>
+                  ))}
+                </select>
+              )}
             </div>
           </div>
           <div className="flex gap-3 justify-end mt-4">
@@ -257,7 +302,7 @@ export default function UserList() {
               disabled={saving}
               className="px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm rounded-xl disabled:opacity-50 transition-colors"
             >
-              {saving ? "Sending invite…" : "Invite User"}
+              {saving ? "Sending invite…" : "Invite"}
             </button>
           </div>
         </form>
@@ -301,7 +346,7 @@ export default function UserList() {
                 onClick={() => setShowForm(true)}
                 className="text-brand-500 hover:text-brand-600 text-sm font-medium"
               >
-                Invite your NRSt user →
+                {isAegis ? "Invite a staff member →" : "Invite your first user →"}
               </button>
             )}
           </div>
@@ -317,7 +362,7 @@ export default function UserList() {
                     Email
                   </th>
                   <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">
-                    Roles
+                    {isAegis ? "Platform Role" : "Roles"}
                   </th>
                   <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">
                     Status
@@ -346,14 +391,20 @@ export default function UserList() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
-                        {u.roles.map((role) => (
-                          <span
-                            key={role}
-                            className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-brand-50 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400"
-                          >
-                            {role}
-                          </span>
-                        ))}
+                        {isAegis
+                          ? (u as AegisUserSummary).aegisRole && (
+                              <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-brand-50 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400">
+                                {(u as AegisUserSummary).aegisRole}
+                              </span>
+                            )
+                          : (u as UserSummary).roles?.map((role) => (
+                              <span
+                                key={role}
+                                className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-brand-50 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400"
+                              >
+                                {role}
+                              </span>
+                            ))}
                       </div>
                     </td>
                     <td className="px-4 py-3">

@@ -5,9 +5,11 @@ import { ApexOptions } from "apexcharts";
 import PageMeta from "../../components/common/PageMeta";
 import {
   businessApi,
+  businessesApi,
   invoiceApi,
   type DashboardStats,
   type InvoiceSummary,
+  type BusinessSummary,
 } from "../../lib/api";
 import {
   useAuth,
@@ -19,6 +21,7 @@ import {
   USE_MOCK,
   MOCK_DASHBOARD_STATS,
   MOCK_INVOICES,
+  MOCK_BUSINESSES,
 } from "../../lib/mockData";
 
 // ─── Reusable Stat Card ──────────────────────────────────────────────────────
@@ -373,12 +376,14 @@ export default function Home() {
   const canCreate = useCanCreateInvoice();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentInvoices, setRecentInvoices] = useState<InvoiceSummary[]>([]);
+  const [recentBusinesses, setRecentBusinesses] = useState<BusinessSummary[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (USE_MOCK) {
       setStats(MOCK_DASHBOARD_STATS);
       setRecentInvoices(MOCK_INVOICES.slice(0, 5) as InvoiceSummary[]);
+      setRecentBusinesses(MOCK_BUSINESSES.slice(0, 5) as BusinessSummary[]);
       setLoading(false);
       return;
     }
@@ -389,10 +394,17 @@ export default function Home() {
           .then((r) => r.items)
           .catch(() => [])
       : Promise.resolve([]);
+    const businessesPromise = isAegis
+      ? businessesApi
+          .list({ page: 1, pageSize: 5 })
+          .then((r) => r.items)
+          .catch(() => [])
+      : Promise.resolve([]);
 
-    Promise.all([statsPromise, invoicesPromise]).then(([s, inv]) => {
+    Promise.all([statsPromise, invoicesPromise, businessesPromise]).then(([s, inv, biz]) => {
       setStats(s);
       setRecentInvoices(inv);
+      setRecentBusinesses(biz);
       setLoading(false);
     });
   }, [isAegis]);
@@ -586,6 +598,78 @@ export default function Home() {
               icon={<BusinessIcon />}
               color="amber"
             />
+          </div>
+
+          {/* Recent Businesses */}
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                Recent Businesses
+              </h3>
+              <Link
+                to="/businesses"
+                className="text-xs font-medium text-brand-500 hover:text-brand-600"
+              >
+                View all →
+              </Link>
+            </div>
+            {recentBusinesses.length === 0 ? (
+              <p className="text-center text-sm text-gray-500 dark:text-gray-400 py-8">
+                No businesses yet.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-100 dark:divide-gray-700">
+                  <thead className="bg-gray-50 dark:bg-gray-800/60">
+                    <tr>
+                      <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Business</th>
+                      <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">TIN</th>
+                      <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Plan</th>
+                      <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                    {recentBusinesses.map((b) => (
+                      <tr key={b.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                        <td className="px-5 py-3">
+                          <p className="text-sm font-medium text-gray-800 dark:text-white">{b.name}</p>
+                          {b.contactEmail && (
+                            <p className="text-xs text-gray-500 dark:text-gray-400">{b.contactEmail}</p>
+                          )}
+                        </td>
+                        <td className="px-5 py-3 text-sm text-gray-600 dark:text-gray-300 font-mono">
+                          {b.tin ?? "—"}
+                        </td>
+                        <td className="px-5 py-3">
+                          {b.subscriptionTier && (
+                            <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
+                              b.subscriptionTier === "SaaS"
+                                ? "bg-brand-50 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400"
+                                : b.subscriptionTier === "SFTP"
+                                ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
+                                : "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400"
+                            }`}>
+                              {b.subscriptionTier}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-5 py-3">
+                          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
+                            b.status === "Active"
+                              ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                              : b.status === "Suspended"
+                              ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                              : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"
+                          }`}>
+                            {b.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       )}

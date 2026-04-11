@@ -1,7 +1,20 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
 import { authApi, type TokenClaims, type LoginPayload } from "../lib/api";
 import { setAccessToken } from "../lib/apiClient";
-import { USE_MOCK, MOCK_USER } from "../lib/mockData";
+import {
+  USE_MOCK,
+  MOCK_USER,
+  MOCK_USER_AEGIS_ADMIN,
+  MOCK_USER_CLIENT_ADMIN,
+  MOCK_USER_CLIENT_USER,
+} from "../lib/mockData";
+
+const resolveMockUser = (email?: string) => {
+  if (email === MOCK_USER_AEGIS_ADMIN.email) return MOCK_USER_AEGIS_ADMIN;
+  if (email === MOCK_USER_CLIENT_USER.email) return MOCK_USER_CLIENT_USER;
+  if (email === MOCK_USER_CLIENT_ADMIN.email) return MOCK_USER_CLIENT_ADMIN;
+  return MOCK_USER; // fall back to env-configured default
+};
 
 export interface AuthUser {
   userId: string;
@@ -75,7 +88,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = useCallback(async (_payload: LoginPayload) => {
     if (USE_MOCK) {
-      setUser(MOCK_USER);
+      setUser(resolveMockUser(_payload.email));
       return { mustChangePassword: false };
     }
     const result = await authApi.login(_payload);

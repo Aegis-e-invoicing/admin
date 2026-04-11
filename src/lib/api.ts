@@ -518,6 +518,62 @@ export const businessItemApi = {
   delete: (id: string) => api.delete(`/businessitem/${id}`),
 };
 
+// ── Aegis Platform Admin ──────────────────────────────────────────────────────
+export interface BusinessSummary {
+  id: string;
+  name: string;
+  tin: string;
+  status: string;
+  adminUserName?: string;
+  subscriptionTier?: string;
+  industry?: string;
+  contactEmail?: string;
+  createdAt?: string;
+  registeredAt?: string;
+}
+
+export const businessesApi = {
+  list: (params?: { page?: number; pageSize?: number }) =>
+    api
+      .get<ApiResponse<PaginatedResult<BusinessSummary>>>("/business", { params })
+      .then(unwrap),
+};
+
+export interface AegisUserSummary {
+  id: string;
+  NRStName: string;
+  lastName: string;
+  email: string;
+  status: string;
+  aegisRole?: string;
+  lastLogin?: string;
+}
+
+export interface CreateAegisUserPayload {
+  NRStName: string;
+  lastName: string;
+  email: string;
+  phoneNumber?: string;
+  aegisRole: string;
+}
+
+export const aegisUserApi = {
+  list: () =>
+    api
+      .get<ApiResponse<AegisUserSummary[]>>("/Aegis-user-management/Aegis-users")
+      .then(unwrap),
+  create: (payload: CreateAegisUserPayload) =>
+    api
+      .post<ApiResponse<AegisUserSummary>>("/Aegis-user-management/Aegis-users", payload)
+      .then(unwrap),
+  activate: (userId: string) =>
+    api.post(`/Aegis-user-management/Aegis-users/${userId}/activate`),
+  deactivate: (userId: string) =>
+    api.post(`/Aegis-user-management/Aegis-users/${userId}/deactivate`),
+  resetPassword: (userId: string) =>
+    api.post(`/Aegis-user-management/Aegis-users/${userId}/reset-password`),
+};
+
 // ── User Management ───────────────────────────────────────────────────────────
 export interface UserSummary {
   id: string;

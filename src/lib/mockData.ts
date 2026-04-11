@@ -981,6 +981,14 @@ export const MOCK_TAX_CATEGORIES = [
   { code: "EXEMPTED", value: "Tax Exemption", percent: "0.0" },
 ];
 
+// ─── APP Adapter Options ─────────────────────────────────────────────────────
+export const MOCK_ADAPTER_OPTIONS = [
+  { adapterKey: "interswitch", displayName: "Interswitch" },
+  { adapterKey: "digitax", displayName: "Digitax" },
+  { adapterKey: "etranzact", displayName: "eTranzact" },
+  { adapterKey: "bluebridge", displayName: "BlueBridge" },
+];
+
 // ─── FIRS Product Codes (Goods) ──────────────────────────────────────────────────
 export const MOCK_PRODUCT_CODES = [
   {
@@ -1103,6 +1111,46 @@ export const MOCK_USERS = [
     status: "Active",
     roles: ["Admin"],
     lastLogin: "2025-03-28T09:10:00Z",
+  },
+];
+
+// ─── Aegis Staff Users (for AegisAdmin Users page) ───────────────────────────
+export const MOCK_AEGIS_USERS = [
+  {
+    id: "aegis-001",
+    NRStName: "Emeka",
+    lastName: "Adeyemi",
+    email: "emeka.adeyemi@aegisnrs.com",
+    status: "Active",
+    aegisRole: "SuperAdmin",
+    lastLogin: "2026-04-10T08:00:00Z",
+  },
+  {
+    id: "aegis-002",
+    NRStName: "Amara",
+    lastName: "Nwosu",
+    email: "amara.nwosu@aegisnrs.com",
+    status: "Active",
+    aegisRole: "Support",
+    lastLogin: "2026-04-09T14:30:00Z",
+  },
+  {
+    id: "aegis-003",
+    NRStName: "Tunde",
+    lastName: "Balogun",
+    email: "tunde.balogun@aegisnrs.com",
+    status: "Active",
+    aegisRole: "Operations",
+    lastLogin: "2026-04-08T11:00:00Z",
+  },
+  {
+    id: "aegis-004",
+    NRStName: "Chioma",
+    lastName: "Obi",
+    email: "chioma.obi@aegisnrs.com",
+    status: "Inactive",
+    aegisRole: "Support",
+    lastLogin: "2026-03-15T09:00:00Z",
   },
 ];
 

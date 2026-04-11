@@ -34,68 +34,59 @@ const AppSidebar: React.FC = () => {
   const isAdmin = useIsAdmin();
   const canCreateInvoice = useCanCreateInvoice();
 
+  const appProviderIcon = (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l7 7-7 7" />
+    </svg>
+  );
+  const businessesIcon = (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 21h18M3 7v14M21 7v14M6 21V11M18 21V11M9 21v-4h6v4M12 3L3 7h18L12 3z" />
+    </svg>
+  );
+  const reportsIcon = (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+    </svg>
+  );
+
   // Build role/plan-aware nav items
-  const navItems: NavItem[] = [
-    {
-      icon: <GridIcon />,
-      name: "Dashboard",
-      path: "/",
-    },
-    // Invoices section
-    {
-      icon: <FileIcon />,
-      name: "Invoices",
-      subItems: [
-        ...(canCreateInvoice ? [{ name: "Create Invoice", path: "/invoices/create" }] : []),
-        { name: "My Invoices", path: "/invoices" },
-        { name: "Received", path: "/received-invoices" },
-      ],
-    },
-    // Reports section — only for non-Aegis users (business clients)
-    ...(!isAegis
-      ? [{
-          icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-          ),
+  const navItems: NavItem[] = isAegis
+    ? [
+        // ── Aegis platform admin menu ──────────────────────────────────
+        { icon: <GridIcon />, name: "Dashboard", path: "/" },
+        { icon: businessesIcon, name: "Businesses", path: "/businesses" },
+        { icon: <UserCircleIcon />, name: "Users", path: "/users" },
+        { icon: appProviderIcon, name: "APP Providers", path: "/app-providers" },
+        { icon: <TableIcon />, name: "Settings", path: "/settings" },
+      ]
+    : [
+        // ── Client admin / user menu ───────────────────────────────────
+        { icon: <GridIcon />, name: "Dashboard", path: "/" },
+        {
+          icon: <FileIcon />,
+          name: "Invoices",
+          subItems: [
+            ...(canCreateInvoice ? [{ name: "Create Invoice", path: "/invoices/create" }] : []),
+            { name: "My Invoices", path: "/invoices" },
+            { name: "Received", path: "/received-invoices" },
+          ],
+        },
+        {
+          icon: reportsIcon,
           name: "Reports",
           subItems: [
             { name: "Analytics", path: "/reports/analytics" },
             { name: "VAT Schedule", path: "/reports/schedules" },
           ],
-        }]
-      : []),
-    // Parties & Items — not relevant for Aegis platform admin
-    ...(!isAegis
-      ? [
-          { icon: <GroupIcon />, name: "Parties", path: "/parties" },
-          { icon: <BoxIcon />, name: "Items", path: "/items" },
-        ]
-      : []),
-    // Users — only admins
-    ...(isAegis || isAdmin
-      ? [{ icon: <UserCircleIcon />, name: "Users", path: "/users" }]
-      : []),
-    // APP Providers — AegisAdmin only
-    ...(isAegis
-      ? [{
-          icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l7 7-7 7" />
-            </svg>
-          ),
-          name: "APP Providers",
-          path: "/app-providers",
-        }]
-      : []),
-    // Settings
-    {
-      icon: <TableIcon />,
-      name: "Settings",
-      path: "/settings",
-    },
-  ];
+        },
+        { icon: <GroupIcon />, name: "Parties", path: "/parties" },
+        { icon: <BoxIcon />, name: "Items", path: "/items" },
+        ...(isAdmin
+          ? [{ icon: <UserCircleIcon />, name: "Users", path: "/users" }]
+          : []),
+        { icon: <TableIcon />, name: "Settings", path: "/settings" },
+      ];
 
   const othersItems: NavItem[] = [
     {
