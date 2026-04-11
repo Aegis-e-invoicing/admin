@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 import PageMeta from "../../components/common/PageMeta";
 import { businessesApi, type BusinessSummary } from "../../lib/api";
 import { USE_MOCK, MOCK_BUSINESSES } from "../../lib/mockData";
 
 const STATUS_COLORS: Record<string, string> = {
-  Active: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+  Active:
+    "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
   Suspended: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-  Pending: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+  Pending:
+    "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
   Inactive: "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300",
 };
 
@@ -24,6 +27,7 @@ export default function BusinessList() {
   const [pageSize, setPageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [search, setSearch] = useState("");
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const load = () => {
     if (USE_MOCK) {
@@ -70,6 +74,41 @@ export default function BusinessList() {
     setPage(1);
   };
 
+  const handleStatusAction = async (
+    business: BusinessSummary,
+    action: "suspend" | "activate",
+  ) => {
+    if (USE_MOCK) {
+      setAllBusinesses((prev) =>
+        prev.map((b) =>
+          b.id === business.id
+            ? { ...b, status: action === "suspend" ? "Suspended" : "Active" }
+            : b,
+        ),
+      );
+      toast.success(
+        `${business.name} ${action === "suspend" ? "suspended" : "activated"}.`,
+      );
+      return;
+    }
+    setActionLoading(business.id);
+    try {
+      if (action === "suspend") {
+        await businessesApi.suspend(business.id);
+        toast.success(`${business.name} suspended.`);
+      } else {
+        await businessesApi.activate(business.id);
+        toast.success(`${business.name} activated.`);
+      }
+      // Refresh the list
+      load();
+    } catch {
+      toast.error(`Failed to ${action} business.`);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   return (
     <>
       <PageMeta
@@ -108,7 +147,9 @@ export default function BusinessList() {
               : ""}
           </p>
           <div className="flex items-center gap-2">
-            <label className="text-xs text-gray-500 dark:text-gray-400">Rows</label>
+            <label className="text-xs text-gray-500 dark:text-gray-400">
+              Rows
+            </label>
             <select
               value={pageSize}
               onChange={(e) => handlePageSizeChange(Number(e.target.value))}
@@ -127,7 +168,9 @@ export default function BusinessList() {
           </div>
         ) : businesses.length === 0 ? (
           <div className="text-center py-16">
-            <p className="text-gray-500 dark:text-gray-400">No businesses found.</p>
+            <p className="text-gray-500 dark:text-gray-400">
+              No businesses found.
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -152,6 +195,9 @@ export default function BusinessList() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                     Registered
                   </th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -161,7 +207,9 @@ export default function BusinessList() {
                     className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
                   >
                     <td className="px-4 py-3">
-                      <p className="font-medium text-gray-800 dark:text-white">{b.name}</p>
+                      <p className="font-medium text-gray-800 dark:text-white">
+                        {b.name}
+                      </p>
                       {b.contactEmail && (
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                           {b.contactEmail}
@@ -175,7 +223,8 @@ export default function BusinessList() {
                       {b.subscriptionTier && (
                         <span
                           className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
-                            TIER_COLORS[b.subscriptionTier] ?? "bg-gray-100 text-gray-600"
+                            TIER_COLORS[b.subscriptionTier] ??
+                            "bg-gray-100 text-gray-600"
                           }`}
                         >
                           {b.subscriptionTier}
@@ -202,12 +251,31 @@ export default function BusinessList() {
                             year: "numeric",
                           })
                         : b.createdAt
-                        ? new Date(b.createdAt).toLocaleDateString("en-NG", {
-                            day: "2-digit",
-                            month: "short",
-                            year: "numeric",
-                          })
-                        : "—"}
+                          ? new Date(b.createdAt).toLocaleDateString("en-NG", {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
+                            })
+                          : "—"}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      {b.status === "Active" ? (
+                        <button
+                          onClick={() => handleStatusAction(b, "suspend")}
+                          disabled={actionLoading === b.id}
+                          className="px-3 py-1 text-xs font-medium rounded-lg border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 transition-colors"
+                        >
+                          {actionLoading === b.id ? "…" : "Suspend"}
+                        </button>
+                      ) : b.status === "Suspended" ? (
+                        <button
+                          onClick={() => handleStatusAction(b, "activate")}
+                          disabled={actionLoading === b.id}
+                          className="px-3 py-1 text-xs font-medium rounded-lg border border-green-300 dark:border-green-700 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 disabled:opacity-50 transition-colors"
+                        >
+                          {actionLoading === b.id ? "…" : "Activate"}
+                        </button>
+                      ) : null}
                     </td>
                   </tr>
                 ))}

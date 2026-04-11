@@ -467,8 +467,8 @@ export interface BusinessItemSummary {
   itemId: string;
   name: string;
   itemType: "Goods" | "Service";
-  serviceCode: string;      // flat code string, e.g. "021"
-  serviceCodeName: string;  // code description
+  serviceCode: string; // flat code string, e.g. "021"
+  serviceCodeName: string; // code description
   itemCategoryName: string;
   unitPrice: number;
   businessName: string;
@@ -506,7 +506,10 @@ export const businessItemApi = {
   list: (params?: { page?: number; pageSize?: number }) =>
     api
       .get<ApiResponse<PaginatedResult<BusinessItemSummary>>>("/businessitem", {
-        params: { pageNumber: params?.page ?? 1, pageSize: params?.pageSize ?? 10 },
+        params: {
+          pageNumber: params?.page ?? 1,
+          pageSize: params?.pageSize ?? 10,
+        },
       })
       .then(unwrap),
   getById: (id: string) =>
@@ -535,8 +538,14 @@ export interface BusinessSummary {
 export const businessesApi = {
   list: (params?: { page?: number; pageSize?: number }) =>
     api
-      .get<ApiResponse<PaginatedResult<BusinessSummary>>>("/business", { params })
+      .get<
+        ApiResponse<PaginatedResult<BusinessSummary>>
+      >("/business", { params })
       .then(unwrap),
+  suspend: (businessId: string, reason?: string) =>
+    api.post(`/business/${businessId}/suspend`, { reason }),
+  activate: (businessId: string, reason?: string) =>
+    api.post(`/business/${businessId}/activate`, { reason }),
 };
 
 export interface AegisUserSummary {
@@ -560,11 +569,15 @@ export interface CreateAegisUserPayload {
 export const aegisUserApi = {
   list: () =>
     api
-      .get<ApiResponse<AegisUserSummary[]>>("/Aegis-user-management/Aegis-users")
+      .get<
+        ApiResponse<AegisUserSummary[]>
+      >("/Aegis-user-management/Aegis-users")
       .then(unwrap),
   create: (payload: CreateAegisUserPayload) =>
     api
-      .post<ApiResponse<AegisUserSummary>>("/Aegis-user-management/Aegis-users", payload)
+      .post<
+        ApiResponse<AegisUserSummary>
+      >("/Aegis-user-management/Aegis-users", payload)
       .then(unwrap),
   activate: (userId: string) =>
     api.post(`/Aegis-user-management/Aegis-users/${userId}/activate`),
@@ -858,7 +871,9 @@ export interface BusinessAppSettingsDto {
 export const appProviderApi = {
   getAdapterOptions: () =>
     api
-      .get<ApiResponse<AppAdapterOption[]>>("/access-point-providers/adapter-options")
+      .get<
+        ApiResponse<AppAdapterOption[]>
+      >("/access-point-providers/adapter-options")
       .then(unwrap),
 
   list: (page = 1, pageSize = 20) =>

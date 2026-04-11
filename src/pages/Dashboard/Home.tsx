@@ -376,7 +376,9 @@ export default function Home() {
   const canCreate = useCanCreateInvoice();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentInvoices, setRecentInvoices] = useState<InvoiceSummary[]>([]);
-  const [recentBusinesses, setRecentBusinesses] = useState<BusinessSummary[]>([]);
+  const [recentBusinesses, setRecentBusinesses] = useState<BusinessSummary[]>(
+    [],
+  );
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -401,12 +403,14 @@ export default function Home() {
           .catch(() => [])
       : Promise.resolve([]);
 
-    Promise.all([statsPromise, invoicesPromise, businessesPromise]).then(([s, inv, biz]) => {
-      setStats(s);
-      setRecentInvoices(inv);
-      setRecentBusinesses(biz);
-      setLoading(false);
-    });
+    Promise.all([statsPromise, invoicesPromise, businessesPromise]).then(
+      ([s, inv, biz]) => {
+        setStats(s);
+        setRecentInvoices(inv);
+        setRecentBusinesses(biz);
+        setLoading(false);
+      },
+    );
   }, [isAegis]);
 
   const displayName = user?.NRStName?.trim() || "there";
@@ -490,7 +494,7 @@ export default function Home() {
           </div>
 
           {/* Charts row */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Invoice Status Donut */}
             <DonutChart
               title="Invoice Status Breakdown"
@@ -509,19 +513,6 @@ export default function Home() {
                 "Rejected",
               ]}
               colors={["#9ca3af", "#f59e0b", "#8b5cf6", "#10b981", "#ef4444"]}
-              total={stats.totalInvoices.toLocaleString()}
-            />
-
-            {/* Payment Status Donut */}
-            <DonutChart
-              title="Payment Status"
-              series={[
-                stats.paidInvoices,
-                stats.unpaidInvoices,
-                stats.partiallyPaidInvoices,
-              ]}
-              labels={["Paid", "Pending", "Rejected"]}
-              colors={["#10b981", "#f59e0b", "#ef4444"]}
               total={stats.totalInvoices.toLocaleString()}
             />
 
@@ -622,19 +613,34 @@ export default function Home() {
                 <table className="min-w-full divide-y divide-gray-100 dark:divide-gray-700">
                   <thead className="bg-gray-50 dark:bg-gray-800/60">
                     <tr>
-                      <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Business</th>
-                      <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">TIN</th>
-                      <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Plan</th>
-                      <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Status</th>
+                      <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                        Business
+                      </th>
+                      <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                        TIN
+                      </th>
+                      <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                        Plan
+                      </th>
+                      <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                        Status
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                     {recentBusinesses.map((b) => (
-                      <tr key={b.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                      <tr
+                        key={b.id}
+                        className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
+                      >
                         <td className="px-5 py-3">
-                          <p className="text-sm font-medium text-gray-800 dark:text-white">{b.name}</p>
+                          <p className="text-sm font-medium text-gray-800 dark:text-white">
+                            {b.name}
+                          </p>
                           {b.contactEmail && (
-                            <p className="text-xs text-gray-500 dark:text-gray-400">{b.contactEmail}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              {b.contactEmail}
+                            </p>
                           )}
                         </td>
                         <td className="px-5 py-3 text-sm text-gray-600 dark:text-gray-300 font-mono">
@@ -642,25 +648,29 @@ export default function Home() {
                         </td>
                         <td className="px-5 py-3">
                           {b.subscriptionTier && (
-                            <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
-                              b.subscriptionTier === "SaaS"
-                                ? "bg-brand-50 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400"
-                                : b.subscriptionTier === "SFTP"
-                                ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
-                                : "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400"
-                            }`}>
+                            <span
+                              className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
+                                b.subscriptionTier === "SaaS"
+                                  ? "bg-brand-50 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400"
+                                  : b.subscriptionTier === "SFTP"
+                                    ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
+                                    : "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400"
+                              }`}
+                            >
                               {b.subscriptionTier}
                             </span>
                           )}
                         </td>
                         <td className="px-5 py-3">
-                          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
-                            b.status === "Active"
-                              ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                              : b.status === "Suspended"
-                              ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                              : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"
-                          }`}>
+                          <span
+                            className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
+                              b.status === "Active"
+                                ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                                : b.status === "Suspended"
+                                  ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                                  : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"
+                            }`}
+                          >
                             {b.status}
                           </span>
                         </td>

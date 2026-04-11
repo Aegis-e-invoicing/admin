@@ -30,12 +30,14 @@ function ModalShell({
 }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      className="fixed inset-0 z-999999 flex items-center justify-center bg-black/50 p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-xl max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-base font-semibold text-gray-800 dark:text-white">{title}</h2>
+          <h2 className="text-base font-semibold text-gray-800 dark:text-white">
+            {title}
+          </h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-xl leading-none"
@@ -49,7 +51,13 @@ function ModalShell({
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <div>
       <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-3">
@@ -90,7 +98,13 @@ function ModalFooter({
 }
 
 // ── Create Modal ──────────────────────────────────────────────────────────────
-function CreateModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+function CreateModal({
+  onClose,
+  onSaved,
+}: {
+  onClose: () => void;
+  onSaved: () => void;
+}) {
   const [adapterOptions, setAdapterOptions] = useState<AppAdapterOption[]>([]);
   const [form, setForm] = useState<CreateAppProviderPayload>({
     name: "",
@@ -106,17 +120,26 @@ function CreateModal({ onClose, onSaved }: { onClose: () => void; onSaved: () =>
   useEffect(() => {
     if (USE_MOCK) {
       setAdapterOptions(MOCK_ADAPTER_OPTIONS);
-      setForm((f) => ({ ...f, adapterKey: MOCK_ADAPTER_OPTIONS[0].adapterKey }));
+      setForm((f) => ({
+        ...f,
+        adapterKey: MOCK_ADAPTER_OPTIONS[0].adapterKey,
+      }));
       return;
     }
-    appProviderApi.getAdapterOptions().then((opts) => {
-      setAdapterOptions(opts);
-      if (opts.length > 0) setForm((f) => ({ ...f, adapterKey: opts[0].adapterKey }));
-    }).catch(() => {});
+    appProviderApi
+      .getAdapterOptions()
+      .then((opts) => {
+        setAdapterOptions(opts);
+        if (opts.length > 0)
+          setForm((f) => ({ ...f, adapterKey: opts[0].adapterKey }));
+      })
+      .catch(() => {});
   }, []);
 
-  const set = <K extends keyof CreateAppProviderPayload>(key: K, val: CreateAppProviderPayload[K]) =>
-    setForm((f) => ({ ...f, [key]: val }));
+  const set = <K extends keyof CreateAppProviderPayload>(
+    key: K,
+    val: CreateAppProviderPayload[K],
+  ) => setForm((f) => ({ ...f, [key]: val }));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -149,12 +172,24 @@ function CreateModal({ onClose, onSaved }: { onClose: () => void; onSaved: () =>
                 className={inputCls}
                 value={form.adapterKey}
                 onChange={(e) => set("adapterKey", e.target.value)}
+                required
               >
-                {adapterOptions.map((o) => (
-                  <option key={o.adapterKey} value={o.adapterKey}>
-                    {o.displayName}
+                {adapterOptions.length === 0 ? (
+                  <option value="" disabled>
+                    Loading adapters…
                   </option>
-                ))}
+                ) : (
+                  <>
+                    <option value="" disabled>
+                      — Select adapter —
+                    </option>
+                    {adapterOptions.map((o) => (
+                      <option key={o.adapterKey} value={o.adapterKey}>
+                        {o.displayName}
+                      </option>
+                    ))}
+                  </>
+                )}
               </select>
             </div>
             <div className="flex flex-col gap-1">
@@ -235,7 +270,11 @@ function CreateModal({ onClose, onSaved }: { onClose: () => void; onSaved: () =>
           </div>
         </Section>
 
-        <ModalFooter onCancel={onClose} saving={saving} label="Create Provider" />
+        <ModalFooter
+          onCancel={onClose}
+          saving={saving}
+          label="Create Provider"
+        />
       </form>
     </ModalShell>
   );
@@ -261,8 +300,10 @@ function EditModal({
   });
   const [saving, setSaving] = useState(false);
 
-  const set = <K extends keyof UpdateAppProviderPayload>(key: K, val: UpdateAppProviderPayload[K]) =>
-    setForm((f) => ({ ...f, [key]: val }));
+  const set = <K extends keyof UpdateAppProviderPayload>(
+    key: K,
+    val: UpdateAppProviderPayload[K],
+  ) => setForm((f) => ({ ...f, [key]: val }));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -285,7 +326,8 @@ function EditModal({
   return (
     <ModalShell title={`Edit — ${provider.displayName}`} onClose={onClose}>
       <p className="text-xs text-gray-500 dark:text-gray-400 -mt-1 mb-4">
-        Adapter cannot be changed. Leave credential fields blank to keep existing values.
+        Adapter cannot be changed. Leave credential fields blank to keep
+        existing values.
       </p>
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
         <Section title="Identity">
@@ -448,7 +490,9 @@ export default function AppProviderList() {
 
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-semibold text-gray-800 dark:text-white">APP Providers</h1>
+          <h1 className="text-xl font-semibold text-gray-800 dark:text-white">
+            APP Providers
+          </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
             Manage Access Point Provider configurations and credentials
           </p>
@@ -464,7 +508,9 @@ export default function AppProviderList() {
       <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            {totalCount > 0 ? `${totalCount} provider${totalCount !== 1 ? "s" : ""}` : ""}
+            {totalCount > 0
+              ? `${totalCount} provider${totalCount !== 1 ? "s" : ""}`
+              : ""}
           </p>
         </div>
 
@@ -474,7 +520,9 @@ export default function AppProviderList() {
           </div>
         ) : providers.length === 0 ? (
           <div className="text-center py-16">
-            <p className="text-gray-500 dark:text-gray-400 mb-3">No providers configured yet.</p>
+            <p className="text-gray-500 dark:text-gray-400 mb-3">
+              No providers configured yet.
+            </p>
             <button
               onClick={() => setShowCreate(true)}
               className="text-brand-500 hover:text-brand-600 text-sm font-medium"
@@ -487,7 +535,14 @@ export default function AppProviderList() {
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-800">
                 <tr>
-                  {["Provider", "Name", "Base URL", "Credentials", "Status", ""].map((h) => (
+                  {[
+                    "Provider",
+                    "Name",
+                    "Base URL",
+                    "Credentials",
+                    "Status",
+                    "",
+                  ].map((h) => (
                     <th
                       key={h}
                       className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
@@ -509,7 +564,9 @@ export default function AppProviderList() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <p className="font-medium text-gray-800 dark:text-white">{p.name}</p>
+                      <p className="font-medium text-gray-800 dark:text-white">
+                        {p.name}
+                      </p>
                       {p.description && (
                         <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate max-w-xs">
                           {p.description}
@@ -521,8 +578,14 @@ export default function AppProviderList() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-col gap-1 text-xs">
-                        <CredentialBadge label="Production" configured={p.hasProductionCredentials} />
-                        <CredentialBadge label="Sandbox" configured={p.hasSandboxCredentials} />
+                        <CredentialBadge
+                          label="Production"
+                          configured={p.hasProductionCredentials}
+                        />
+                        <CredentialBadge
+                          label="Sandbox"
+                          configured={p.hasSandboxCredentials}
+                        />
                       </div>
                     </td>
                     <td className="px-4 py-3">
@@ -606,11 +669,19 @@ export default function AppProviderList() {
   );
 }
 
-function CredentialBadge({ label, configured }: { label: string; configured: boolean }) {
+function CredentialBadge({
+  label,
+  configured,
+}: {
+  label: string;
+  configured: boolean;
+}) {
   return (
     <span
       className={`inline-flex items-center gap-1 ${
-        configured ? "text-green-600 dark:text-green-400" : "text-gray-400 dark:text-gray-500"
+        configured
+          ? "text-green-600 dark:text-green-400"
+          : "text-gray-400 dark:text-gray-500"
       }`}
     >
       <span>{configured ? "✓" : "○"}</span>
