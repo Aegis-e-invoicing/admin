@@ -19,6 +19,7 @@ import InvoiceDetail from "./pages/Invoices/InvoiceDetail";
 import Onboarding from "./pages/Onboarding";
 import PaymentCallback from "./pages/PaymentCallback";
 import AppLayout from "./layout/AppLayout";
+import AppProviderList from "./pages/AppProviders/AppProviderList";
 import { PrivateRoute } from "./components/common/PrivateRoute";
 import { ScrollToTop } from "./components/common/ScrollToTop";
 
@@ -45,6 +46,7 @@ export default function App() {
               <Route path="/invoices/:id" element={<InvoiceDetail />} />
               <Route path="/reports/analytics" element={<Analytics />} />
               <Route path="/reports/schedules" element={<Schedules />} />
+              <Route path="/app-providers" element={<AppProviderList />} />
             </Route>
 
             {/* Routes that use their own full-screen layout */}

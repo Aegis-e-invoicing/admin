@@ -1,7 +1,18 @@
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import PageMeta from "../../components/common/PageMeta";
-import { businessApi, miscApi, flowRuleApi, type BusinessProfile, type FlowRule } from "../../lib/api";
+import {
+  businessApi,
+  miscApi,
+  flowRuleApi,
+  appProviderApi,
+  APP_VENDOR_LABELS,
+  type BusinessProfile,
+  type FlowRule,
+  type AccessPointProviderDto,
+  type AppVendor,
+  type AppEnvironmentMode,
+} from "../../lib/api";
 import { USE_MOCK, MOCK_BUSINESS_PROFILE, MOCK_INDUSTRIES, MOCK_FLOW_RULE } from "../../lib/mockData";
 import { useIsAegis, useIsAdmin, useAuth } from "../../context/AuthContext";
 
@@ -40,6 +51,16 @@ export default function Settings() {
   // QR config state
   const [qr, setQr] = useState({ publicKey: "", certificate: "" });
   const [savingQr, setSavingQr] = useState(false);
+
+  // APP provider state
+  const [appProviders, setAppProviders] = useState<AccessPointProviderDto[]>([]);
+  const [activeVendor, setActiveVendor] = useState<AppVendor | null>(null);
+  const [envMode, setEnvMode] = useState<AppEnvironmentMode>(2); // default Production
+  const [appSettingsLoading, setAppSettingsLoading] = useState(false);
+  const [savingVendor, setSavingVendor] = useState(false);
+  const [savingEnv, setSavingEnv] = useState(false);
+  // NRS warning modal state
+  const [pendingVendor, setPendingVendor] = useState<AppVendor | null>(null);
 
   // Flow rule state
   const [flowRule, setFlowRule] = useState<FlowRule | null>(null);
@@ -106,6 +127,23 @@ export default function Settings() {
       })
       .catch(() => toast.error("Failed to load business profile."))
       .finally(() => setLoadingProfile(false));
+
+    // Load APP provider settings (ClientAdmin + AegisAdmin)
+    const businessId = user?.businessId;
+    if ((isAdmin || isAegis) && businessId && !USE_MOCK) {
+      setAppSettingsLoading(true);
+      Promise.all([
+        appProviderApi.list(1, 50),
+        appProviderApi.getBusinessSettings(businessId),
+      ])
+        .then(([providerList, settings]) => {
+          setAppProviders(providerList.items.filter((p) => p.isActive));
+          setActiveVendor(settings.activeVendor);
+          setEnvMode(settings.environmentMode);
+        })
+        .catch(() => { /* non-fatal — section stays hidden */ })
+        .finally(() => setAppSettingsLoading(false));
+    }
 
     // Load flow rule for admins
     if (isAdmin) {
@@ -181,6 +219,52 @@ export default function Settings() {
       setSavingQr(false);
     }
   };
+
+  // ── APP provider handlers ─────────────────────────────────────────────────
+
+  const handleVendorSelect = (vendor: AppVendor | null) => {
+    // null means "reset to Interswitch default"
+    const isNonDefault = vendor !== null && vendor !== 1; // 1 = Interswitch
+    if (isNonDefault) {
+      setPendingVendor(vendor); // show NRS warning modal first
+    } else {
+      applyVendor(vendor);
+    }
+  };
+
+  const applyVendor = async (vendor: AppVendor | null) => {
+    const businessId = user?.businessId;
+    if (!businessId) return;
+    setSavingVendor(true);
+    try {
+      await appProviderApi.setBusinessProvider(businessId, vendor);
+      setActiveVendor(vendor);
+      const label = vendor ? APP_VENDOR_LABELS[vendor] : "Interswitch (default)";
+      toast.success(`APP provider switched to ${label}.`);
+    } catch {
+      toast.error("Failed to update APP provider.");
+    } finally {
+      setSavingVendor(false);
+      setPendingVendor(null);
+    }
+  };
+
+  const handleEnvModeChange = async (mode: AppEnvironmentMode) => {
+    const businessId = user?.businessId;
+    if (!businessId) return;
+    setSavingEnv(true);
+    try {
+      await appProviderApi.setBusinessEnvironment(businessId, mode);
+      setEnvMode(mode);
+      toast.success(`Environment switched to ${mode === 1 ? "Sandbox" : "Production"}.`);
+    } catch {
+      toast.error("Failed to update environment mode.");
+    } finally {
+      setSavingEnv(false);
+    }
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────
 
   const handleSaveFlowRule = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -493,6 +577,84 @@ export default function Settings() {
           </Section>
         )}
 
+        {/* APP Provider — ClientAdmin + AegisAdmin */}
+        {(isAdmin || isAegis) && !USE_MOCK && (
+          <Section
+            title="Access Point Provider"
+            description="Select which provider transmits your invoices to NRS. Switching requires you to register with the new provider on the NRS portal first."
+          >
+            {appSettingsLoading ? (
+              <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                <div className="w-4 h-4 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+                Loading…
+              </div>
+            ) : appProviders.length === 0 ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                No APP providers configured by your platform administrator yet.
+              </p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {/* Interswitch (platform default) is always first */}
+                <VendorCard
+                  vendor={null}
+                  label="Interswitch (default)"
+                  isSelected={activeVendor === null || activeVendor === 1}
+                  disabled={savingVendor}
+                  onSelect={() => handleVendorSelect(null)}
+                />
+                {appProviders
+                  .filter((p) => p.vendor !== 1) // Interswitch handled above
+                  .map((p) => (
+                    <VendorCard
+                      key={p.id}
+                      vendor={p.vendor}
+                      label={p.name}
+                      isSelected={activeVendor === p.vendor}
+                      disabled={savingVendor}
+                      onSelect={() => handleVendorSelect(p.vendor)}
+                    />
+                  ))}
+              </div>
+            )}
+          </Section>
+        )}
+
+        {/* Environment Mode — ClientAdmin + AegisAdmin */}
+        {(isAdmin || isAegis) && !USE_MOCK && (
+          <Section
+            title="Environment Mode"
+            description="Controls which credential set is used when transmitting invoices."
+          >
+            {envMode === 1 && (
+              <div className="mb-4 flex items-start gap-3 p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700">
+                <svg className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <p className="text-sm text-amber-700 dark:text-amber-300">
+                  <span className="font-semibold">Sandbox mode is active.</span> Invoices are transmitted to the vendor's test environment and not recorded by NRS.
+                </p>
+              </div>
+            )}
+            <div className="flex gap-3">
+              <EnvButton
+                label="Production"
+                description="Live NRS submission"
+                active={envMode === 2}
+                disabled={savingEnv}
+                onClick={() => handleEnvModeChange(2)}
+              />
+              <EnvButton
+                label="Sandbox"
+                description="Test environment only"
+                active={envMode === 1}
+                disabled={savingEnv}
+                onClick={() => handleEnvModeChange(1)}
+                warning
+              />
+            </div>
+          </Section>
+        )}
+
         {/* Approval Rule — admin only */}
         {isAdmin && !isAegis && (
           <Section
@@ -571,6 +733,145 @@ export default function Settings() {
           </div>
         )}
       </div>
+
+      {/* NRS Warning Modal — shown when switching to a non-Interswitch vendor */}
+      {pendingVendor !== null && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={(e) => e.target === e.currentTarget && setPendingVendor(null)}
+        >
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-md p-6">
+            <div className="flex items-start gap-4 mb-5">
+              <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-gray-800 dark:text-white">
+                  Confirm provider switch
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  Before switching to{" "}
+                  <span className="font-semibold text-gray-700 dark:text-gray-200">
+                    {APP_VENDOR_LABELS[pendingVendor]}
+                  </span>
+                  , you must first register your business with this provider on the{" "}
+                  <span className="font-semibold">NRS portal</span> and enable them as your Access Point Provider.
+                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                  Have you completed registration with {APP_VENDOR_LABELS[pendingVendor]} on the NRS portal?
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setPendingVendor(null)}
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => applyVendor(pendingVendor)}
+                disabled={savingVendor}
+                className="px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-xl disabled:opacity-50 transition-colors"
+              >
+                {savingVendor ? "Switching…" : "Yes, I've registered — switch now"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
+  );
+}
+
+// ── Helper components ─────────────────────────────────────────────────────────
+
+function VendorCard({
+  vendor,
+  label,
+  isSelected,
+  disabled,
+  onSelect,
+}: {
+  vendor: AppVendor | null;
+  label: string;
+  isSelected: boolean;
+  disabled: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled || isSelected}
+      onClick={onSelect}
+      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-colors ${
+        isSelected
+          ? "border-brand-500 bg-brand-50 dark:bg-brand-900/20"
+          : "border-gray-200 dark:border-gray-700 hover:border-brand-300 dark:hover:border-brand-600 hover:bg-gray-50 dark:hover:bg-gray-700/30"
+      } disabled:cursor-not-allowed`}
+    >
+      <span
+        className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${
+          isSelected ? "border-brand-500" : "border-gray-300 dark:border-gray-500"
+        }`}
+      >
+        {isSelected && (
+          <span className="w-2 h-2 rounded-full bg-brand-500" />
+        )}
+      </span>
+      <span className={`text-sm font-medium ${isSelected ? "text-brand-700 dark:text-brand-400" : "text-gray-700 dark:text-gray-200"}`}>
+        {label}
+      </span>
+      {isSelected && (
+        <span className="ml-auto text-xs text-brand-500 dark:text-brand-400 font-medium">
+          Active
+        </span>
+      )}
+    </button>
+  );
+}
+
+function EnvButton({
+  label,
+  description,
+  active,
+  disabled,
+  onClick,
+  warning,
+}: {
+  label: string;
+  description: string;
+  active: boolean;
+  disabled: boolean;
+  onClick: () => void;
+  warning?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled || active}
+      onClick={onClick}
+      className={`flex-1 px-4 py-3 rounded-xl border text-left transition-colors ${
+        active
+          ? warning
+            ? "border-amber-400 bg-amber-50 dark:bg-amber-900/20"
+            : "border-brand-500 bg-brand-50 dark:bg-brand-900/20"
+          : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700/30"
+      } disabled:cursor-not-allowed`}
+    >
+      <p className={`text-sm font-semibold ${
+        active
+          ? warning
+            ? "text-amber-700 dark:text-amber-400"
+            : "text-brand-700 dark:text-brand-400"
+          : "text-gray-700 dark:text-gray-200"
+      }`}>
+        {label}
+        {active && <span className="ml-2 text-xs font-medium opacity-70">● Active</span>}
+      </p>
+      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{description}</p>
+    </button>
   );
 }

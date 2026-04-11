@@ -77,6 +77,18 @@ const AppSidebar: React.FC = () => {
     ...(isAegis || isAdmin
       ? [{ icon: <UserCircleIcon />, name: "Users", path: "/users" }]
       : []),
+    // APP Providers — AegisAdmin only
+    ...(isAegis
+      ? [{
+          icon: (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
+          ),
+          name: "APP Providers",
+          path: "/app-providers",
+        }]
+      : []),
     // Settings
     {
       icon: <TableIcon />,

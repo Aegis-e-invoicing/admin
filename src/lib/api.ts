@@ -254,9 +254,23 @@ export interface TaxCategory {
   value: string;
   percent: string; // "7.5", "0.0", "Not Available", or ""
 }
+export interface ProductCode {
+  code: string;
+  description: string;
+}
+export interface FIRSServiceCode {
+  code: string;
+  description: string;
+}
 export const NRSApi = {
   getTaxCategories: () =>
     api.get<ApiResponse<TaxCategory[]>>("/NRS/gettaxcategories").then(unwrap),
+  getProductCodes: () =>
+    api.get<ApiResponse<ProductCode[]>>("/NRS/getproductcodes").then(unwrap),
+  getServiceCodes: () =>
+    api
+      .get<ApiResponse<FIRSServiceCode[]>>("/NRS/getservicecodes")
+      .then(unwrap),
 };
 
 export interface UploadInvoiceResult {
@@ -439,27 +453,64 @@ export const partyApi = {
 };
 
 // ── Business Items ────────────────────────────────────────────────────────────
+export interface BusinessItemTaxCategory {
+  code: string;
+  name: string;
+  isPercentage: boolean;
+  percent?: number;
+  flatAmount?: number;
+}
+
+/** Shape returned by the list endpoint (summary projection). */
+export interface BusinessItemSummary {
+  id: string;
+  itemId: string;
+  name: string;
+  itemType: "Goods" | "Service";
+  serviceCode: string;      // flat code string, e.g. "021"
+  serviceCodeName: string;  // code description
+  itemCategoryName: string;
+  unitPrice: number;
+  businessName: string;
+  createdAt: string;
+}
+
+/** Full item detail returned by GET /businessitem/{id}. */
 export interface BusinessItem {
   id: string;
-  itemCode: string;
-  description: string;
+  itemId: string;
+  name: string;
+  itemType: "Goods" | "Service";
+  serviceCode: { code: string; name: string };
+  itemCategoryId: string;
+  itemCategoryName?: string;
+  itemDescription: string;
   unitPrice: number;
-  taxCategories?: string[];
+  businessId: string;
+  businessName?: string;
+  createdAt: string;
+  taxCategories: BusinessItemTaxCategory[];
 }
+
 export interface CreateBusinessItemPayload {
-  itemCode: string;
-  description: string;
+  name: string;
+  itemType: "Goods" | "Service";
+  serviceCode: { code: string; name: string };
+  itemCategoryName: string;
+  itemDescription: string;
   unitPrice: number;
-  taxCategories?: string[];
+  taxCategories: BusinessItemTaxCategory[];
 }
 
 export const businessItemApi = {
   list: (params?: { page?: number; pageSize?: number }) =>
     api
-      .get<
-        ApiResponse<PaginatedResult<BusinessItem>>
-      >("/businessitem", { params })
+      .get<ApiResponse<PaginatedResult<BusinessItemSummary>>>("/businessitem", {
+        params: { pageNumber: params?.page ?? 1, pageSize: params?.pageSize ?? 10 },
+      })
       .then(unwrap),
+  getById: (id: string) =>
+    api.get<ApiResponse<BusinessItem>>(`/businessitem/${id}`).then(unwrap),
   create: (payload: CreateBusinessItemPayload) =>
     api.post<ApiResponse<BusinessItem>>("/businessitem", payload).then(unwrap),
   update: (id: string, payload: Partial<CreateBusinessItemPayload>) =>
@@ -693,6 +744,114 @@ export interface AnalyticsV2Result {
     vatTableVsNonVATTableSalesAndPurchase: VATVsNonVATMonthly[];
   };
 }
+
+// ── APP Provider Management (AegisAdmin) ─────────────────────────────────────
+
+/** Mirrors AppVendor enum on the backend */
+export type AppVendor = 1 | 2 | 3 | 4; // Interswitch | Digitax | Etranzact | BlueBridge
+
+export const APP_VENDOR_LABELS: Record<AppVendor, string> = {
+  1: "Interswitch",
+  2: "Digitax",
+  3: "eTranzact",
+  4: "BlueBridge",
+};
+
+export interface AccessPointProviderDto {
+  id: string;
+  name: string;
+  description?: string;
+  vendor: AppVendor;
+  baseUrl: string;
+  hasProductionCredentials: boolean;
+  sandboxBaseUrl?: string;
+  hasSandboxCredentials: boolean;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface CreateAppProviderPayload {
+  name: string;
+  description?: string;
+  vendor: AppVendor;
+  baseUrl: string;
+  /** Plaintext JSON blob — shape is vendor-specific, encrypted server-side */
+  credentialsJson?: string;
+  sandboxBaseUrl?: string;
+  sandboxCredentialsJson?: string;
+}
+
+export interface UpdateAppProviderPayload {
+  name: string;
+  description?: string;
+  baseUrl?: string;
+  /** Omit to keep existing encrypted credentials */
+  credentialsJson?: string;
+  sandboxBaseUrl?: string;
+  sandboxCredentialsJson?: string;
+}
+
+/** Mirrors AppEnvironmentMode enum: Sandbox=1, Production=2 */
+export type AppEnvironmentMode = 1 | 2;
+
+export interface BusinessAppSettingsDto {
+  activeVendor: AppVendor | null;
+  environmentMode: AppEnvironmentMode;
+}
+
+export const appProviderApi = {
+  list: (page = 1, pageSize = 20) =>
+    api
+      .get<ApiResponse<PaginatedResult<AccessPointProviderDto>>>(
+        "/access-point-providers",
+        {
+          params: { pageNumber: page, pageSize },
+        },
+      )
+      .then(unwrap),
+
+  create: (payload: CreateAppProviderPayload) =>
+    api
+      .post<
+        ApiResponse<{ isSuccess: boolean; message: string; id?: string }>
+      >("/access-point-providers", payload)
+      .then(unwrap),
+
+  update: (configurationId: string, payload: UpdateAppProviderPayload) =>
+    api
+      .patch<
+        ApiResponse<{ isSuccess: boolean; message: string }>
+      >(`/access-point-providers/${configurationId}`, payload)
+      .then(unwrap),
+
+  delete: (configurationId: string) =>
+    api
+      .delete<
+        ApiResponse<{ isSuccess: boolean; message: string }>
+      >(`/access-point-providers/${configurationId}`)
+      .then(unwrap),
+
+  getBusinessSettings: (businessId: string) =>
+    api
+      .get<
+        ApiResponse<BusinessAppSettingsDto>
+      >(`/access-point-providers/businesses/${businessId}/settings`)
+      .then(unwrap),
+
+  setBusinessProvider: (businessId: string, vendor: AppVendor | null) =>
+    api
+      .patch<
+        ApiResponse<{ isSuccess: boolean; message: string }>
+      >(`/access-point-providers/businesses/${businessId}/provider`, { vendor })
+      .then(unwrap),
+
+  setBusinessEnvironment: (businessId: string, environmentMode: 1 | 2) =>
+    api
+      .patch<
+        ApiResponse<{ isSuccess: boolean; message: string }>
+      >(`/access-point-providers/businesses/${businessId}/environment`, { environmentMode })
+      .then(unwrap),
+};
 
 export const analyticsV2Api = {
   get: (dashboardType: 0 | 1) => {

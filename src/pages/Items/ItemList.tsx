@@ -4,7 +4,9 @@ import PageMeta from "../../components/common/PageMeta";
 import {
   businessItemApi,
   NRSApi,
+  type BusinessItemSummary,
   type BusinessItem,
+  type BusinessItemTaxCategory,
   type CreateBusinessItemPayload,
   type TaxCategory,
 } from "../../lib/api";
@@ -17,8 +19,11 @@ const inputCls =
 const PAGE_SIZE_OPTIONS = [5, 10, 25, 50];
 
 const emptyForm: CreateBusinessItemPayload = {
-  itemCode: "",
-  description: "",
+  name: "",
+  itemType: "Service",
+  serviceCode: { code: "", name: "" },
+  itemCategoryName: "",
+  itemDescription: "",
   unitPrice: 0,
   taxCategories: [],
 };
@@ -28,7 +33,7 @@ export default function ItemList() {
   const isAegis = useIsAegis();
   const canManage = isAdmin || isAegis;
 
-  const [items, setItems] = useState<BusinessItem[]>([]);
+  const [items, setItems] = useState<BusinessItemSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -57,7 +62,7 @@ export default function ItemList() {
       const total = Math.ceil(MOCK_ITEMS.length / ps);
       setTotalCount(MOCK_ITEMS.length);
       setTotalPages(total);
-      setItems(MOCK_ITEMS.slice((p - 1) * ps, p * ps) as BusinessItem[]);
+      setItems(MOCK_ITEMS.slice((p - 1) * ps, p * ps) as unknown as BusinessItemSummary[]);
       setLoading(false);
       return;
     }
@@ -83,23 +88,30 @@ export default function ItemList() {
     setShowForm(true);
   };
 
-  const openEdit = (item: BusinessItem) => {
-    setEditingItem(item);
-    setForm({
-      itemCode: item.itemCode,
-      description: item.description,
-      unitPrice: item.unitPrice,
-      taxCategories: item.taxCategories ?? [],
-    });
-    setShowForm(true);
+  const openEdit = async (summary: BusinessItemSummary) => {
+    // Fetch the full item to get serviceCode object, taxCategories, and itemDescription
+    try {
+      const item = await businessItemApi.getById(summary.id);
+      setEditingItem(item);
+      setForm({
+        name: item.name,
+        itemType: item.itemType,
+        serviceCode: item.serviceCode,
+        itemCategoryName: item.itemCategoryName ?? "",
+        itemDescription: item.itemDescription,
+        unitPrice: item.unitPrice,
+        taxCategories: item.taxCategories ?? [],
+      });
+      setShowForm(true);
+    } catch {
+      toast.error("Failed to load item details.");
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.itemCode || !form.description || form.unitPrice <= 0) {
-      toast.error(
-        "Item code, description and a positive unit price are required.",
-      );
+    if (!form.name || !form.itemDescription || form.unitPrice <= 0) {
+      toast.error("Name, description and a positive unit price are required.");
       return;
     }
     setSaving(true);
@@ -136,9 +148,51 @@ export default function ItemList() {
     }
   };
 
-  const selectedTaxCode = form.taxCategories?.[0] ?? "";
-  const setTaxCode = (code: string) =>
-    setForm((f) => ({ ...f, taxCategories: code ? [code] : [] }));
+  // Tax category helpers
+  const addTaxEntry = () => {
+    setForm((f) => ({
+      ...f,
+      taxCategories: [
+        ...f.taxCategories,
+        { code: "", name: "", isPercentage: true, percent: 0 },
+      ],
+    }));
+  };
+
+  const removeTaxEntry = (idx: number) => {
+    setForm((f) => ({
+      ...f,
+      taxCategories: f.taxCategories.filter((_, i) => i !== idx),
+    }));
+  };
+
+  const updateTaxEntry = (
+    idx: number,
+    update: Partial<BusinessItemTaxCategory>,
+  ) => {
+    setForm((f) => ({
+      ...f,
+      taxCategories: f.taxCategories.map((tc, i) =>
+        i === idx ? { ...tc, ...update } : tc,
+      ),
+    }));
+  };
+
+  const applyNRSTaxCategory = (idx: number, nrsCode: string) => {
+    const nrs = taxCategories.find((t) => t.code === nrsCode);
+    if (!nrs) return;
+    const parsedPercent =
+      nrs.percent === "Not Available" || nrs.percent === ""
+        ? undefined
+        : parseFloat(nrs.percent);
+    updateTaxEntry(idx, {
+      code: nrs.code,
+      name: nrs.value,
+      isPercentage: true,
+      percent: parsedPercent,
+      flatAmount: undefined,
+    });
+  };
 
   return (
     <>
@@ -177,16 +231,82 @@ export default function ItemList() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                Item Code *
+                Name *
               </label>
               <input
-                value={form.itemCode}
+                value={form.name}
                 onChange={(e) =>
-                  setForm((f) => ({ ...f, itemCode: e.target.value }))
+                  setForm((f) => ({ ...f, name: e.target.value }))
                 }
                 className={inputCls}
-                placeholder="SKU-001"
+                placeholder="e.g. Consulting Service"
                 required
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                Item Type *
+              </label>
+              <select
+                value={form.itemType}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    itemType: e.target.value as "Goods" | "Service",
+                  }))
+                }
+                className={inputCls}
+                required
+              >
+                <option value="Service">Service</option>
+                <option value="Goods">Goods</option>
+              </select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                Service/Product Code *
+              </label>
+              <input
+                value={form.serviceCode.code}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    serviceCode: { ...f.serviceCode, code: e.target.value },
+                  }))
+                }
+                className={inputCls}
+                placeholder="NRS code"
+                required
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                Code Description *
+              </label>
+              <input
+                value={form.serviceCode.name}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    serviceCode: { ...f.serviceCode, name: e.target.value },
+                  }))
+                }
+                className={inputCls}
+                placeholder="Code description"
+                required
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                Category
+              </label>
+              <input
+                value={form.itemCategoryName}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, itemCategoryName: e.target.value }))
+                }
+                className={inputCls}
+                placeholder="e.g. Professional Services"
               />
             </div>
             <div className="flex flex-col gap-1">
@@ -214,34 +334,122 @@ export default function ItemList() {
                 Description *
               </label>
               <input
-                value={form.description}
+                value={form.itemDescription}
                 onChange={(e) =>
-                  setForm((f) => ({ ...f, description: e.target.value }))
+                  setForm((f) => ({ ...f, itemDescription: e.target.value }))
                 }
                 className={inputCls}
                 placeholder="Item description"
                 required
               />
             </div>
-            <div className="flex flex-col gap-1 sm:col-span-2">
-              <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                Tax Category
-              </label>
-              <select
-                value={selectedTaxCode}
-                onChange={(e) => setTaxCode(e.target.value)}
-                className={inputCls}
-              >
-                <option value="">— None —</option>
-                {taxCategories.map((tc) => (
-                  <option key={tc.code} value={tc.code}>
-                    {tc.value}
-                    {tc.percent !== "Not Available" && tc.percent !== ""
-                      ? ` (${tc.percent}%)`
-                      : ""}
-                  </option>
-                ))}
-              </select>
+
+            {/* Tax Categories */}
+            <div className="flex flex-col gap-2 sm:col-span-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                  Tax Categories
+                </label>
+                <button
+                  type="button"
+                  onClick={addTaxEntry}
+                  className="text-xs text-brand-500 hover:text-brand-600 font-medium"
+                >
+                  + Add Tax Category
+                </button>
+              </div>
+              {form.taxCategories.length === 0 && (
+                <p className="text-xs text-gray-400 dark:text-gray-500">
+                  No tax categories added.
+                </p>
+              )}
+              {form.taxCategories.map((tc, idx) => (
+                <div
+                  key={idx}
+                  className="flex flex-col sm:flex-row gap-2 p-3 border border-gray-200 dark:border-gray-600 rounded-lg"
+                >
+                  {/* Pick from FIRS list */}
+                  <select
+                    value={tc.code}
+                    onChange={(e) => applyNRSTaxCategory(idx, e.target.value)}
+                    className={`${inputCls} sm:w-48`}
+                  >
+                    <option value="">— Select FIRS code —</option>
+                    {taxCategories.map((nrs) => (
+                      <option key={nrs.code} value={nrs.code}>
+                        {nrs.value}
+                        {nrs.percent !== "Not Available" && nrs.percent !== ""
+                          ? ` (${nrs.percent}%)`
+                          : ""}
+                      </option>
+                    ))}
+                  </select>
+
+                  {/* % / Flat toggle */}
+                  <select
+                    value={tc.isPercentage ? "percent" : "flat"}
+                    onChange={(e) =>
+                      updateTaxEntry(idx, {
+                        isPercentage: e.target.value === "percent",
+                        percent:
+                          e.target.value === "percent"
+                            ? (tc.percent ?? 0)
+                            : undefined,
+                        flatAmount:
+                          e.target.value === "flat"
+                            ? (tc.flatAmount ?? 0)
+                            : undefined,
+                      })
+                    }
+                    className={`${inputCls} sm:w-32`}
+                  >
+                    <option value="percent">%</option>
+                    <option value="flat">Flat fee</option>
+                  </select>
+
+                  {/* Value input */}
+                  {tc.isPercentage ? (
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      value={tc.percent ?? ""}
+                      onChange={(e) =>
+                        updateTaxEntry(idx, {
+                          percent: parseFloat(e.target.value) || 0,
+                        })
+                      }
+                      placeholder="Rate %"
+                      className={`${inputCls} sm:w-28`}
+                      required
+                    />
+                  ) : (
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={tc.flatAmount ?? ""}
+                      onChange={(e) =>
+                        updateTaxEntry(idx, {
+                          flatAmount: parseFloat(e.target.value) || 0,
+                        })
+                      }
+                      placeholder="Amount ₦"
+                      className={`${inputCls} sm:w-28`}
+                      required
+                    />
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => removeTaxEntry(idx)}
+                    className="text-red-500 hover:text-red-600 text-xs font-medium self-center"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
           <div className="flex gap-3 justify-end mt-4">
@@ -323,16 +531,16 @@ export default function ItemList() {
               <thead>
                 <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40">
                   <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">
-                    Code
+                    Name
                   </th>
                   <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">
-                    Description
+                    Type
                   </th>
                   <th className="px-4 py-3 text-right font-medium text-gray-500 dark:text-gray-400">
                     Unit Price
                   </th>
                   <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">
-                    Tax Category
+                    Code
                   </th>
                   {canManage && (
                     <th className="px-4 py-3 text-right font-medium text-gray-500 dark:text-gray-400">
@@ -343,36 +551,27 @@ export default function ItemList() {
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                 {items.map((item) => {
-                  const tc = taxCategories.find(
-                    (t) => item.taxCategories?.[0] === t.code,
-                  );
                   return (
                     <tr
                       key={item.id}
                       className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
                     >
-                      <td className="px-4 py-3 font-mono text-xs font-medium text-gray-700 dark:text-gray-200">
-                        {item.itemCode}
-                      </td>
                       <td className="px-4 py-3 text-gray-700 dark:text-gray-300">
-                        {item.description}
+                        <div className="font-medium">{item.name}</div>
+                        {item.itemCategoryName && (
+                          <div className="text-xs text-gray-400">
+                            {item.itemCategoryName}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">
+                        {item.itemType}
                       </td>
                       <td className="px-4 py-3 text-right font-medium text-gray-800 dark:text-white">
                         ₦{item.unitPrice.toLocaleString()}
                       </td>
-                      <td className="px-4 py-3">
-                        {tc ? (
-                          <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-                            {tc.value}
-                            {tc.percent !== "Not Available" && tc.percent !== ""
-                              ? ` · ${tc.percent}%`
-                              : ""}
-                          </span>
-                        ) : (
-                          <span className="text-gray-400 dark:text-gray-500 text-xs">
-                            —
-                          </span>
-                        )}
+                      <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400 font-mono">
+                        {item.serviceCode}
                       </td>
                       {canManage && (
                         <td className="px-4 py-3 text-right">
@@ -384,9 +583,7 @@ export default function ItemList() {
                               Edit
                             </button>
                             <button
-                              onClick={() =>
-                                handleDelete(item.id, item.itemCode)
-                              }
+                              onClick={() => handleDelete(item.id, item.name)}
                               className="text-red-500 hover:text-red-600 text-xs font-medium"
                             >
                               Delete
