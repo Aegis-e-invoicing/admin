@@ -301,18 +301,6 @@ export default function Analytics() {
     .slice(0, 10);
   const [dateFrom, setDateFrom] = useState(twelveMonthsAgo);
   const [dateTo, setDateTo] = useState(today);
-  const [exporting, setExporting] = useState(false);
-
-  const handleExportPdf = () => {
-    setExporting(true);
-    import("../../lib/exportPdf").then(({ exportElementToPdf }) => {
-      exportElementToPdf(
-        "analytics-print-area",
-        `Aegis Analytics ${new Date().toLocaleDateString("en-NG")}`,
-      );
-      setTimeout(() => setExporting(false), 1000);
-    });
-  };
 
   useEffect(() => {
     if (USE_MOCK) {
@@ -649,20 +637,6 @@ export default function Analytics() {
               {periodEnd ? ` – ${periodEnd}` : ""}
             </p>
           </div>
-          <button
-            onClick={handleExportPdf}
-            disabled={exporting || !data}
-            className="flex items-center gap-2 self-start px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-medium rounded-xl transition-colors disabled:opacity-50"
-          >
-            {exporting ? (
-              <span className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17v3a1 1 0 001 1h16a1 1 0 001-1v-3" />
-              </svg>
-            )}
-            Export PDF
-          </button>
         </div>
         <div className="mt-4">
           <DateRangeFilter
@@ -676,7 +650,7 @@ export default function Analytics() {
         </div>
       </div>
 
-      <div id="analytics-print-area">
+      <div>
       {loading ? (
         <div className="flex items-center justify-center py-24">
           <div className="w-8 h-8 border-4 border-brand-500 border-t-transparent rounded-full animate-spin" />
@@ -899,7 +873,7 @@ export default function Analytics() {
           </div>
         </div>
       )}
-      </div>{/* end #analytics-print-area */}
+      </div>
     </>
   );
 }

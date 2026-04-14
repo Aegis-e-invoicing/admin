@@ -3,11 +3,18 @@
  * Set VITE_USE_MOCK = false in .env when the backend is ready.
  *
  * Switch active user role by changing VITE_MOCK_USER_ROLE in .env:
- *   CLIENT_ADMIN  — business admin (Chidi Okonkwo) - default
- *   CLIENT_USER   — read-only business user (Ngozi Eze)
+ *   CLIENT_ADMIN  — business admin, SaaS plan (Chidi Okonkwo) - default
+ *   CLIENT_USER   — read-only business user, SaaS plan (Ngozi Eze)
  *   AEGIS_ADMIN   — platform super-admin (Emeka Adeyemi)
- *   SFTP_ADMIN    — SFTP-plan business admin (Amaka Nwosu)
- *   API_ONLY      — ApiOnly-plan business admin (Seun Bankole)
+ *   SFTP_ADMIN    — business admin, SFTP plan (Amaka Nwosu)
+ *   API_ONLY      — business admin, ApiOnly plan (Seun Bankole)
+ *
+ * OR log in with any of these emails (password: anything):
+ *   emeka.adeyemi@aegisnrs.com      → AEGIS_ADMIN
+ *   chidi.okonkwo@acmeng.com        → CLIENT_ADMIN  (SaaS)
+ *   ngozi.eze@acmeng.com            → CLIENT_USER   (SaaS)
+ *   amaka.nwosu@logisticshub.com    → SFTP_ADMIN
+ *   seun.bankole@techbridge.ng      → API_ONLY
  */
 export const USE_MOCK = import.meta.env.VITE_USE_MOCK !== "false";
 
@@ -97,6 +104,33 @@ export const MOCK_USER_API_ONLY = {
   aegisRole: undefined as string | undefined,
   subscriptionTier: "ApiOnly",
   mustChangePassword: false,
+};
+
+export const MOCK_API_CREDENTIALS = {
+  apiKey: "aeg-1a2b3c4d5e6f7g8h9i0j",
+  isApiKeyActive: true,
+  baseUrl: "https://api.aegisnrs.com/v1",
+  requiredHeaders: [
+    {
+      name: "X-API-Key",
+      value: "<your-api-key>",
+      description: "Your API key from the settings panel",
+    },
+    {
+      name: "Content-Type",
+      value: "application/json",
+      description: "Request payload format",
+    },
+  ],
+  apiKeyGeneratedAt: "2026-03-10T09:00:00Z",
+};
+
+export const MOCK_SFTP_CREDENTIALS = {
+  username: "techbridge-ng",
+  host: "sftp.aegisnrs.com",
+  port: 22,
+  status: "Active",
+  workingDirectory: "/upload/techbridge-ng",
 };
 
 // ── Active user based on .env configuration ──────────────────────────────────

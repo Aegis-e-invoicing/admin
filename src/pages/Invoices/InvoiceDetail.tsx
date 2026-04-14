@@ -5,7 +5,7 @@ import PageMeta from "../../components/common/PageMeta";
 import { invoiceApi } from "../../lib/api";
 import type { InvoiceSummary, SubmitInvoiceResult } from "../../lib/api";
 import { USE_MOCK, MOCK_INVOICES } from "../../lib/mockData";
-import { useIsAdmin } from "../../context/AuthContext";
+import { useIsAdmin, useCanCreateInvoice } from "../../context/AuthContext";
 
 const STATUS_COLORS: Record<string, string> = {
   DRAFT: "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300",
@@ -83,6 +83,7 @@ export default function InvoiceDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const isAdmin = useIsAdmin();
+  const canCreateInvoice = useCanCreateInvoice();
 
   const [invoice, setInvoice] = useState<InvoiceSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -508,6 +509,15 @@ export default function InvoiceDetail() {
               Actions
             </h2>
 
+            {invoice.status === "DRAFT" && (
+              <button
+                onClick={() => navigate(`/invoices/${invoice.id}/edit`)}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-xl transition-colors"
+              >
+                Edit Invoice
+              </button>
+            )}
+
             {invoice.status === "APPROVED" && (
               <button
                 onClick={handlePushToNRS}
@@ -554,6 +564,45 @@ export default function InvoiceDetail() {
               >
                 Update Payment Status
               </button>
+            )}
+
+            {invoice.irn && canCreateInvoice && (
+              <>
+                <button
+                  onClick={() =>
+                    navigate("/invoices/create", {
+                      state: {
+                        noteType: "credit",
+                        fromInvoice: {
+                          irn: invoice.irn,
+                          issueDate: invoice.issueDate,
+                          partyName: invoice.partyName,
+                        },
+                      },
+                    })
+                  }
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 dark:bg-amber-900/20 dark:hover:bg-amber-900/40 dark:border-amber-700 text-amber-700 dark:text-amber-300 text-sm font-medium rounded-xl transition-colors"
+                >
+                  Raise Credit Note
+                </button>
+                <button
+                  onClick={() =>
+                    navigate("/invoices/create", {
+                      state: {
+                        noteType: "debit",
+                        fromInvoice: {
+                          irn: invoice.irn,
+                          issueDate: invoice.issueDate,
+                          partyName: invoice.partyName,
+                        },
+                      },
+                    })
+                  }
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 dark:bg-rose-900/20 dark:hover:bg-rose-900/40 dark:border-rose-700 text-rose-700 dark:text-rose-300 text-sm font-medium rounded-xl transition-colors"
+                >
+                  Raise Debit Note
+                </button>
+              </>
             )}
 
             <button

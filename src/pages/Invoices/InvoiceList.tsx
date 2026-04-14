@@ -10,6 +10,7 @@ import {
 } from "../../lib/api";
 import { useCanCreateInvoice, useIsAdmin } from "../../context/AuthContext";
 import { USE_MOCK, MOCK_INVOICES } from "../../lib/mockData";
+import { useEnvMode } from "../../context/EnvModeContext";
 
 const STATUS_COLORS: Record<string, string> = {
   DRAFT: "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300",
@@ -87,6 +88,7 @@ const STATUS_OPTIONS = [
 
 export default function InvoiceList() {
   const canCreate = useCanCreateInvoice();
+  const { envMode } = useEnvMode();
   const [invoices, setInvoices] = useState<InvoiceSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -118,7 +120,12 @@ export default function InvoiceList() {
     }
     setLoading(true);
     invoiceApi
-      .list({ page: p, pageSize: ps, ...(status ? { status } : {}) })
+      .list({
+        page: p,
+        pageSize: ps,
+        ...(status ? { status } : {}),
+        environmentMode: envMode,
+      })
       .then((result) => {
         setInvoices(result.items);
         setTotalPages(result.totalPages);
@@ -129,7 +136,8 @@ export default function InvoiceList() {
 
   useEffect(() => {
     fetchInvoices(page, statusFilter, pageSize);
-  }, [page, statusFilter, pageSize]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, statusFilter, pageSize, envMode]);
 
   const handleStatusChange = (s: string) => {
     setStatusFilter(s);

@@ -5,17 +5,22 @@ import {
   businessApi,
   miscApi,
   flowRuleApi,
+  authApi,
   appProviderApi,
   type BusinessProfile,
   type FlowRule,
   type AccessPointProviderDto,
   type AppEnvironmentMode,
+  type ApiCredentials,
+  type SftpCredentials,
 } from "../../lib/api";
 import {
   USE_MOCK,
   MOCK_BUSINESS_PROFILE,
   MOCK_INDUSTRIES,
   MOCK_FLOW_RULE,
+  MOCK_API_CREDENTIALS,
+  MOCK_SFTP_CREDENTIALS,
 } from "../../lib/mockData";
 import { useIsAegis, useIsAdmin, useAuth } from "../../context/AuthContext";
 
@@ -87,6 +92,26 @@ export default function Settings() {
   const [thresholdAmount, setThresholdAmount] = useState("");
   const [savingFlowRule, setSavingFlowRule] = useState(false);
 
+  // API credentials state
+  const [apiCredentials, setApiCredentials] = useState<ApiCredentials | null>(
+    null,
+  );
+  const [loadingApiCredentials, setLoadingApiCredentials] = useState(false);
+  const [showRotateApiModal, setShowRotateApiModal] = useState(false);
+  const [rotatingApiKey, setRotatingApiKey] = useState(false);
+  const [apiOtp, setApiOtp] = useState("");
+  const [newApiKey, setNewApiKey] = useState<string | null>(null);
+  const [showApiKey, setShowApiKey] = useState(false);
+
+  // SFTP credentials state
+  const [sftpCredentials, setSftpCredentials] =
+    useState<SftpCredentials | null>(null);
+  const [loadingSftpCredentials, setLoadingSftpCredentials] = useState(false);
+  const [showSftpPasswordModal, setShowSftpPasswordModal] = useState(false);
+  const [changingSftpPassword, setChangingSftpPassword] = useState(false);
+  const [sftpOtp, setSftpOtp] = useState("");
+  const [sftpNewPassword, setSftpNewPassword] = useState("");
+
   // Profile edit form state
   const [profileForm, setProfileForm] = useState({
     description: "",
@@ -121,6 +146,12 @@ export default function Settings() {
         const mockRule = MOCK_FLOW_RULE as FlowRule;
         setFlowRule(mockRule);
         setThresholdAmount(String(mockRule.minAmount));
+      }
+      if (user?.subscriptionTier === "ApiOnly") {
+        setApiCredentials(MOCK_API_CREDENTIALS as ApiCredentials);
+      }
+      if (user?.subscriptionTier === "SFTP") {
+        setSftpCredentials(MOCK_SFTP_CREDENTIALS as SftpCredentials);
       }
       setLoadingProfile(false);
       return;
@@ -181,7 +212,109 @@ export default function Settings() {
         })
         .finally(() => setFlowRuleLoading(false));
     }
+
+    if (user?.subscriptionTier === "ApiOnly") {
+      setLoadingApiCredentials(true);
+      businessApi
+        .getApiCredentials()
+        .then((data) => setApiCredentials(data))
+        .catch(() => toast.error("Failed to load API credentials."))
+        .finally(() => setLoadingApiCredentials(false));
+    }
+
+    if (user?.subscriptionTier === "SFTP") {
+      setLoadingSftpCredentials(true);
+      businessApi
+        .getSftpCredentials()
+        .then((data) => setSftpCredentials(data))
+        .catch(() => toast.error("Failed to load SFTP credentials."))
+        .finally(() => setLoadingSftpCredentials(false));
+    }
   }, []);
+
+  const handleOpenRotateApiModal = async () => {
+    try {
+      await authApi.sendActionOtp();
+      setApiOtp("");
+      setNewApiKey(null);
+      setShowRotateApiModal(true);
+      toast.success("OTP sent to your email.");
+    } catch {
+      toast.error("Failed to send OTP.");
+    }
+  };
+
+  const maskApiKey = (apiKey: string) => {
+    if (!apiKey) return "";
+    if (apiKey.length <= 8) return `${apiKey}...`;
+    return `${apiKey.slice(0, 8)}...`;
+  };
+
+  const copyText = async (value: string, label: string) => {
+    if (!value) return;
+
+    try {
+      await navigator.clipboard.writeText(value);
+      toast.success(`${label} copied.`);
+    } catch {
+      toast.error(`Failed to copy ${label.toLowerCase()}.`);
+    }
+  };
+
+  const handleRotateApiKey = async () => {
+    if (!apiOtp) {
+      toast.error("Enter OTP.");
+      return;
+    }
+
+    setRotatingApiKey(true);
+    try {
+      const result = await businessApi.rotateApiKey(apiOtp.trim());
+      setNewApiKey(result.newApiKey);
+      toast.success("API key rotated successfully.");
+      const refreshed = await businessApi.getApiCredentials();
+      setApiCredentials(refreshed);
+    } catch {
+      toast.error("Failed to rotate API key.");
+    } finally {
+      setRotatingApiKey(false);
+    }
+  };
+
+  const handleOpenSftpPasswordModal = async () => {
+    try {
+      await authApi.sendActionOtp();
+      setSftpOtp("");
+      setSftpNewPassword("");
+      setShowSftpPasswordModal(true);
+      toast.success("OTP sent to your email.");
+    } catch {
+      toast.error("Failed to send OTP.");
+    }
+  };
+
+  const handleChangeSftpPassword = async () => {
+    if (!sftpOtp || !sftpNewPassword) {
+      toast.error("OTP and new password are required.");
+      return;
+    }
+
+    setChangingSftpPassword(true);
+    try {
+      await businessApi.changeSftpPassword({
+        otp: sftpOtp.trim(),
+        newPassword: sftpNewPassword,
+      });
+      toast.success("SFTP password changed successfully.");
+      setShowSftpPasswordModal(false);
+      setSftpOtp("");
+      setSftpNewPassword("");
+    } catch {
+      toast.error("Failed to change SFTP password.");
+    } finally {
+      setChangingSftpPassword(false);
+    }
+  };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1032,6 +1165,194 @@ export default function Settings() {
               </Section>
             )}
 
+            {/* API Credentials — ApiOnly subscription */}
+            {user?.subscriptionTier === "ApiOnly" && canEdit && (
+              <Section
+                title="API Access Credentials"
+                description="Use these credentials to authenticate against the ERP API."
+              >
+                {loadingApiCredentials ? (
+                  <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                    <div className="w-4 h-4 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+                    Loading credentials...
+                  </div>
+                ) : !apiCredentials ? (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    No API credentials found.
+                  </p>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-xs font-medium text-gray-400 dark:text-gray-500 mb-0.5">
+                          API Key
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-gray-800 dark:text-white font-mono break-all">
+                            {(showApiKey
+                              ? apiCredentials.apiKey
+                              : maskApiKey(apiCredentials.apiKey)) || "—"}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => setShowApiKey((v) => !v)}
+                            className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                          >
+                            {showApiKey ? "Hide" : "View"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              copyText(apiCredentials.apiKey || "", "API key")
+                            }
+                            className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                          >
+                            Copy
+                          </button>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-gray-400 dark:text-gray-500 mb-0.5">
+                          Base URL
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-gray-800 dark:text-white font-mono break-all">
+                            {apiCredentials.baseUrl || "—"}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              copyText(apiCredentials.baseUrl || "", "Base URL")
+                            }
+                            className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                          >
+                            Copy
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-medium text-gray-400 dark:text-gray-500 mb-2">
+                        Required Headers
+                      </p>
+                      <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-50 dark:bg-gray-900/40 text-gray-500 dark:text-gray-400">
+                            <tr>
+                              <th className="text-left px-3 py-2 font-medium">
+                                Header
+                              </th>
+                              <th className="text-left px-3 py-2 font-medium">
+                                Value
+                              </th>
+                              <th className="text-left px-3 py-2 font-medium">
+                                Description
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {apiCredentials.requiredHeaders.map((h) => (
+                              <tr
+                                key={h.name}
+                                className="border-t border-gray-100 dark:border-gray-800"
+                              >
+                                <td className="px-3 py-2 font-mono text-gray-700 dark:text-gray-200">
+                                  {h.name}
+                                </td>
+                                <td className="px-3 py-2 font-mono text-gray-700 dark:text-gray-200">
+                                  {h.value}
+                                </td>
+                                <td className="px-3 py-2 text-gray-500 dark:text-gray-400">
+                                  {h.description}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={handleOpenRotateApiModal}
+                        className="px-5 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-xl transition-colors"
+                      >
+                        Rotate API Key
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </Section>
+            )}
+
+            {/* SFTP Credentials — SFTP subscription */}
+            {user?.subscriptionTier === "SFTP" && canEdit && (
+              <Section
+                title="SFTP Access Credentials"
+                description="Use these details to connect your SFTP client and exchange invoice files."
+              >
+                {loadingSftpCredentials ? (
+                  <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                    <div className="w-4 h-4 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+                    Loading credentials...
+                  </div>
+                ) : !sftpCredentials ? (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    No SFTP credentials found.
+                  </p>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-xs font-medium text-gray-400 dark:text-gray-500 mb-0.5">
+                          Host
+                        </p>
+                        <p className="text-gray-800 dark:text-white font-mono break-all">
+                          {sftpCredentials.host || "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-gray-400 dark:text-gray-500 mb-0.5">
+                          Port
+                        </p>
+                        <p className="text-gray-800 dark:text-white font-mono">
+                          {sftpCredentials.port || "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-gray-400 dark:text-gray-500 mb-0.5">
+                          Username
+                        </p>
+                        <p className="text-gray-800 dark:text-white font-mono">
+                          {sftpCredentials.username || "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-gray-400 dark:text-gray-500 mb-0.5">
+                          Status
+                        </p>
+                        <p className="text-gray-800 dark:text-white">
+                          {sftpCredentials.status || "—"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={handleOpenSftpPasswordModal}
+                        className="px-5 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-xl transition-colors"
+                      >
+                        Change SFTP Password
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </Section>
+            )}
+
             {!canEdit && (
               <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl p-4 text-sm text-amber-700 dark:text-amber-300">
                 You need Admin access to modify settings. Contact your business
@@ -1105,6 +1426,107 @@ export default function Settings() {
                 {savingVendor
                   ? "Switching…"
                   : "Yes, I've registered — switch now"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showRotateApiModal && (
+        <div
+          className="fixed inset-0 z-999999 flex items-center justify-center bg-black/50 p-4"
+          onClick={(e) =>
+            e.target === e.currentTarget && setShowRotateApiModal(false)
+          }
+        >
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-md p-6">
+            <h3 className="text-base font-semibold text-gray-800 dark:text-white mb-2">
+              Rotate API key
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              Enter the OTP sent to your email to confirm API key rotation.
+            </p>
+            <input
+              value={apiOtp}
+              onChange={(e) => setApiOtp(e.target.value)}
+              className={inputCls}
+              placeholder="Enter 6-digit OTP"
+            />
+            {newApiKey && (
+              <div className="mt-3 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 p-3">
+                <p className="text-xs text-green-700 dark:text-green-300 mb-1">
+                  New API Key (copy now)
+                </p>
+                <p className="text-sm font-mono text-green-800 dark:text-green-200 break-all">
+                  {newApiKey}
+                </p>
+              </div>
+            )}
+            <div className="flex gap-3 justify-end mt-4">
+              <button
+                type="button"
+                onClick={() => setShowRotateApiModal(false)}
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm rounded-xl text-gray-600 dark:text-gray-300"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleRotateApiKey}
+                disabled={rotatingApiKey}
+                className="px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-xl disabled:opacity-50"
+              >
+                {rotatingApiKey ? "Rotating..." : "Confirm Rotation"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showSftpPasswordModal && (
+        <div
+          className="fixed inset-0 z-999999 flex items-center justify-center bg-black/50 p-4"
+          onClick={(e) =>
+            e.target === e.currentTarget && setShowSftpPasswordModal(false)
+          }
+        >
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-md p-6">
+            <h3 className="text-base font-semibold text-gray-800 dark:text-white mb-2">
+              Change SFTP password
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              Enter the OTP sent to your email and your new SFTP password.
+            </p>
+            <div className="space-y-3">
+              <input
+                value={sftpOtp}
+                onChange={(e) => setSftpOtp(e.target.value)}
+                className={inputCls}
+                placeholder="Enter 6-digit OTP"
+              />
+              <input
+                type="password"
+                value={sftpNewPassword}
+                onChange={(e) => setSftpNewPassword(e.target.value)}
+                className={inputCls}
+                placeholder="Enter new SFTP password"
+              />
+            </div>
+            <div className="flex gap-3 justify-end mt-4">
+              <button
+                type="button"
+                onClick={() => setShowSftpPasswordModal(false)}
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm rounded-xl text-gray-600 dark:text-gray-300"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleChangeSftpPassword}
+                disabled={changingSftpPassword}
+                className="px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-xl disabled:opacity-50"
+              >
+                {changingSftpPassword ? "Updating..." : "Change Password"}
               </button>
             </div>
           </div>

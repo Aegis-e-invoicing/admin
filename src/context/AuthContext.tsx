@@ -1,4 +1,10 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useEffect,
+} from "react";
 import { authApi, type TokenClaims, type LoginPayload } from "../lib/api";
 import { setAccessToken } from "../lib/apiClient";
 import {
@@ -7,12 +13,16 @@ import {
   MOCK_USER_AEGIS_ADMIN,
   MOCK_USER_CLIENT_ADMIN,
   MOCK_USER_CLIENT_USER,
+  MOCK_USER_SFTP_ADMIN,
+  MOCK_USER_API_ONLY,
 } from "../lib/mockData";
 
 const resolveMockUser = (email?: string) => {
   if (email === MOCK_USER_AEGIS_ADMIN.email) return MOCK_USER_AEGIS_ADMIN;
-  if (email === MOCK_USER_CLIENT_USER.email) return MOCK_USER_CLIENT_USER;
   if (email === MOCK_USER_CLIENT_ADMIN.email) return MOCK_USER_CLIENT_ADMIN;
+  if (email === MOCK_USER_CLIENT_USER.email) return MOCK_USER_CLIENT_USER;
+  if (email === MOCK_USER_SFTP_ADMIN.email) return MOCK_USER_SFTP_ADMIN;
+  if (email === MOCK_USER_API_ONLY.email) return MOCK_USER_API_ONLY;
   return MOCK_USER; // fall back to env-configured default
 };
 
@@ -41,7 +51,11 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const claimsToUser = (claims: TokenClaims, userId: string, mustChangePassword: boolean): AuthUser => ({
+const claimsToUser = (
+  claims: TokenClaims,
+  userId: string,
+  mustChangePassword: boolean,
+): AuthUser => ({
   userId,
   businessId: claims.businessId,
   NRStName: claims.NRStName,
@@ -55,14 +69,17 @@ const claimsToUser = (claims: TokenClaims, userId: string, mustChangePassword: b
   mustChangePassword,
 });
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // On mount, try to restore session via cookie-based token-claims
   useEffect(() => {
     if (USE_MOCK) {
-      setUser(MOCK_USER);
+      const savedEmail = sessionStorage.getItem("mock_user_email");
+      setUser(savedEmail ? resolveMockUser(savedEmail) : MOCK_USER);
       setIsLoading(false);
       return;
     }
@@ -88,38 +105,55 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = useCallback(async (_payload: LoginPayload) => {
     if (USE_MOCK) {
-      setUser(resolveMockUser(_payload.email));
+      const resolved = resolveMockUser(_payload.email);
+      sessionStorage.setItem("mock_user_email", resolved.email ?? "");
+      setUser(resolved);
       return { mustChangePassword: false };
     }
     const result = await authApi.login(_payload);
     setAccessToken(result.accessToken);
-    const u = claimsToUser(result.claims, result.userId, result.mustChangePassword);
+    const u = claimsToUser(
+      result.claims,
+      result.userId,
+      result.mustChangePassword,
+    );
     setUser(u);
     return { mustChangePassword: result.mustChangePassword };
   }, []);
 
   const logout = useCallback(async () => {
-    try { await authApi.logout(); } catch { /* ignore */ }
+    try {
+      await authApi.logout();
+    } catch {
+      /* ignore */
+    }
     setAccessToken(null);
+    sessionStorage.removeItem("mock_user_email");
     setUser(null);
   }, []);
 
   const refreshUser = useCallback(async () => {
     try {
       const claims = await authApi.tokenClaims();
-      setUser(prev => prev ? claimsToUser(claims, prev.userId, false) : null);
-    } catch { /* ignore */ }
+      setUser((prev) =>
+        prev ? claimsToUser(claims, prev.userId, false) : null,
+      );
+    } catch {
+      /* ignore */
+    }
   }, []);
 
   return (
-    <AuthContext.Provider value={{
-      user,
-      isLoading,
-      isAuthenticated: !!user,
-      login,
-      logout,
-      refreshUser,
-    }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isLoading,
+        isAuthenticated: !!user,
+        login,
+        logout,
+        refreshUser,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -152,7 +186,8 @@ export const useCanCreateInvoice = () => {
   if (!user) return false;
   // Portal (SaaS) plan can create invoices on portal
   // SFTP and API plans cannot
-  if (user.subscriptionTier === "SFTP" || user.subscriptionTier === "ApiOnly") return false;
+  if (user.subscriptionTier === "SFTP" || user.subscriptionTier === "ApiOnly")
+    return false;
   return true;
 };
 

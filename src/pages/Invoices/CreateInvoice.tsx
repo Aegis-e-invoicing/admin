@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useLocation } from "react-router";
 import toast from "react-hot-toast";
 import PageMeta from "../../components/common/PageMeta";
 import DatePicker from "../../components/form/date-picker";
@@ -88,8 +88,62 @@ function InfoTooltip({ text }: { text: string }) {
   );
 }
 
+function NoteTypeToggle({
+  value,
+  locked,
+  onChange,
+}: {
+  value: string;
+  locked: boolean;
+  onChange: (code: string) => void;
+}) {
+  return (
+    <div className={`flex rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden text-sm shrink-0 ${locked ? "opacity-60 pointer-events-none" : ""}`}>
+      {[
+        { code: "381", label: "Credit Note" },
+        { code: "383", label: "Debit Note" },
+      ].map((opt) => (
+        <button
+          key={opt.code}
+          type="button"
+          onClick={() => onChange(opt.code)}
+          className={`px-4 py-2 font-medium transition-colors whitespace-nowrap ${
+            value === opt.code
+              ? "bg-brand-500 text-white"
+              : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+          }`}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// State passed via navigate() when raising a note from an existing invoice
+interface FromInvoiceState {
+  noteType: "credit" | "debit" | "note";
+  fromInvoice?: {
+    irn: string;
+    issueDate: string;
+    partyName: string;
+  };
+}
+
 export default function CreateInvoice() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const fromState = (location.state ?? {}) as Partial<FromInvoiceState>;
+  const noteType = fromState.noteType ?? null;
+  const fromInvoice = fromState.fromInvoice ?? null;
+
+  // Derived constants for note mode
+  const isNote = noteType === "credit" || noteType === "debit" || noteType === "note";
+  // When specific type was chosen (from invoice detail), lock the invoice type field
+  const isNoteTypeLocked = noteType === "credit" || noteType === "debit";
+  const noteTypeCode = noteType === "credit" ? "381" : noteType === "debit" ? "383" : noteType === "note" ? "381" : null;
+  const noteLabel = noteType === "credit" ? "Credit Note" : noteType === "debit" ? "Debit Note" : noteType === "note" ? "Credit / Debit Note" : null;
+
   const [parties, setParties] = useState<Party[]>([]);
   const [items, setItems] = useState<BusinessItemSummary[]>([]);
   const [taxCategories, setTaxCategories] = useState<TaxCategory[]>([]);
@@ -109,7 +163,7 @@ export default function CreateInvoice() {
     issueDate: new Date().toISOString().substring(0, 10),
     dueDate: "",
     currencyCode: "NGN",
-    invoiceTypeCode: "380",
+    invoiceTypeCode: noteTypeCode ?? "380",
     invoiceKind: "B2B",
     paymentMeansCode: "30",
     note: "",
@@ -124,13 +178,18 @@ export default function CreateInvoice() {
     contractDocumentReference: DocumentReferenceDto | null;
     additionalDocumentReferences: DocumentReferenceDto[];
   }>({
-    billingReference: [],
+    billingReference: fromInvoice?.irn
+      ? [{ irn: fromInvoice.irn, issueDate: fromInvoice.issueDate }]
+      : [],
     dispatchDocumentReference: null,
     receiptDocumentReference: null,
     originatorDocumentReference: null,
     contractDocumentReference: null,
     additionalDocumentReferences: [],
   });
+
+  // billingRefResolved: in note mode, user has picked the original invoice
+  const billingRefResolved = isNote && docRefs.billingReference.length > 0;
 
   const [lineItems, setLineItems] = useState<LineItem[]>([
     {
@@ -145,6 +204,22 @@ export default function CreateInvoice() {
       _discountPercent: 0,
     },
   ]);
+
+  // Auto-open doc refs panel when in note mode
+  useEffect(() => {
+    if (isNote) setShowDocRefs(true);
+  }, [isNote]);
+
+  // Auto-match party from partyName once parties list loads
+  useEffect(() => {
+    if (!fromInvoice?.partyName || !parties.length) return;
+    const matched = parties.find(
+      (p) => p.name.toLowerCase() === fromInvoice.partyName.toLowerCase(),
+    );
+    if (matched) {
+      setForm((prev) => ({ ...prev, partyId: matched.id }));
+    }
+  }, [parties, fromInvoice?.partyName]);
 
   useEffect(() => {
     if (USE_MOCK) {
@@ -266,7 +341,12 @@ export default function CreateInvoice() {
       setLineItems((prev) =>
         prev.map((li, i) =>
           i === index
-            ? { ...li, _description: itemDescription, _itemCode: itemCode, _taxCategoryCode: taxCode }
+            ? {
+                ...li,
+                _description: itemDescription,
+                _itemCode: itemCode,
+                _taxCategoryCode: taxCode,
+              }
             : li,
         ),
       );
@@ -367,6 +447,10 @@ export default function CreateInvoice() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isNote && !billingRefResolved) {
+      toast.error("Please select the original invoice this note references.");
+      return;
+    }
     if (!form.partyId) {
       toast.error("Please select a buyer/party.");
       return;
@@ -475,6 +559,28 @@ export default function CreateInvoice() {
     }
   };
 
+  // Clear billing ref so user can re-select (only allowed in sidebar note flow, not from invoice detail)
+  const clearBillingRef = () => {
+    setDocRefs((prev) => ({ ...prev, billingReference: [] }));
+    setForm((prev) => ({ ...prev, partyId: "" }));
+  };
+
+  // Called when user selects the billing invoice from the sidebar note flow
+  const handleBillingRefSelect = (irn: string) => {
+    if (!irn) return;
+    const inv = invoicesWithIRN.find((i) => i.irn === irn);
+    if (!inv) return;
+    setDocRefs((prev) => ({
+      ...prev,
+      billingReference: [{ irn, issueDate: inv.issueDate }],
+    }));
+    // Auto-match party by name
+    const matched = parties.find(
+      (p) => p.name.toLowerCase() === (inv.partyName ?? "").toLowerCase(),
+    );
+    if (matched) setForm((prev) => ({ ...prev, partyId: matched.id }));
+  };
+
   const handleSkipPush = () => {
     setShowPushModal(false);
     navigate("/invoices");
@@ -524,14 +630,116 @@ export default function CreateInvoice() {
           Back to Invoices
         </button>
         <h1 className="text-xl font-semibold text-gray-800 dark:text-white">
-          Create Invoice
+          {isNote ? `New ${noteLabel}` : "Create Invoice"}
         </h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-          Invoice will go through approval then be submitted to NRS
+          {isNote && !billingRefResolved
+            ? `Select the original invoice below${noteType === "note" ? " and choose the note type" : ""} to begin.`
+            : isNote && billingRefResolved
+            ? `Referencing ${docRefs.billingReference[0]?.irn} · will go through approval then submitted to NRS`
+            : "Invoice will go through approval then be submitted to NRS"}
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
+
+        {/* ── Note mode: Billing reference step (always shown first) ── */}
+        {isNote && (
+          <div
+            className={`rounded-2xl border p-5 ${
+              billingRefResolved
+                ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700"
+                : "bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-600"
+            }`}
+          >
+            <div className="flex items-start gap-3">
+              <div
+                className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-sm font-bold ${
+                  billingRefResolved
+                    ? "bg-green-500 text-white"
+                    : "bg-amber-400 text-white"
+                }`}
+              >
+                {billingRefResolved ? "✓" : "1"}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
+                  {billingRefResolved
+                    ? "Original Invoice (locked)"
+                    : "Step 1 — Select the original invoice and note type"}
+                </h3>
+                {billingRefResolved ? (
+                  /* Resolved: [badge] [Change] ··· [toggle at far right] */
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gray-800 border border-green-200 dark:border-green-700 text-green-700 dark:text-green-300 rounded-xl text-xs font-mono">
+                      <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                      {fromInvoice?.partyName ??
+                        invoicesWithIRN.find((i) => i.irn === docRefs.billingReference[0]?.irn)?.partyName}{" "}
+                      — {docRefs.billingReference[0]?.irn}
+                    </span>
+                    {!fromInvoice && (
+                      <button
+                        type="button"
+                        onClick={clearBillingRef}
+                        className="text-xs text-gray-400 hover:text-red-500 underline transition-colors"
+                      >
+                        Change
+                      </button>
+                    )}
+                    <div className="ml-auto">
+                      <NoteTypeToggle
+                        value={form.invoiceTypeCode}
+                        locked={isNoteTypeLocked}
+                        onChange={(code) => setForm((prev) => ({ ...prev, invoiceTypeCode: code }))}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  /* Unresolved: [invoice picker (flex-1)] ··· [toggle at far right] */
+                  <>
+                    <p className="text-xs text-amber-700 dark:text-amber-300 mb-3">
+                      Only signed invoices with an IRN are listed. All other fields are locked until you select one.
+                    </p>
+                    <div className="flex gap-3 items-center">
+                      <div className="flex-1 min-w-0">
+                        <select
+                          value=""
+                          onChange={(e) => {
+                            if (e.target.value) handleBillingRefSelect(e.target.value);
+                          }}
+                          className={inputCls}
+                        >
+                          <option value="">Select the original invoice...</option>
+                          {invoicesWithIRN.map((inv) => (
+                            <option key={inv.irn} value={inv.irn!}>
+                              {inv.partyName} — {inv.irn}
+                            </option>
+                          ))}
+                        </select>
+                        {invoicesWithIRN.length === 0 && (
+                          <p className="text-xs text-red-500 mt-1">
+                            No signed invoices found. Only invoices that have been signed and have an IRN can be referenced.
+                          </p>
+                        )}
+                      </div>
+                      <NoteTypeToggle
+                        value={form.invoiceTypeCode}
+                        locked={isNoteTypeLocked}
+                        onChange={(code) => setForm((prev) => ({ ...prev, invoiceTypeCode: code }))}
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Main form — disabled until billing ref is resolved in note mode ── */}
+        <div className={`space-y-5 ${isNote && !billingRefResolved ? "pointer-events-none opacity-40 select-none" : ""}`}>
+
         {/* Invoice Details */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 lg:p-6">
           <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
@@ -541,11 +749,13 @@ export default function CreateInvoice() {
             <div className="sm:col-span-2 lg:col-span-1">
               <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
                 Buyer / Party <span className="text-error-500">*</span>
+                {isNote && <span className="ml-1 text-xs text-gray-400">(locked)</span>}
               </label>
               <select
                 value={form.partyId}
                 onChange={handleFieldChange("partyId")}
-                className={inputCls}
+                disabled={isNote}
+                className={`${inputCls} ${isNote ? "opacity-60 cursor-not-allowed bg-gray-50 dark:bg-gray-700" : ""}`}
                 required
               >
                 <option value="">Select party...</option>
@@ -555,7 +765,7 @@ export default function CreateInvoice() {
                   </option>
                 ))}
               </select>
-              {parties.length === 0 && (
+              {parties.length === 0 && !isNote && (
                 <p className="text-xs text-amber-600 mt-1">
                   No parties found.{" "}
                   <a href="/parties" className="underline">
@@ -583,22 +793,24 @@ export default function CreateInvoice() {
               </select>
             </div>
 
-            <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                Invoice Type <span className="text-error-500">*</span>
-              </label>
-              <select
-                value={form.invoiceTypeCode}
-                onChange={handleFieldChange("invoiceTypeCode")}
-                className={inputCls}
-              >
-                {INVOICE_TYPES.map((t) => (
-                  <option key={t.code} value={t.code}>
-                    {t.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {!isNote && (
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                  Invoice Type <span className="text-error-500">*</span>
+                </label>
+                <select
+                  value={form.invoiceTypeCode}
+                  onChange={handleFieldChange("invoiceTypeCode")}
+                  className={inputCls}
+                >
+                  {INVOICE_TYPES.map((t) => (
+                    <option key={t.code} value={t.code}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div>
               <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
@@ -802,62 +1014,60 @@ export default function CreateInvoice() {
                   </select>
                 </div>
 
-                {/* Billing Reference — multi */}
-                <div className="sm:col-span-2">
-                  <label className="flex items-center text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                    Billing Reference
-                    <InfoTooltip text="Links this invoice to previous billing documents, e.g. credit notes, debit notes, or prior invoices." />
-                  </label>
-                  <select
-                    value=""
-                    onChange={(e) => {
-                      if (e.target.value)
-                        addToArrayRef("billingReference", e.target.value);
-                    }}
-                    className={inputCls}
-                  >
-                    <option value="">
-                      + Select to add billing reference...
-                    </option>
-                    {invoicesWithIRN
-                      .filter(
-                        (inv) =>
-                          !docRefs.billingReference.some(
-                            (r) => r.irn === inv.irn,
-                          ),
-                      )
-                      .map((inv) => (
-                        <option key={inv.irn} value={inv.irn!}>
-                          {inv.partyName} — {inv.irn}
-                        </option>
-                      ))}
-                  </select>
-                  {docRefs.billingReference.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      {docRefs.billingReference.map((ref) => (
-                        <span
-                          key={ref.irn}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-300 rounded-full text-xs border border-brand-200 dark:border-brand-800"
-                        >
-                          {
-                            invoicesWithIRN.find((i) => i.irn === ref.irn)
-                              ?.partyName
-                          }{" "}
-                          — {ref.irn}
-                          <button
-                            type="button"
-                            onClick={() =>
-                              removeFromArrayRef("billingReference", ref.irn)
-                            }
-                            className="text-brand-400 hover:text-red-500 transition-colors leading-none"
+                {/* Billing Reference — only shown here for plain invoices; in note mode it's handled by the top card */}
+                {!isNote && (
+                  <div className="sm:col-span-2">
+                    <label className="flex items-center text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                      Billing Reference
+                      <InfoTooltip text="Links this invoice to previous billing documents, e.g. credit notes, debit notes, or prior invoices." />
+                    </label>
+                    <select
+                      value=""
+                      onChange={(e) => {
+                        if (e.target.value)
+                          addToArrayRef("billingReference", e.target.value);
+                      }}
+                      className={inputCls}
+                    >
+                      <option value="">
+                        + Select to add billing reference...
+                      </option>
+                      {invoicesWithIRN
+                        .filter(
+                          (inv) =>
+                            !docRefs.billingReference.some(
+                              (r) => r.irn === inv.irn,
+                            ),
+                        )
+                        .map((inv) => (
+                          <option key={inv.irn} value={inv.irn!}>
+                            {inv.partyName} — {inv.irn}
+                          </option>
+                        ))}
+                    </select>
+                    {docRefs.billingReference.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {docRefs.billingReference.map((ref) => (
+                          <span
+                            key={ref.irn}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-300 rounded-full text-xs border border-brand-200 dark:border-brand-800"
                           >
-                            &times;
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                            {invoicesWithIRN.find((i) => i.irn === ref.irn)?.partyName} — {ref.irn}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                removeFromArrayRef("billingReference", ref.irn)
+                              }
+                              className="text-brand-400 hover:text-red-500 transition-colors leading-none"
+                            >
+                              &times;
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Additional Document References — multi */}
                 <div className="sm:col-span-2">
@@ -981,11 +1191,25 @@ export default function CreateInvoice() {
                         </option>
                       ))}
                     </select>
-                    {tc && (
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {tc.value}
-                        {taxRate > 0 ? ` · ${taxRate}%` : " · Tax exempt"}
-                      </p>
+                    {li.businessItemId && (
+                      <select
+                        value={li._taxCategoryCode}
+                        onChange={(e) =>
+                          handleLineChange(
+                            index,
+                            "_taxCategoryCode",
+                            e.target.value,
+                          )
+                        }
+                        className={`${inputCls} mt-1 text-xs`}
+                      >
+                        <option value="">— No tax / Exempt —</option>
+                        {taxCategories.map((cat) => (
+                          <option key={cat.code} value={cat.code}>
+                            {cat.value} ({cat.percent}%)
+                          </option>
+                        ))}
+                      </select>
                     )}
                   </div>
 
@@ -1093,8 +1317,8 @@ export default function CreateInvoice() {
                       {!li.businessItemId
                         ? "—"
                         : taxRate > 0
-                        ? `₦${tax.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-                        : "Exempt"}
+                          ? `₦${tax.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+                          : "Exempt"}
                     </span>
                   </div>
 
@@ -1135,6 +1359,8 @@ export default function CreateInvoice() {
             </div>
           )}
         </div>
+
+        </div>{/* end disabled wrapper */}
 
         {/* Totals */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
@@ -1194,7 +1420,7 @@ export default function CreateInvoice() {
             disabled={submitting}
             className="px-6 py-2.5 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-xl disabled:opacity-50 transition-colors"
           >
-            {submitting ? "Creating..." : "Create Invoice"}
+            {submitting ? "Creating..." : isNote ? `Create ${noteLabel}` : "Create Invoice"}
           </button>
         </div>
       </form>

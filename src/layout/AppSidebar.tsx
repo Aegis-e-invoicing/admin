@@ -24,7 +24,7 @@ type NavItem = {
   name: string;
   icon: React.ReactNode;
   path?: string;
-  subItems?: { name: string; path: string; pro?: boolean; new?: boolean }[];
+  subItems?: { name: string; path: string; pro?: boolean; new?: boolean; state?: Record<string, unknown> }[];
 };
 
 const AppSidebar: React.FC = () => {
@@ -67,7 +67,12 @@ const AppSidebar: React.FC = () => {
           icon: <FileIcon />,
           name: "Invoices",
           subItems: [
-            ...(canCreateInvoice ? [{ name: "Create Invoice", path: "/invoices/create" }] : []),
+            ...(canCreateInvoice
+              ? [
+                  { name: "Create Invoice", path: "/invoices/create" },
+                  { name: "Credit / Debit Note", path: "/invoices/create", state: { noteType: "note" } },
+                ]
+              : []),
             { name: "My Invoices", path: "/invoices" },
             { name: "Received", path: "/received-invoices" },
           ],
@@ -111,6 +116,20 @@ const AppSidebar: React.FC = () => {
     [location.pathname]
   );
 
+  // For sub-items that share a path but differ by router state (e.g. Credit/Debit Note vs Create Invoice)
+  const isSubItemActive = useCallback(
+    (subItem: { path: string; state?: Record<string, unknown> }) => {
+      if (location.pathname !== subItem.path) return false;
+      const locState = location.state as Record<string, unknown> | null;
+      if (subItem.state?.noteType) {
+        return locState?.noteType === subItem.state.noteType;
+      }
+      // No noteType in subItem — active only when location state has no noteType either
+      return !locState?.noteType;
+    },
+    [location]
+  );
+
   useEffect(() => {
     let submenuMatched = false;
     ["main", "others"].forEach((menuType) => {
@@ -118,7 +137,7 @@ const AppSidebar: React.FC = () => {
       items.forEach((nav, index) => {
         if (nav.subItems) {
           nav.subItems.forEach((subItem) => {
-            if (isActive(subItem.path)) {
+            if (isSubItemActive(subItem)) {
               setOpenSubmenu({
                 type: menuType as "main" | "others",
                 index,
@@ -241,8 +260,9 @@ const AppSidebar: React.FC = () => {
                   <li key={subItem.name}>
                     <Link
                       to={subItem.path}
+                      state={subItem.state}
                       className={`menu-dropdown-item ${
-                        isActive(subItem.path)
+                        isSubItemActive(subItem)
                           ? "menu-dropdown-item-active"
                           : "menu-dropdown-item-inactive"
                       }`}

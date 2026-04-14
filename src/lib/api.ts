@@ -69,6 +69,8 @@ export const authApi = {
   sendOtp: (phoneNo_Email: string) =>
     api.post("/auth/forgot-password-request-otp", { phoneNo_Email }),
 
+  sendActionOtp: () => api.post("/auth/send-action-otp", {}),
+
   forgotPassword: (payload: {
     otp: string;
     password: string;
@@ -170,6 +172,30 @@ export interface DashboardStats {
   platformRevenueThisMonth: number;
 }
 
+export interface ApiRequiredHeader {
+  name: string;
+  value: string;
+  description: string;
+}
+
+export interface ApiCredentials {
+  apiKey: string;
+  isApiKeyActive: boolean;
+  baseUrl: string;
+  requiredHeaders: ApiRequiredHeader[];
+  apiKeyGeneratedAt?: string;
+  apiKeyLastUsedAt?: string;
+}
+
+export interface SftpCredentials {
+  username: string;
+  host: string;
+  port: number;
+  status: string;
+  workingDirectory?: string;
+  lastSyncedAt?: string;
+}
+
 export const businessApi = {
   getProfile: () =>
     api.get<ApiResponse<BusinessProfile>>("/business/me").then(unwrap),
@@ -198,6 +224,26 @@ export const businessApi = {
     api
       .patch<ApiResponse<BusinessProfile>>("/business/me", payload)
       .then(unwrap),
+
+  getApiCredentials: () =>
+    api
+      .get<ApiResponse<ApiCredentials>>("/business/api-credentials")
+      .then(unwrap),
+
+  rotateApiKey: (otp: string) =>
+    api
+      .post<ApiResponse<{ newApiKey: string }>>("/business/rotate-api-key", {
+        otp,
+      })
+      .then(unwrap),
+
+  getSftpCredentials: () =>
+    api
+      .get<ApiResponse<SftpCredentials>>("/business/sftp-credentials")
+      .then(unwrap),
+
+  changeSftpPassword: (payload: { otp: string; newPassword: string }) =>
+    api.post("/business/sftp-change-password", payload),
 };
 
 // ── Invoices ──────────────────────────────────────────────────────────────────
@@ -320,7 +366,12 @@ export interface FlowRulePayload {
 }
 
 export const invoiceApi = {
-  list: (params?: { page?: number; pageSize?: number; status?: string }) =>
+  list: (params?: {
+    page?: number;
+    pageSize?: number;
+    status?: string;
+    environmentMode?: AppEnvironmentMode;
+  }) =>
     api
       .get<ApiResponse<PaginatedResult<InvoiceSummary>>>("/invoice", { params })
       .then(unwrap),

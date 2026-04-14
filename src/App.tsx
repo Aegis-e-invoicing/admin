@@ -23,10 +23,11 @@ import AppProviderList from "./pages/AppProviders/AppProviderList";
 import BusinessList from "./pages/Businesses/BusinessList";
 import { PrivateRoute } from "./components/common/PrivateRoute";
 import { ScrollToTop } from "./components/common/ScrollToTop";
+import { EnvModeProvider } from "./context/EnvModeContext";
 
 export default function App() {
   return (
-    <>
+    <EnvModeProvider>
       <Router>
         <ScrollToTop />
         <Routes>
@@ -38,7 +39,10 @@ export default function App() {
               <Route path="/profile" element={<Profile />} />
               <Route path="/invoices" element={<InvoiceList />} />
               <Route path="/invoices/create" element={<CreateInvoice />} />
-              <Route path="/received-invoices" element={<ReceivedInvoiceList />} />
+              <Route
+                path="/received-invoices"
+                element={<ReceivedInvoiceList />}
+              />
               <Route path="/parties" element={<PartyList />} />
               <Route path="/items" element={<ItemList />} />
               <Route path="/users" element={<UserList />} />
@@ -66,6 +70,6 @@ export default function App() {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Router>
-    </>
+    </EnvModeProvider>
   );
 }
