@@ -1163,7 +1163,6 @@ export interface CreateBroadcastPayload {
   note?: string;
   vendorIds?: string[];
   vendorGroupId?: string;
-  frontendBaseUrl?: string;
 }
 
 export const broadcastApi = {

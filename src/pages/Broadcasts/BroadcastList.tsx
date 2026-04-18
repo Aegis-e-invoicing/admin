@@ -36,7 +36,6 @@ type CreateForm = {
   note: string;
   vendorGroupId: string;
   vendorIds: string[];
-  frontendBaseUrl: string;
 };
 
 const emptyForm: CreateForm = {
@@ -48,7 +47,6 @@ const emptyForm: CreateForm = {
   note: "",
   vendorGroupId: "",
   vendorIds: [],
-  frontendBaseUrl: window.location.origin,
 };
 
 export default function BroadcastList() {
@@ -117,7 +115,6 @@ export default function BroadcastList() {
         vendorIds: form.vendorIds.length ? form.vendorIds : undefined,
         vendorGroupId: form.vendorGroupId || undefined,
         note: form.note || undefined,
-        frontendBaseUrl: form.frontendBaseUrl || undefined,
       });
       toast.success("Broadcast created");
       setShowForm(false);
@@ -138,6 +135,8 @@ export default function BroadcastList() {
         : [...f.vendorIds, id],
     }));
   };
+
+  const groupSelected = !!form.vendorGroupId;
 
   return (
     <>
@@ -246,177 +245,217 @@ export default function BroadcastList() {
       </div>
 
       {showForm && (
-        <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 p-4 overflow-y-auto">
-          <form
-            onSubmit={handleSubmit}
-            className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-6 w-full max-w-lg space-y-4 my-8"
-          >
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              New Invoice Broadcast
-            </h2>
+        <div
+          className="fixed inset-0 bg-black/40 z-50 overflow-y-auto"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowForm(false);
+              setForm(emptyForm);
+            }
+          }}
+        >
+          <div className="min-h-full flex items-center justify-center p-6">
+            <form
+              onSubmit={handleSubmit}
+              className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-6 w-full max-w-lg space-y-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                New Invoice Broadcast
+              </h2>
 
-            <div>
-              <label className="text-xs font-medium text-gray-500 mb-1 block">
-                Title *
-              </label>
-              <input
-                className={inputCls}
-                value={form.title}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, title: e.target.value }))
-                }
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium text-gray-500 mb-1 block">
-                  Invoice Type Code
+                  Title *
                 </label>
                 <input
                   className={inputCls}
-                  value={form.invoiceTypeCode}
+                  value={form.title}
                   onChange={(e) =>
-                    setForm((f) => ({ ...f, invoiceTypeCode: e.target.value }))
+                    setForm((f) => ({ ...f, title: e.target.value }))
                   }
+                  required
                 />
               </div>
-              <div>
-                <label className="text-xs font-medium text-gray-500 mb-1 block">
-                  Currency
-                </label>
-                <input
-                  className={inputCls}
-                  value={form.currency}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, currency: e.target.value }))
-                  }
-                />
-              </div>
-            </div>
 
-            <div>
-              <label className="text-xs font-medium text-gray-500 mb-1 block">
-                Due Date *
-              </label>
-              <input
-                type="date"
-                className={inputCls}
-                value={form.dueDate}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, dueDate: e.target.value }))
-                }
-                required
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-medium text-gray-500 mb-1 block">
-                Note
-              </label>
-              <textarea
-                className={inputCls}
-                rows={2}
-                value={form.note}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, note: e.target.value }))
-                }
-              />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="requiresApproval"
-                checked={form.requiresApproval}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, requiresApproval: e.target.checked }))
-                }
-                className="rounded"
-              />
-              <label
-                htmlFor="requiresApproval"
-                className="text-sm text-gray-700 dark:text-gray-300"
-              >
-                Requires manual approval
-              </label>
-            </div>
-
-            <div>
-              <label className="text-xs font-medium text-gray-500 mb-1 block">
-                Vendor Group (optional)
-              </label>
-              <select
-                className={inputCls}
-                value={form.vendorGroupId}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, vendorGroupId: e.target.value }))
-                }
-              >
-                <option value="">— Select group —</option>
-                {groups.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="text-xs font-medium text-gray-500 mb-1 block">
-                Individual Vendors (optional)
-              </label>
-              <div className="max-h-40 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg p-2 space-y-1">
-                {vendors.map((v) => (
-                  <label
-                    key={v.id}
-                    className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={form.vendorIds.includes(v.id)}
-                      onChange={() => toggleVendor(v.id)}
-                      className="rounded"
-                    />
-                    {v.businessName}{" "}
-                    <span className="text-xs text-gray-400">({v.email})</span>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-gray-500 mb-1 block">
+                    Invoice Type Code
                   </label>
-                ))}
+                  <input
+                    className={inputCls}
+                    value={form.invoiceTypeCode}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        invoiceTypeCode: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-500 mb-1 block">
+                    Currency
+                  </label>
+                  <input
+                    className={inputCls}
+                    value={form.currency}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, currency: e.target.value }))
+                    }
+                  />
+                </div>
               </div>
-            </div>
 
-            <div>
-              <label className="text-xs font-medium text-gray-500 mb-1 block">
-                Frontend Base URL (for vendor link)
-              </label>
-              <input
-                className={inputCls}
-                value={form.frontendBaseUrl}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, frontendBaseUrl: e.target.value }))
-                }
-                placeholder="https://portal.yourapp.com"
-              />
-            </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500 mb-1 block">
+                  Due Date *
+                </label>
+                <input
+                  type="date"
+                  className={inputCls}
+                  value={form.dueDate}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, dueDate: e.target.value }))
+                  }
+                  required
+                />
+              </div>
 
-            <div className="flex gap-3 pt-2">
-              <button
-                type="submit"
-                disabled={saving}
-                className="flex-1 py-2 bg-brand-500 text-white rounded-lg hover:bg-brand-600 disabled:opacity-60"
-              >
-                {saving ? "Creating..." : "Create Broadcast"}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowForm(false)}
-                className="flex-1 py-2 border border-gray-300 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
+              <div>
+                <label className="text-xs font-medium text-gray-500 mb-1 block">
+                  Note
+                </label>
+                <textarea
+                  className={inputCls}
+                  rows={2}
+                  value={form.note}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, note: e.target.value }))
+                  }
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="requiresApproval"
+                  checked={form.requiresApproval}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      requiresApproval: e.target.checked,
+                    }))
+                  }
+                  className="rounded"
+                />
+                <label
+                  htmlFor="requiresApproval"
+                  className="text-sm text-gray-700 dark:text-gray-300"
+                >
+                  Requires manual approval
+                </label>
+                <div className="relative group ml-1">
+                  <span className="flex items-center justify-center w-4 h-4 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-xs font-bold cursor-default select-none">
+                    ?
+                  </span>
+                  <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-64 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg px-3 py-2 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                    When enabled, submitted invoices will wait for your manual
+                    review before being sent to the NRS. When disabled, invoices
+                    are transmitted to NRS automatically upon vendor submission.
+                    <div className="absolute left-1/2 -translate-x-1/2 top-full w-2 h-2 bg-gray-900 dark:bg-gray-700 rotate-45 -mt-1" />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-gray-500 mb-1 block">
+                  Vendor Group{" "}
+                  <span className="text-gray-400 font-normal">
+                    (choose group or individuals, not both)
+                  </span>
+                </label>
+                <select
+                  className={inputCls}
+                  value={form.vendorGroupId}
+                  onChange={(e) => {
+                    setForm((f) => ({
+                      ...f,
+                      vendorGroupId: e.target.value,
+                      vendorIds: [],
+                    }));
+                  }}
+                >
+                  <option value="">— Select group —</option>
+                  {groups.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label
+                  className={`text-xs font-medium mb-1 block ${groupSelected ? "text-gray-300 dark:text-gray-600" : "text-gray-500"}`}
+                >
+                  Individual Vendors
+                  {groupSelected && (
+                    <span className="ml-1 text-gray-400 dark:text-gray-600 font-normal">
+                      — clear the group selection to pick individuals
+                    </span>
+                  )}
+                </label>
+                <div
+                  className={`max-h-40 overflow-y-auto border rounded-lg p-2 space-y-1 transition-opacity ${
+                    groupSelected
+                      ? "border-gray-100 dark:border-gray-800 opacity-40 pointer-events-none"
+                      : "border-gray-200 dark:border-gray-700"
+                  }`}
+                >
+                  {vendors.map((v) => (
+                    <label
+                      key={v.id}
+                      className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={form.vendorIds.includes(v.id)}
+                        onChange={() => toggleVendor(v.id)}
+                        disabled={groupSelected}
+                        className="rounded"
+                      />
+                      {v.businessName}{" "}
+                      <span className="text-xs text-gray-400">
+                        ({v.email})
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="flex-1 py-2 bg-brand-500 text-white rounded-lg disabled:opacity-60 text-sm font-medium"
+                >
+                  {saving ? "Creating..." : "Create Broadcast"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowForm(false);
+                    setForm(emptyForm);
+                  }}
+                  className="flex-1 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 text-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </>
