@@ -413,6 +413,15 @@ export const invoiceApi = {
       >("/invoice/received-invoices", { params })
       .then(unwrap),
 
+  updateReceivedInvoicePaymentStatus: (
+    id: string,
+    payload: { paymentStatus: string; reference?: string },
+  ) =>
+    api.patch(
+      `/invoice/received-invoices/update-payment-status/${id}`,
+      payload,
+    ),
+
   /** Upload an Excel file of invoices. Returns a summary of successes/failures. */
   bulkUpload: (file: File) => {
     const formData = new FormData();
@@ -504,7 +513,7 @@ export const partyApi = {
     id: string,
     payload: Partial<Omit<CreatePartyPayload, "description">>,
   ) => api.put(`/party/${id}`, payload),
-  delete: (id: string) => api.delete(`/party/${id}`),
+  deactivate: (id: string) => api.patch(`/party/${id}/deactivate`),
 };
 
 // ── Business Items ────────────────────────────────────────────────────────────
@@ -573,7 +582,7 @@ export const businessItemApi = {
     api.post<ApiResponse<BusinessItem>>("/businessitem", payload).then(unwrap),
   update: (id: string, payload: Partial<CreateBusinessItemPayload>) =>
     api.put(`/businessitem/${id}`, payload),
-  delete: (id: string) => api.delete(`/businessitem/${id}`),
+  deactivate: (id: string) => api.patch(`/businessitem/${id}/deactivate`),
 };
 
 // ── Aegis Platform Admin ──────────────────────────────────────────────────────
@@ -754,6 +763,18 @@ export interface VatScheduleItem {
   paymentStatus: string;
 }
 
+export interface InputVatScheduleItem {
+  id: string;
+  receivedInvoiceId: string;
+  irn: string;
+  supplierName: string;
+  supplierTin?: string;
+  issueDate: string;
+  taxableAmount: number;
+  vatAmount: number;
+  totalAmount: number;
+}
+
 export interface VatSchedule {
   id: string;
   year: number;
@@ -768,7 +789,12 @@ export interface VatSchedule {
   totalInvoiceCount: number;
   totalTaxableAmount: number;
   totalVatAmount: number;
+  totalInputInvoiceCount: number;
+  totalInputTaxableAmount: number;
+  totalInputVatAmount: number;
+  netVatPayable: number;
   items?: VatScheduleItem[];
+  inputItems?: InputVatScheduleItem[];
 }
 
 export const scheduleApi = {
@@ -795,6 +821,64 @@ export const scheduleApi = {
   /** Returns an XLSX blob */
   export: (id: string) =>
     api.get(`/vat-schedule/${id}/export`, { responseType: "blob" }),
+};
+
+// ── WHT Schedule ─────────────────────────────────────────────────────────────
+export interface WhtScheduleItem {
+  id: string;
+  receivedInvoiceId: string;
+  vendorName: string;
+  vendorAddress?: string;
+  vendorTin?: string;
+  irn: string;
+  issueDate: string;
+  natureOfTransaction: string;
+  grossAmount: number;
+  whtRate: number;
+  whtAmount: number;
+  netAmount: number;
+  taxAuthority: "NRS" | "StateIRS";
+}
+
+export interface WhtSchedule {
+  id: string;
+  year: number;
+  month: number;
+  monthName: string;
+  periodStart: string;
+  periodEnd: string;
+  dueDate: string;
+  status: "Generated" | "Filed";
+  filedAt?: string;
+  generatedAt: string;
+  totalItemCount: number;
+  totalGrossAmount: number;
+  totalWhtAmount: number;
+  totalNrsWhtAmount: number;
+  totalStateWhtAmount: number;
+  items?: WhtScheduleItem[];
+}
+
+export const whtScheduleApi = {
+  list: (year?: number) =>
+    api
+      .get<ApiResponse<WhtSchedule[]>>("/wht-schedule", {
+        params: year ? { year } : undefined,
+      })
+      .then(unwrap),
+
+  generate: (year: number, month: number) =>
+    api
+      .post<ApiResponse<WhtSchedule>>("/wht-schedule/generate", { year, month })
+      .then(unwrap),
+
+  getWithItems: (id: string) =>
+    api.get<ApiResponse<WhtSchedule>>(`/wht-schedule/${id}`).then(unwrap),
+
+  markFiled: (id: string) =>
+    api
+      .patch<ApiResponse<WhtSchedule>>(`/wht-schedule/${id}/mark-filed`)
+      .then(unwrap),
 };
 
 // ── Analytics V2 ─────────────────────────────────────────────────────────────
@@ -1057,11 +1141,11 @@ export const vendorGroupApi = {
         ApiResponse<{ isSuccess: boolean; message: string }>
       >(`/vendor/groups/${id}`, payload)
       .then(unwrap),
-  delete: (id: string) =>
+  deactivate: (id: string) =>
     api
-      .delete<
+      .patch<
         ApiResponse<{ isSuccess: boolean; message: string }>
-      >(`/vendor/groups/${id}`)
+      >(`/vendor/groups/${id}/deactivate`, {})
       .then(unwrap),
 };
 
@@ -1097,11 +1181,11 @@ export const vendorApi = {
         ApiResponse<{ isSuccess: boolean; message: string }>
       >(`/vendor/${id}`, payload)
       .then(unwrap),
-  delete: (id: string) =>
+  deactivate: (id: string) =>
     api
-      .delete<
+      .patch<
         ApiResponse<{ isSuccess: boolean; message: string }>
-      >(`/vendor/${id}`)
+      >(`/vendor/${id}/deactivate`, {})
       .then(unwrap),
   toggleStatus: (id: string) =>
     api
@@ -1223,6 +1307,18 @@ export const broadcastApi = {
       .patch<
         ApiResponse<{ message: string }>
       >("/invoice-broadcast/submissions/mark-rejected", { invoiceIds })
+      .then(unwrap),
+  approveSubmissions: (invoiceIds: string[]) =>
+    api
+      .patch<
+        ApiResponse<{ message: string }>
+      >("/invoice-broadcast/submissions/approve", { invoiceIds })
+      .then(unwrap),
+  dismissSubmissions: (invoiceIds: string[]) =>
+    api
+      .patch<
+        ApiResponse<{ message: string }>
+      >("/invoice-broadcast/submissions/dismiss", { invoiceIds })
       .then(unwrap),
 };
 

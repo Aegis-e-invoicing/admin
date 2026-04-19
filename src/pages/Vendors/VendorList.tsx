@@ -52,6 +52,7 @@ export default function VendorList() {
   const [form, setForm] = useState<FormData>(emptyForm);
   const [editing, setEditing] = useState<Vendor | null>(null);
   const [toggling, setToggling] = useState<string | null>(null);
+  const [toggleModal, setToggleModal] = useState<Vendor | null>(null);
 
   const load = async (p = page) => {
     if (USE_MOCK) {
@@ -157,27 +158,25 @@ export default function VendorList() {
     }
   };
 
-  const handleToggle = async (id: string) => {
-    setToggling(id);
-    try {
-      await vendorApi.toggleStatus(id);
-      toast.success("Status updated");
-      load(page);
-    } catch {
-      toast.error("Failed to toggle status");
-    } finally {
-      setToggling(null);
-    }
+  const handleToggle = (vendor: Vendor) => {
+    setToggleModal(vendor);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Delete this vendor?")) return;
+  const confirmToggle = async () => {
+    if (!toggleModal) return;
+    const vendor = toggleModal;
+    setToggleModal(null);
+    setToggling(vendor.id);
     try {
-      await vendorApi.delete(id);
-      toast.success("Vendor deleted");
+      if (!USE_MOCK) await vendorApi.toggleStatus(vendor.id);
+      toast.success(
+        `${vendor.businessName} ${vendor.isActive ? "deactivated" : "activated"}.`,
+      );
       load(page);
     } catch {
-      toast.error("Failed to delete vendor");
+      toast.error("Failed to update status.");
+    } finally {
+      setToggling(null);
     }
   };
 
@@ -249,7 +248,7 @@ export default function VendorList() {
                 {vendors.map((v) => (
                   <tr
                     key={v.id}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                    className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
                   >
                     <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">
                       {v.businessName}
@@ -277,17 +276,15 @@ export default function VendorList() {
                           Edit
                         </button>
                         <button
-                          onClick={() => handleToggle(v.id)}
+                          onClick={() => handleToggle(v)}
                           disabled={toggling === v.id}
-                          className="text-yellow-500 hover:underline text-xs"
+                          className={`text-xs font-medium disabled:opacity-40 transition-colors ${
+                            v.isActive
+                              ? "text-amber-600 hover:text-amber-700"
+                              : "text-green-600 hover:text-green-700"
+                          }`}
                         >
                           {v.isActive ? "Deactivate" : "Activate"}
-                        </button>
-                        <button
-                          onClick={() => handleDelete(v.id)}
-                          className="text-red-500 hover:underline text-xs"
-                        >
-                          Delete
                         </button>
                       </td>
                     )}
@@ -320,6 +317,69 @@ export default function VendorList() {
           </div>
         )}
       </div>
+
+      {/* ── Toggle Status Confirmation Modal ── */}
+      {toggleModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 w-full max-w-sm shadow-xl">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-base font-semibold text-gray-800 dark:text-white">
+                {toggleModal.isActive ? "Deactivate" : "Activate"} Vendor
+              </h2>
+              <button
+                onClick={() => setToggleModal(null)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div className="p-5">
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                {toggleModal.isActive ? "Deactivate" : "Activate"}{" "}
+                <span className="font-semibold text-gray-800 dark:text-white">
+                  {toggleModal.businessName}
+                </span>
+                ?
+              </p>
+              {toggleModal.isActive && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+                  This vendor will no longer be able to submit invoices.
+                </p>
+              )}
+            </div>
+            <div className="flex justify-end gap-2 px-5 py-4 border-t border-gray-200 dark:border-gray-700">
+              <button
+                onClick={() => setToggleModal(null)}
+                className="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmToggle}
+                className={`px-4 py-2 text-sm font-medium rounded-xl transition-colors text-white ${
+                  toggleModal.isActive
+                    ? "bg-amber-500 hover:bg-amber-600"
+                    : "bg-green-500 hover:bg-green-600"
+                }`}
+              >
+                {toggleModal.isActive ? "Deactivate" : "Activate"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showForm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">

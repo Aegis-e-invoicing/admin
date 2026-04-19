@@ -61,15 +61,29 @@ export default function UserList() {
   const [totalPages, setTotalPages] = useState(1);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [clientForm, setClientForm] = useState<CreateUserPayload>(emptyClientForm);
-  const [aegisForm, setAegisForm] = useState<CreateAegisUserPayload>(emptyAegisForm);
+  const [clientForm, setClientForm] =
+    useState<CreateUserPayload>(emptyClientForm);
+  const [aegisForm, setAegisForm] =
+    useState<CreateAegisUserPayload>(emptyAegisForm);
   const [actioning, setActioning] = useState<string | null>(null);
+  const [resetModal, setResetModal] = useState<
+    UserSummary | AegisUserSummary | null
+  >(null);
+  const [toggleModal, setToggleModal] = useState<
+    UserSummary | AegisUserSummary | null
+  >(null);
 
-  const [allUsers, setAllUsers] = useState<(UserSummary | AegisUserSummary)[]>([]);
+  const [allUsers, setAllUsers] = useState<(UserSummary | AegisUserSummary)[]>(
+    [],
+  );
 
   const load = () => {
     if (USE_MOCK) {
-      setAllUsers(isAegis ? (MOCK_AEGIS_USERS as AegisUserSummary[]) : (MOCK_USERS as UserSummary[]));
+      setAllUsers(
+        isAegis
+          ? (MOCK_AEGIS_USERS as AegisUserSummary[])
+          : (MOCK_USERS as UserSummary[]),
+      );
       setLoading(false);
       return;
     }
@@ -107,11 +121,15 @@ export default function UserList() {
     try {
       if (isAegis) {
         if (!USE_MOCK) await aegisUserApi.create(aegisForm);
-        toast.success("Aegis staff user created. They will receive a temporary password by email.");
+        toast.success(
+          "Aegis staff user created. They will receive a temporary password by email.",
+        );
         setAegisForm(emptyAegisForm);
       } else {
         if (!USE_MOCK) await userMgmtApi.create(clientForm);
-        toast.success("User created. They will receive a temporary password by email.");
+        toast.success(
+          "User created. They will receive a temporary password by email.",
+        );
         setClientForm(emptyClientForm);
       }
       setShowForm(false);
@@ -123,21 +141,38 @@ export default function UserList() {
     }
   };
 
-  const handleToggleStatus = async (user: UserSummary | AegisUserSummary) => {
+  const handleToggleStatus = (user: UserSummary | AegisUserSummary) => {
+    setToggleModal(user);
+  };
+
+  const confirmToggleStatus = async () => {
+    if (!toggleModal) return;
+    const user = toggleModal;
+    setToggleModal(null);
     setActioning(user.id);
     try {
       if (user.status === "Active") {
         if (!USE_MOCK) {
-          isAegis ? await aegisUserApi.deactivate(user.id) : await userMgmtApi.deactivate(user.id);
+          isAegis
+            ? await aegisUserApi.deactivate(user.id)
+            : await userMgmtApi.deactivate(user.id);
         }
         toast.success(`${user.NRStName} deactivated.`);
       } else {
         if (!USE_MOCK) {
-          isAegis ? await aegisUserApi.activate(user.id) : await userMgmtApi.activate(user.id);
+          isAegis
+            ? await aegisUserApi.activate(user.id)
+            : await userMgmtApi.activate(user.id);
         }
         toast.success(`${user.NRStName} activated.`);
       }
-      load();
+      setAllUsers((prev) =>
+        prev.map((u) =>
+          u.id === user.id
+            ? { ...u, status: user.status === "Active" ? "Inactive" : "Active" }
+            : u,
+        ),
+      );
     } catch {
       toast.error("Action failed.");
     } finally {
@@ -145,13 +180,20 @@ export default function UserList() {
     }
   };
 
-  const handleResetPassword = async (user: UserSummary | AegisUserSummary) => {
-    if (!window.confirm(`Reset password for ${user.NRStName} ${user.lastName}?`))
-      return;
+  const handleResetPassword = (user: UserSummary | AegisUserSummary) => {
+    setResetModal(user);
+  };
+
+  const confirmResetPassword = async () => {
+    if (!resetModal) return;
+    const user = resetModal;
+    setResetModal(null);
     setActioning(user.id);
     try {
       if (!USE_MOCK) {
-        isAegis ? await aegisUserApi.resetPassword(user.id) : await userMgmtApi.resetPassword(user.id);
+        isAegis
+          ? await aegisUserApi.resetPassword(user.id)
+          : await userMgmtApi.resetPassword(user.id);
       }
       toast.success(`Password reset email sent to ${user.email}.`);
     } catch {
@@ -164,8 +206,14 @@ export default function UserList() {
   return (
     <>
       <PageMeta
-        title={isAegis ? "Aegis Staff | Aegis EInvoicing Platform" : "Users | Aegis EInvoicing Portal"}
-        description={isAegis ? "Manage Aegis platform staff users" : "Manage portal users"}
+        title={
+          isAegis
+            ? "Aegis Staff | Aegis EInvoicing Platform"
+            : "Users | Aegis EInvoicing Portal"
+        }
+        description={
+          isAegis ? "Manage Aegis platform staff users" : "Manage portal users"
+        }
       />
 
       <div className="flex items-center justify-between mb-6">
@@ -242,7 +290,9 @@ export default function UserList() {
                     : setClientForm((f) => ({ ...f, email: e.target.value }))
                 }
                 className={inputCls}
-                placeholder={isAegis ? "staff@aegisnrs.com" : "user@example.com"}
+                placeholder={
+                  isAegis ? "staff@aegisnrs.com" : "user@example.com"
+                }
                 type="email"
                 required
               />
@@ -252,11 +302,20 @@ export default function UserList() {
                 Phone
               </label>
               <input
-                value={(isAegis ? aegisForm.phoneNumber : clientForm.phoneNumber) ?? ""}
+                value={
+                  (isAegis ? aegisForm.phoneNumber : clientForm.phoneNumber) ??
+                  ""
+                }
                 onChange={(e) =>
                   isAegis
-                    ? setAegisForm((f) => ({ ...f, phoneNumber: e.target.value }))
-                    : setClientForm((f) => ({ ...f, phoneNumber: e.target.value }))
+                    ? setAegisForm((f) => ({
+                        ...f,
+                        phoneNumber: e.target.value,
+                      }))
+                    : setClientForm((f) => ({
+                        ...f,
+                        phoneNumber: e.target.value,
+                      }))
                 }
                 className={inputCls}
                 placeholder="+234..."
@@ -269,21 +328,29 @@ export default function UserList() {
               {isAegis ? (
                 <select
                   value={aegisForm.aegisRole}
-                  onChange={(e) => setAegisForm((f) => ({ ...f, aegisRole: e.target.value }))}
+                  onChange={(e) =>
+                    setAegisForm((f) => ({ ...f, aegisRole: e.target.value }))
+                  }
                   className={inputCls}
                 >
                   {AEGIS_ROLE_OPTIONS.map((r) => (
-                    <option key={r.id} value={r.id}>{r.label}</option>
+                    <option key={r.id} value={r.id}>
+                      {r.label}
+                    </option>
                   ))}
                 </select>
               ) : (
                 <select
                   value={clientForm.roleId}
-                  onChange={(e) => setClientForm((f) => ({ ...f, roleId: e.target.value }))}
+                  onChange={(e) =>
+                    setClientForm((f) => ({ ...f, roleId: e.target.value }))
+                  }
                   className={inputCls}
                 >
                   {CLIENT_ROLE_OPTIONS.map((r) => (
-                    <option key={r.id} value={r.id}>{r.label}</option>
+                    <option key={r.id} value={r.id}>
+                      {r.label}
+                    </option>
                   ))}
                 </select>
               )}
@@ -346,7 +413,9 @@ export default function UserList() {
                 onClick={() => setShowForm(true)}
                 className="text-brand-500 hover:text-brand-600 text-sm font-medium"
               >
-                {isAegis ? "Invite a staff member →" : "Invite your first user →"}
+                {isAegis
+                  ? "Invite a staff member →"
+                  : "Invite your first user →"}
               </button>
             )}
           </div>
@@ -478,6 +547,127 @@ export default function UserList() {
           </div>
         </div>
       </div>
+
+      {/* ── Reset Password Confirmation Modal ── */}
+      {resetModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 w-full max-w-sm shadow-xl">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-base font-semibold text-gray-800 dark:text-white">
+                Reset Password
+              </h2>
+              <button
+                onClick={() => setResetModal(null)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div className="p-5">
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                Send a password reset email to{" "}
+                <span className="font-semibold text-gray-800 dark:text-white">
+                  {resetModal.NRStName} {resetModal.lastName}
+                </span>
+                ?
+              </p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                {resetModal.email}
+              </p>
+            </div>
+            <div className="flex justify-end gap-2 px-5 py-4 border-t border-gray-200 dark:border-gray-700">
+              <button
+                onClick={() => setResetModal(null)}
+                className="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmResetPassword}
+                className="px-4 py-2 text-sm bg-brand-500 hover:bg-brand-600 text-white font-medium rounded-xl transition-colors"
+              >
+                Send Reset Email
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Activate / Deactivate Confirmation Modal ── */}
+      {toggleModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 w-full max-w-sm shadow-xl">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-base font-semibold text-gray-800 dark:text-white">
+                {toggleModal.status === "Active" ? "Deactivate" : "Activate"}{" "}
+                User
+              </h2>
+              <button
+                onClick={() => setToggleModal(null)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div className="p-5">
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                {toggleModal.status === "Active" ? "Deactivate" : "Activate"}{" "}
+                <span className="font-semibold text-gray-800 dark:text-white">
+                  {toggleModal.NRStName} {toggleModal.lastName}
+                </span>
+                ?
+              </p>
+              {toggleModal.status === "Active" && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+                  This user will no longer be able to log in.
+                </p>
+              )}
+            </div>
+            <div className="flex justify-end gap-2 px-5 py-4 border-t border-gray-200 dark:border-gray-700">
+              <button
+                onClick={() => setToggleModal(null)}
+                className="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmToggleStatus}
+                className={`px-4 py-2 text-sm font-medium rounded-xl transition-colors text-white ${
+                  toggleModal.status === "Active"
+                    ? "bg-amber-500 hover:bg-amber-600"
+                    : "bg-green-500 hover:bg-green-600"
+                }`}
+              >
+                {toggleModal.status === "Active" ? "Deactivate" : "Activate"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

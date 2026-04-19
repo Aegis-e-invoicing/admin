@@ -185,7 +185,7 @@ export default function BroadcastList() {
                 {broadcasts.map((b) => (
                   <tr
                     key={b.id}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                    className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
                   >
                     <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">
                       {b.title}
@@ -427,9 +427,7 @@ export default function BroadcastList() {
                         className="rounded"
                       />
                       {v.businessName}{" "}
-                      <span className="text-xs text-gray-400">
-                        ({v.email})
-                      </span>
+                      <span className="text-xs text-gray-400">({v.email})</span>
                     </label>
                   ))}
                 </div>

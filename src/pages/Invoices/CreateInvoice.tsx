@@ -98,7 +98,9 @@ function NoteTypeToggle({
   onChange: (code: string) => void;
 }) {
   return (
-    <div className={`flex rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden text-sm shrink-0 ${locked ? "opacity-60 pointer-events-none" : ""}`}>
+    <div
+      className={`flex rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden text-sm shrink-0 ${locked ? "opacity-60 pointer-events-none" : ""}`}
+    >
       {[
         { code: "381", label: "Credit Note" },
         { code: "383", label: "Debit Note" },
@@ -138,11 +140,26 @@ export default function CreateInvoice() {
   const fromInvoice = fromState.fromInvoice ?? null;
 
   // Derived constants for note mode
-  const isNote = noteType === "credit" || noteType === "debit" || noteType === "note";
+  const isNote =
+    noteType === "credit" || noteType === "debit" || noteType === "note";
   // When specific type was chosen (from invoice detail), lock the invoice type field
   const isNoteTypeLocked = noteType === "credit" || noteType === "debit";
-  const noteTypeCode = noteType === "credit" ? "381" : noteType === "debit" ? "383" : noteType === "note" ? "381" : null;
-  const noteLabel = noteType === "credit" ? "Credit Note" : noteType === "debit" ? "Debit Note" : noteType === "note" ? "Credit / Debit Note" : null;
+  const noteTypeCode =
+    noteType === "credit"
+      ? "381"
+      : noteType === "debit"
+        ? "383"
+        : noteType === "note"
+          ? "381"
+          : null;
+  const noteLabel =
+    noteType === "credit"
+      ? "Credit Note"
+      : noteType === "debit"
+        ? "Debit Note"
+        : noteType === "note"
+          ? "Credit / Debit Note"
+          : null;
 
   const [parties, setParties] = useState<Party[]>([]);
   const [items, setItems] = useState<BusinessItemSummary[]>([]);
@@ -209,6 +226,14 @@ export default function CreateInvoice() {
   useEffect(() => {
     if (isNote) setShowDocRefs(true);
   }, [isNote]);
+
+  // When entering generic note mode (noteType === "note"), default to Credit Note.
+  // Also handles same-path navigation where useState initializer won't re-run.
+  useEffect(() => {
+    if (noteType === "note") {
+      setForm((prev) => ({ ...prev, invoiceTypeCode: "381" }));
+    }
+  }, [noteType]);
 
   // Auto-match party from partyName once parties list loads
   useEffect(() => {
@@ -636,13 +661,12 @@ export default function CreateInvoice() {
           {isNote && !billingRefResolved
             ? `Select the original invoice below${noteType === "note" ? " and choose the note type" : ""} to begin.`
             : isNote && billingRefResolved
-            ? `Referencing ${docRefs.billingReference[0]?.irn} · will go through approval then submitted to NRS`
-            : "Invoice will go through approval then be submitted to NRS"}
+              ? `Referencing ${docRefs.billingReference[0]?.irn} · will go through approval then submitted to NRS`
+              : "Invoice will go through approval then be submitted to NRS"}
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
-
         {/* ── Note mode: Billing reference step (always shown first) ── */}
         {isNote && (
           <div
@@ -664,19 +688,43 @@ export default function CreateInvoice() {
               </div>
               <div className="flex-1 min-w-0">
                 <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
-                  {billingRefResolved
-                    ? "Original Invoice (locked)"
-                    : "Step 1 — Select the original invoice and note type"}
+                  {billingRefResolved ? (
+                    <>
+                      Original Invoice
+                      <svg
+                        className="inline w-3.5 h-3.5 ml-1.5 text-gray-400"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        aria-label="locked"
+                      >
+                        <path d="M17 8h-1V6A4 4 0 1 0 8 6v2H7a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2zm-7-2a2 2 0 1 1 4 0v2h-4V6zm4 9.73V17a2 2 0 1 1-4 0v-1.27A2 2 0 0 1 12 12a2 2 0 0 1 2 3.73z" />
+                      </svg>
+                    </>
+                  ) : (
+                    "Step 1 — Select the original invoice and note type"
+                  )}
                 </h3>
                 {billingRefResolved ? (
                   /* Resolved: [badge] [Change] ··· [toggle at far right] */
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gray-800 border border-green-200 dark:border-green-700 text-green-700 dark:text-green-300 rounded-xl text-xs font-mono">
-                      <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      <svg
+                        className="w-3.5 h-3.5 shrink-0"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                        />
                       </svg>
                       {fromInvoice?.partyName ??
-                        invoicesWithIRN.find((i) => i.irn === docRefs.billingReference[0]?.irn)?.partyName}{" "}
+                        invoicesWithIRN.find(
+                          (i) => i.irn === docRefs.billingReference[0]?.irn,
+                        )?.partyName}{" "}
                       — {docRefs.billingReference[0]?.irn}
                     </span>
                     {!fromInvoice && (
@@ -692,7 +740,12 @@ export default function CreateInvoice() {
                       <NoteTypeToggle
                         value={form.invoiceTypeCode}
                         locked={isNoteTypeLocked}
-                        onChange={(code) => setForm((prev) => ({ ...prev, invoiceTypeCode: code }))}
+                        onChange={(code) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            invoiceTypeCode: code,
+                          }))
+                        }
                       />
                     </div>
                   </div>
@@ -700,18 +753,22 @@ export default function CreateInvoice() {
                   /* Unresolved: [invoice picker (flex-1)] ··· [toggle at far right] */
                   <>
                     <p className="text-xs text-amber-700 dark:text-amber-300 mb-3">
-                      Only signed invoices with an IRN are listed. All other fields are locked until you select one.
+                      Only signed invoices with an IRN are listed. All other
+                      fields are locked until you select one.
                     </p>
                     <div className="flex gap-3 items-center">
                       <div className="flex-1 min-w-0">
                         <select
                           value=""
                           onChange={(e) => {
-                            if (e.target.value) handleBillingRefSelect(e.target.value);
+                            if (e.target.value)
+                              handleBillingRefSelect(e.target.value);
                           }}
                           className={inputCls}
                         >
-                          <option value="">Select the original invoice...</option>
+                          <option value="">
+                            Select the original invoice...
+                          </option>
                           {invoicesWithIRN.map((inv) => (
                             <option key={inv.irn} value={inv.irn!}>
                               {inv.partyName} — {inv.irn}
@@ -720,14 +777,20 @@ export default function CreateInvoice() {
                         </select>
                         {invoicesWithIRN.length === 0 && (
                           <p className="text-xs text-red-500 mt-1">
-                            No signed invoices found. Only invoices that have been signed and have an IRN can be referenced.
+                            No signed invoices found. Only invoices that have
+                            been signed and have an IRN can be referenced.
                           </p>
                         )}
                       </div>
                       <NoteTypeToggle
                         value={form.invoiceTypeCode}
                         locked={isNoteTypeLocked}
-                        onChange={(code) => setForm((prev) => ({ ...prev, invoiceTypeCode: code }))}
+                        onChange={(code) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            invoiceTypeCode: code,
+                          }))
+                        }
                       />
                     </div>
                   </>
@@ -738,304 +801,384 @@ export default function CreateInvoice() {
         )}
 
         {/* ── Main form — disabled until billing ref is resolved in note mode ── */}
-        <div className={`space-y-5 ${isNote && !billingRefResolved ? "pointer-events-none opacity-40 select-none" : ""}`}>
-
-        {/* Invoice Details */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 lg:p-6">
-          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
-            Invoice Details
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="sm:col-span-2 lg:col-span-1">
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                Buyer / Party <span className="text-error-500">*</span>
-                {isNote && <span className="ml-1 text-xs text-gray-400">(locked)</span>}
-              </label>
-              <select
-                value={form.partyId}
-                onChange={handleFieldChange("partyId")}
-                disabled={isNote}
-                className={`${inputCls} ${isNote ? "opacity-60 cursor-not-allowed bg-gray-50 dark:bg-gray-700" : ""}`}
-                required
-              >
-                <option value="">Select party...</option>
-                {parties.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} — {p.taxIdentificationNumber}
-                  </option>
-                ))}
-              </select>
-              {parties.length === 0 && !isNote && (
-                <p className="text-xs text-amber-600 mt-1">
-                  No parties found.{" "}
-                  <a href="/parties" className="underline">
-                    Add one NRSt.
-                  </a>
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                Invoice Kind <span className="text-error-500">*</span>
-                <InfoTooltip text="B2B: selling to another business. B2C: selling to an individual consumer. B2G: selling to a government entity." />
-              </label>
-              <select
-                value={form.invoiceKind}
-                onChange={handleFieldChange("invoiceKind")}
-                className={inputCls}
-              >
-                {INVOICE_KINDS.map((k) => (
-                  <option key={k.code} value={k.code}>
-                    {k.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {!isNote && (
-              <div>
+        <div
+          className={`space-y-5 ${isNote && !billingRefResolved ? "pointer-events-none opacity-40 select-none" : ""}`}
+        >
+          {/* Invoice Details */}
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 lg:p-6">
+            <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
+              Invoice Details
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="sm:col-span-2 lg:col-span-1">
                 <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                  Invoice Type <span className="text-error-500">*</span>
+                  Buyer / Party <span className="text-error-500">*</span>
+                  {isNote && (
+                    <svg
+                      className="inline w-3 h-3 ml-1 text-gray-400"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                      aria-label="locked"
+                    >
+                      <path d="M17 8h-1V6A4 4 0 1 0 8 6v2H7a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2zm-7-2a2 2 0 1 1 4 0v2h-4V6zm4 9.73V17a2 2 0 1 1-4 0v-1.27A2 2 0 0 1 12 12a2 2 0 0 1 2 3.73z" />
+                    </svg>
+                  )}
                 </label>
                 <select
-                  value={form.invoiceTypeCode}
-                  onChange={handleFieldChange("invoiceTypeCode")}
+                  value={form.partyId}
+                  onChange={handleFieldChange("partyId")}
+                  disabled={isNote}
+                  className={`${inputCls} ${isNote ? "opacity-60 cursor-not-allowed bg-gray-50 dark:bg-gray-700" : ""}`}
+                  required
+                >
+                  <option value="">Select party...</option>
+                  {parties.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} — {p.taxIdentificationNumber}
+                    </option>
+                  ))}
+                </select>
+                {parties.length === 0 && !isNote && (
+                  <p className="text-xs text-amber-600 mt-1">
+                    No parties found.{" "}
+                    <a href="/parties" className="underline">
+                      Add one NRSt.
+                    </a>
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                  Invoice Kind <span className="text-error-500">*</span>
+                  <InfoTooltip text="B2B: selling to another business. B2C: selling to an individual consumer. B2G: selling to a government entity." />
+                </label>
+                <select
+                  value={form.invoiceKind}
+                  onChange={handleFieldChange("invoiceKind")}
                   className={inputCls}
                 >
-                  {INVOICE_TYPES.map((t) => (
-                    <option key={t.code} value={t.code}>
-                      {t.label}
+                  {INVOICE_KINDS.map((k) => (
+                    <option key={k.code} value={k.code}>
+                      {k.label}
                     </option>
                   ))}
                 </select>
               </div>
-            )}
 
-            <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                Currency
-              </label>
-              <select
-                value={form.currencyCode}
-                onChange={handleFieldChange("currencyCode")}
-                className={inputCls}
-              >
-                {CURRENCIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            </div>
+              {!isNote && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                    Invoice Type <span className="text-error-500">*</span>
+                  </label>
+                  <select
+                    value={form.invoiceTypeCode}
+                    onChange={handleFieldChange("invoiceTypeCode")}
+                    className={inputCls}
+                  >
+                    {INVOICE_TYPES.map((t) => (
+                      <option key={t.code} value={t.code}>
+                        {t.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
-            <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
-                Issue Date <span className="text-error-500">*</span>
-              </label>
-              <DatePicker
-                id="invoice-issue-date"
-                placeholder="Select issue date"
-                defaultDate={form.issueDate}
-                onChange={handleIssueDateChange}
-              />
-            </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                  Currency
+                </label>
+                <select
+                  value={form.currencyCode}
+                  onChange={handleFieldChange("currencyCode")}
+                  className={inputCls}
+                >
+                  {CURRENCIES.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-            <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
-                Due Date
-              </label>
-              <DatePicker
-                id="invoice-due-date"
-                placeholder="Select due date (optional)"
-                defaultDate={form.dueDate || undefined}
-                onChange={handleDueDateChange}
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                Payment Method
-              </label>
-              <select
-                value={form.paymentMeansCode}
-                onChange={handleFieldChange("paymentMeansCode")}
-                className={inputCls}
-              >
-                <option value="">— None —</option>
-                {PAYMENT_MEANS.map((m) => (
-                  <option key={m.code} value={m.code}>
-                    {m.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="sm:col-span-2 lg:col-span-3">
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                Note (optional)
-              </label>
-              <textarea
-                value={form.note}
-                onChange={handleFieldChange("note")}
-                rows={2}
-                placeholder="Any notes to the buyer..."
-                className={`${inputCls} resize-none`}
-              />
-            </div>
-          </div>
-
-          {/* Document References */}
-          <div className="mt-4 border-t border-gray-100 dark:border-gray-700 pt-4">
-            <button
-              type="button"
-              onClick={() => setShowDocRefs((v) => !v)}
-              className="flex items-center gap-2 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
-            >
-              <svg
-                className={`w-3.5 h-3.5 transition-transform ${showDocRefs ? "rotate-90" : ""}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 5l7 7-7 7"
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
+                  Issue Date <span className="text-error-500">*</span>
+                </label>
+                <DatePicker
+                  id="invoice-issue-date"
+                  placeholder="Select issue date"
+                  defaultDate={form.issueDate}
+                  onChange={handleIssueDateChange}
                 />
-              </svg>
-              Document References (optional)
-            </button>
-            {showDocRefs && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-                {/* Order Reference */}
-                <div>
-                  <label className="flex items-center text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                    Order Reference
-                    <InfoTooltip text="The order number tied to an invoice." />
-                  </label>
-                  <input
-                    value={form.orderReference}
-                    onChange={handleFieldChange("orderReference")}
-                    className={inputCls}
-                    placeholder="PO-2025-001"
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
+                  Due Date
+                </label>
+                <DatePicker
+                  id="invoice-due-date"
+                  placeholder="Select due date (optional)"
+                  defaultDate={form.dueDate || undefined}
+                  onChange={handleDueDateChange}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                  Payment Method
+                </label>
+                <select
+                  value={form.paymentMeansCode}
+                  onChange={handleFieldChange("paymentMeansCode")}
+                  className={inputCls}
+                >
+                  <option value="">— None —</option>
+                  {PAYMENT_MEANS.map((m) => (
+                    <option key={m.code} value={m.code}>
+                      {m.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="sm:col-span-2 lg:col-span-3">
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                  Note (optional)
+                </label>
+                <textarea
+                  value={form.note}
+                  onChange={handleFieldChange("note")}
+                  rows={2}
+                  placeholder="Any notes to the buyer..."
+                  className={`${inputCls} resize-none`}
+                />
+              </div>
+            </div>
+
+            {/* Document References */}
+            <div className="mt-4 border-t border-gray-100 dark:border-gray-700 pt-4">
+              <button
+                type="button"
+                onClick={() => setShowDocRefs((v) => !v)}
+                className="flex items-center gap-2 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+              >
+                <svg
+                  className={`w-3.5 h-3.5 transition-transform ${showDocRefs ? "rotate-90" : ""}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5l7 7-7 7"
                   />
-                </div>
+                </svg>
+                Document References (optional)
+              </button>
+              {showDocRefs && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                  {/* Order Reference */}
+                  <div>
+                    <label className="flex items-center text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                      Order Reference
+                      <InfoTooltip text="The order number tied to an invoice." />
+                    </label>
+                    <input
+                      value={form.orderReference}
+                      onChange={handleFieldChange("orderReference")}
+                      className={inputCls}
+                      placeholder="PO-2025-001"
+                    />
+                  </div>
 
-                {/* Contract Document Reference */}
-                <div>
-                  <label className="flex items-center text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                    Contract Reference
-                    <InfoTooltip text="Links the invoice to a contract governing the transaction." />
-                  </label>
-                  <select
-                    value={docRefs.contractDocumentReference?.irn ?? ""}
-                    onChange={(e) =>
-                      setSingleRef("contractDocumentReference", e.target.value)
-                    }
-                    className={inputCls}
-                  >
-                    <option value="">— None —</option>
-                    {invoicesWithIRN.map((inv) => (
-                      <option key={inv.irn} value={inv.irn!}>
-                        {inv.partyName} — {inv.irn}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                  {/* Contract Document Reference */}
+                  <div>
+                    <label className="flex items-center text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                      Contract Reference
+                      <InfoTooltip text="Links the invoice to a contract governing the transaction." />
+                    </label>
+                    <select
+                      value={docRefs.contractDocumentReference?.irn ?? ""}
+                      onChange={(e) =>
+                        setSingleRef(
+                          "contractDocumentReference",
+                          e.target.value,
+                        )
+                      }
+                      className={inputCls}
+                    >
+                      <option value="">— None —</option>
+                      {invoicesWithIRN.map((inv) => (
+                        <option key={inv.irn} value={inv.irn!}>
+                          {inv.partyName} — {inv.irn}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-                {/* Dispatch Document Reference */}
-                <div>
-                  <label className="flex items-center text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                    Dispatch Document Reference
-                    <InfoTooltip text="Refers to the document used to track the dispatch of goods." />
-                  </label>
-                  <select
-                    value={docRefs.dispatchDocumentReference?.irn ?? ""}
-                    onChange={(e) =>
-                      setSingleRef("dispatchDocumentReference", e.target.value)
-                    }
-                    className={inputCls}
-                  >
-                    <option value="">— None —</option>
-                    {invoicesWithIRN.map((inv) => (
-                      <option key={inv.irn} value={inv.irn!}>
-                        {inv.partyName} — {inv.irn}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                  {/* Dispatch Document Reference */}
+                  <div>
+                    <label className="flex items-center text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                      Dispatch Document Reference
+                      <InfoTooltip text="Refers to the document used to track the dispatch of goods." />
+                    </label>
+                    <select
+                      value={docRefs.dispatchDocumentReference?.irn ?? ""}
+                      onChange={(e) =>
+                        setSingleRef(
+                          "dispatchDocumentReference",
+                          e.target.value,
+                        )
+                      }
+                      className={inputCls}
+                    >
+                      <option value="">— None —</option>
+                      {invoicesWithIRN.map((inv) => (
+                        <option key={inv.irn} value={inv.irn!}>
+                          {inv.partyName} — {inv.irn}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-                {/* Receipt Document Reference */}
-                <div>
-                  <label className="flex items-center text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                    Receipt Document Reference
-                    <InfoTooltip text="Links the invoice to a receipt document associated with this invoice." />
-                  </label>
-                  <select
-                    value={docRefs.receiptDocumentReference?.irn ?? ""}
-                    onChange={(e) =>
-                      setSingleRef("receiptDocumentReference", e.target.value)
-                    }
-                    className={inputCls}
-                  >
-                    <option value="">— None —</option>
-                    {invoicesWithIRN.map((inv) => (
-                      <option key={inv.irn} value={inv.irn!}>
-                        {inv.partyName} — {inv.irn}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                  {/* Receipt Document Reference */}
+                  <div>
+                    <label className="flex items-center text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                      Receipt Document Reference
+                      <InfoTooltip text="Links the invoice to a receipt document associated with this invoice." />
+                    </label>
+                    <select
+                      value={docRefs.receiptDocumentReference?.irn ?? ""}
+                      onChange={(e) =>
+                        setSingleRef("receiptDocumentReference", e.target.value)
+                      }
+                      className={inputCls}
+                    >
+                      <option value="">— None —</option>
+                      {invoicesWithIRN.map((inv) => (
+                        <option key={inv.irn} value={inv.irn!}>
+                          {inv.partyName} — {inv.irn}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-                {/* Originator Document Reference */}
-                <div>
-                  <label className="flex items-center text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                    Originator Document Reference
-                    <InfoTooltip text="Identifies the original document that initiated this invoice." />
-                  </label>
-                  <select
-                    value={docRefs.originatorDocumentReference?.irn ?? ""}
-                    onChange={(e) =>
-                      setSingleRef(
-                        "originatorDocumentReference",
-                        e.target.value,
-                      )
-                    }
-                    className={inputCls}
-                  >
-                    <option value="">— None —</option>
-                    {invoicesWithIRN.map((inv) => (
-                      <option key={inv.irn} value={inv.irn!}>
-                        {inv.partyName} — {inv.irn}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                  {/* Originator Document Reference */}
+                  <div>
+                    <label className="flex items-center text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                      Originator Document Reference
+                      <InfoTooltip text="Identifies the original document that initiated this invoice." />
+                    </label>
+                    <select
+                      value={docRefs.originatorDocumentReference?.irn ?? ""}
+                      onChange={(e) =>
+                        setSingleRef(
+                          "originatorDocumentReference",
+                          e.target.value,
+                        )
+                      }
+                      className={inputCls}
+                    >
+                      <option value="">— None —</option>
+                      {invoicesWithIRN.map((inv) => (
+                        <option key={inv.irn} value={inv.irn!}>
+                          {inv.partyName} — {inv.irn}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-                {/* Billing Reference — only shown here for plain invoices; in note mode it's handled by the top card */}
-                {!isNote && (
+                  {/* Billing Reference — only shown here for plain invoices; in note mode it's handled by the top card */}
+                  {!isNote && (
+                    <div className="sm:col-span-2">
+                      <label className="flex items-center text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                        Billing Reference
+                        <InfoTooltip text="Links this invoice to previous billing documents, e.g. credit notes, debit notes, or prior invoices." />
+                      </label>
+                      <select
+                        value=""
+                        onChange={(e) => {
+                          if (e.target.value)
+                            addToArrayRef("billingReference", e.target.value);
+                        }}
+                        className={inputCls}
+                      >
+                        <option value="">
+                          + Select to add billing reference...
+                        </option>
+                        {invoicesWithIRN
+                          .filter(
+                            (inv) =>
+                              !docRefs.billingReference.some(
+                                (r) => r.irn === inv.irn,
+                              ),
+                          )
+                          .map((inv) => (
+                            <option key={inv.irn} value={inv.irn!}>
+                              {inv.partyName} — {inv.irn}
+                            </option>
+                          ))}
+                      </select>
+                      {docRefs.billingReference.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {docRefs.billingReference.map((ref) => (
+                            <span
+                              key={ref.irn}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-300 rounded-full text-xs border border-brand-200 dark:border-brand-800"
+                            >
+                              {
+                                invoicesWithIRN.find((i) => i.irn === ref.irn)
+                                  ?.partyName
+                              }{" "}
+                              — {ref.irn}
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  removeFromArrayRef(
+                                    "billingReference",
+                                    ref.irn,
+                                  )
+                                }
+                                className="text-brand-400 hover:text-red-500 transition-colors leading-none"
+                              >
+                                &times;
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Additional Document References — multi */}
                   <div className="sm:col-span-2">
                     <label className="flex items-center text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                      Billing Reference
-                      <InfoTooltip text="Links this invoice to previous billing documents, e.g. credit notes, debit notes, or prior invoices." />
+                      Additional Document References
+                      <InfoTooltip text="General reference field for any additional documents related to this invoice." />
                     </label>
                     <select
                       value=""
                       onChange={(e) => {
                         if (e.target.value)
-                          addToArrayRef("billingReference", e.target.value);
+                          addToArrayRef(
+                            "additionalDocumentReferences",
+                            e.target.value,
+                          );
                       }}
                       className={inputCls}
                     >
                       <option value="">
-                        + Select to add billing reference...
+                        + Select to add additional reference...
                       </option>
                       {invoicesWithIRN
                         .filter(
                           (inv) =>
-                            !docRefs.billingReference.some(
+                            !docRefs.additionalDocumentReferences.some(
                               (r) => r.irn === inv.irn,
                             ),
                         )
@@ -1045,20 +1188,27 @@ export default function CreateInvoice() {
                           </option>
                         ))}
                     </select>
-                    {docRefs.billingReference.length > 0 && (
+                    {docRefs.additionalDocumentReferences.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 mt-2">
-                        {docRefs.billingReference.map((ref) => (
+                        {docRefs.additionalDocumentReferences.map((ref) => (
                           <span
                             key={ref.irn}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-300 rounded-full text-xs border border-brand-200 dark:border-brand-800"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full text-xs border border-gray-200 dark:border-gray-600"
                           >
-                            {invoicesWithIRN.find((i) => i.irn === ref.irn)?.partyName} — {ref.irn}
+                            {
+                              invoicesWithIRN.find((i) => i.irn === ref.irn)
+                                ?.partyName
+                            }{" "}
+                            — {ref.irn}
                             <button
                               type="button"
                               onClick={() =>
-                                removeFromArrayRef("billingReference", ref.irn)
+                                removeFromArrayRef(
+                                  "additionalDocumentReferences",
+                                  ref.irn,
+                                )
                               }
-                              className="text-brand-400 hover:text-red-500 transition-colors leading-none"
+                              className="text-gray-400 hover:text-red-500 transition-colors leading-none"
                             >
                               &times;
                             </button>
@@ -1067,300 +1217,238 @@ export default function CreateInvoice() {
                       </div>
                     )}
                   </div>
-                )}
-
-                {/* Additional Document References — multi */}
-                <div className="sm:col-span-2">
-                  <label className="flex items-center text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                    Additional Document References
-                    <InfoTooltip text="General reference field for any additional documents related to this invoice." />
-                  </label>
-                  <select
-                    value=""
-                    onChange={(e) => {
-                      if (e.target.value)
-                        addToArrayRef(
-                          "additionalDocumentReferences",
-                          e.target.value,
-                        );
-                    }}
-                    className={inputCls}
-                  >
-                    <option value="">
-                      + Select to add additional reference...
-                    </option>
-                    {invoicesWithIRN
-                      .filter(
-                        (inv) =>
-                          !docRefs.additionalDocumentReferences.some(
-                            (r) => r.irn === inv.irn,
-                          ),
-                      )
-                      .map((inv) => (
-                        <option key={inv.irn} value={inv.irn!}>
-                          {inv.partyName} — {inv.irn}
-                        </option>
-                      ))}
-                  </select>
-                  {docRefs.additionalDocumentReferences.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      {docRefs.additionalDocumentReferences.map((ref) => (
-                        <span
-                          key={ref.irn}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full text-xs border border-gray-200 dark:border-gray-600"
-                        >
-                          {
-                            invoicesWithIRN.find((i) => i.irn === ref.irn)
-                              ?.partyName
-                          }{" "}
-                          — {ref.irn}
-                          <button
-                            type="button"
-                            onClick={() =>
-                              removeFromArrayRef(
-                                "additionalDocumentReferences",
-                                ref.irn,
-                              )
-                            }
-                            className="text-gray-400 hover:text-red-500 transition-colors leading-none"
-                          >
-                            &times;
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  )}
                 </div>
+              )}
+            </div>
+          </div>
+
+          {/* Line Items */}
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 lg:p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                Line Items
+              </h2>
+              <button
+                type="button"
+                onClick={addLine}
+                className="text-xs text-brand-500 hover:text-brand-600 font-medium"
+              >
+                + Add Line
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div className="hidden lg:grid lg:grid-cols-12 gap-2 text-xs font-medium text-gray-400 dark:text-gray-500 px-1">
+                <div className="col-span-4">Item</div>
+                <div className="col-span-2 text-right">Unit Price (₦)</div>
+                <div className="col-span-1 text-center">Qty</div>
+                <div className="col-span-3">Discount (₦ or %)</div>
+                <div className="col-span-1 text-right">Net</div>
+                <div className="col-span-1 text-right">Tax</div>
+              </div>
+
+              {lineItems.map((li, index) => {
+                const tc = taxCategories.find(
+                  (t) => t.code === li._taxCategoryCode,
+                );
+                const taxRate = tc ? parseTaxPercent(tc.percent) : 0;
+                const net = lineNet(li);
+                const tax = lineTax(li);
+                return (
+                  <div
+                    key={index}
+                    className="grid grid-cols-12 gap-2 items-start border border-gray-100 dark:border-gray-700 rounded-xl p-3 lg:border-0 lg:p-0 lg:rounded-none"
+                  >
+                    {/* Item */}
+                    <div className="col-span-12 lg:col-span-4">
+                      <label className="text-xs text-gray-400 lg:hidden mb-0.5 block">
+                        Item
+                      </label>
+                      <select
+                        value={li.businessItemId}
+                        onChange={(e) =>
+                          handleItemSelect(index, e.target.value)
+                        }
+                        className={inputCls}
+                        required
+                      >
+                        <option value="">Select item...</option>
+                        {items.map((it) => (
+                          <option key={it.id} value={it.id}>
+                            {it.itemId} — {it.name}
+                          </option>
+                        ))}
+                      </select>
+                      {li.businessItemId && (
+                        <select
+                          value={li._taxCategoryCode}
+                          onChange={(e) =>
+                            handleLineChange(
+                              index,
+                              "_taxCategoryCode",
+                              e.target.value,
+                            )
+                          }
+                          className={`${inputCls} mt-1 text-xs`}
+                        >
+                          <option value="">— No tax / Exempt —</option>
+                          {taxCategories.map((cat) => (
+                            <option key={cat.code} value={cat.code}>
+                              {cat.value} ({cat.percent}%)
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+
+                    {/* Unit Price — read-only, snapshotted from business item */}
+                    <div className="col-span-6 lg:col-span-2">
+                      <label className="text-xs text-gray-400 lg:hidden mb-0.5 block">
+                        Unit Price
+                      </label>
+                      <input
+                        type="number"
+                        value={li.unitPrice}
+                        readOnly
+                        tabIndex={-1}
+                        className={`${inputCls} text-right bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 cursor-default select-none`}
+                      />
+                    </div>
+
+                    {/* Qty */}
+                    <div className="col-span-6 lg:col-span-1">
+                      <label className="text-xs text-gray-400 lg:hidden mb-0.5 block">
+                        Qty
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={li.quantity}
+                        onChange={(e) =>
+                          handleLineChange(
+                            index,
+                            "quantity",
+                            parseInt(e.target.value) || 1,
+                          )
+                        }
+                        className={`${inputCls} text-center`}
+                        required
+                      />
+                    </div>
+
+                    {/* Discount */}
+                    <div className="col-span-11 lg:col-span-3">
+                      <label className="text-xs text-gray-400 lg:hidden mb-0.5 block">
+                        Discount
+                      </label>
+                      <div className="flex gap-1">
+                        <button
+                          type="button"
+                          onClick={() => toggleDiscountType(index)}
+                          title="Toggle between fixed amount and percentage"
+                          className="flex-shrink-0 w-10 px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-xs font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-center"
+                        >
+                          {li._discountType === "percent" ? "%" : "₦"}
+                        </button>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={
+                            li._discountType === "percent"
+                              ? li._discountPercent
+                              : (li.lineDiscount ?? 0)
+                          }
+                          onChange={(e) => {
+                            const val = parseFloat(e.target.value) || 0;
+                            if (li._discountType === "percent") {
+                              handleLineChange(index, "_discountPercent", val);
+                            } else {
+                              handleLineChange(index, "lineDiscount", val);
+                            }
+                          }}
+                          className={`${inputCls} text-right`}
+                        />
+                      </div>
+                      {li._discountType === "percent" &&
+                        li._discountPercent > 0 && (
+                          <p className="text-xs text-gray-400 mt-0.5 text-right">
+                            = ₦
+                            {lineDiscountAmt(li).toLocaleString(undefined, {
+                              maximumFractionDigits: 2,
+                            })}
+                          </p>
+                        )}
+                    </div>
+
+                    {/* Net */}
+                    <div className="col-span-6 lg:col-span-1 flex flex-col items-end justify-center">
+                      <label className="text-xs text-gray-400 lg:hidden mb-0.5">
+                        Net
+                      </label>
+                      <span className="text-sm font-semibold text-gray-800 dark:text-white">
+                        ₦
+                        {net.toLocaleString(undefined, {
+                          maximumFractionDigits: 0,
+                        })}
+                      </span>
+                    </div>
+
+                    {/* Tax */}
+                    <div className="col-span-5 lg:col-span-1 flex flex-col items-end justify-center">
+                      <label className="text-xs text-gray-400 lg:hidden mb-0.5">
+                        Tax
+                      </label>
+                      <span
+                        className={`text-xs font-medium ${taxRate > 0 ? "text-amber-600 dark:text-amber-400" : "text-gray-400"}`}
+                      >
+                        {!li.businessItemId
+                          ? "—"
+                          : taxRate > 0
+                            ? `₦${tax.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+                            : "Exempt"}
+                      </span>
+                    </div>
+
+                    {/* Remove */}
+                    <div className="col-span-1 flex items-center justify-center pt-1">
+                      <button
+                        type="button"
+                        onClick={() => removeLine(index)}
+                        disabled={lineItems.length === 1}
+                        className="text-gray-300 hover:text-red-500 disabled:opacity-20 transition-colors"
+                      >
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {items.length === 0 && (
+              <div className="mt-3 text-xs text-amber-600 dark:text-amber-400">
+                No business items found.{" "}
+                <a href="/items" className="underline">
+                  Add items NRSt.
+                </a>
               </div>
             )}
           </div>
         </div>
-
-        {/* Line Items */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 lg:p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-              Line Items
-            </h2>
-            <button
-              type="button"
-              onClick={addLine}
-              className="text-xs text-brand-500 hover:text-brand-600 font-medium"
-            >
-              + Add Line
-            </button>
-          </div>
-
-          <div className="space-y-3">
-            <div className="hidden lg:grid lg:grid-cols-12 gap-2 text-xs font-medium text-gray-400 dark:text-gray-500 px-1">
-              <div className="col-span-4">Item</div>
-              <div className="col-span-2 text-right">Unit Price (₦)</div>
-              <div className="col-span-1 text-center">Qty</div>
-              <div className="col-span-3">Discount (₦ or %)</div>
-              <div className="col-span-1 text-right">Net</div>
-              <div className="col-span-1 text-right">Tax</div>
-            </div>
-
-            {lineItems.map((li, index) => {
-              const tc = taxCategories.find(
-                (t) => t.code === li._taxCategoryCode,
-              );
-              const taxRate = tc ? parseTaxPercent(tc.percent) : 0;
-              const net = lineNet(li);
-              const tax = lineTax(li);
-              return (
-                <div
-                  key={index}
-                  className="grid grid-cols-12 gap-2 items-start border border-gray-100 dark:border-gray-700 rounded-xl p-3 lg:border-0 lg:p-0 lg:rounded-none"
-                >
-                  {/* Item */}
-                  <div className="col-span-12 lg:col-span-4">
-                    <label className="text-xs text-gray-400 lg:hidden mb-0.5 block">
-                      Item
-                    </label>
-                    <select
-                      value={li.businessItemId}
-                      onChange={(e) => handleItemSelect(index, e.target.value)}
-                      className={inputCls}
-                      required
-                    >
-                      <option value="">Select item...</option>
-                      {items.map((it) => (
-                        <option key={it.id} value={it.id}>
-                          {it.itemId} — {it.name}
-                        </option>
-                      ))}
-                    </select>
-                    {li.businessItemId && (
-                      <select
-                        value={li._taxCategoryCode}
-                        onChange={(e) =>
-                          handleLineChange(
-                            index,
-                            "_taxCategoryCode",
-                            e.target.value,
-                          )
-                        }
-                        className={`${inputCls} mt-1 text-xs`}
-                      >
-                        <option value="">— No tax / Exempt —</option>
-                        {taxCategories.map((cat) => (
-                          <option key={cat.code} value={cat.code}>
-                            {cat.value} ({cat.percent}%)
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                  </div>
-
-                  {/* Unit Price — read-only, snapshotted from business item */}
-                  <div className="col-span-6 lg:col-span-2">
-                    <label className="text-xs text-gray-400 lg:hidden mb-0.5 block">
-                      Unit Price
-                    </label>
-                    <input
-                      type="number"
-                      value={li.unitPrice}
-                      readOnly
-                      tabIndex={-1}
-                      className={`${inputCls} text-right bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 cursor-default select-none`}
-                    />
-                  </div>
-
-                  {/* Qty */}
-                  <div className="col-span-6 lg:col-span-1">
-                    <label className="text-xs text-gray-400 lg:hidden mb-0.5 block">
-                      Qty
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={li.quantity}
-                      onChange={(e) =>
-                        handleLineChange(
-                          index,
-                          "quantity",
-                          parseInt(e.target.value) || 1,
-                        )
-                      }
-                      className={`${inputCls} text-center`}
-                      required
-                    />
-                  </div>
-
-                  {/* Discount */}
-                  <div className="col-span-11 lg:col-span-3">
-                    <label className="text-xs text-gray-400 lg:hidden mb-0.5 block">
-                      Discount
-                    </label>
-                    <div className="flex gap-1">
-                      <button
-                        type="button"
-                        onClick={() => toggleDiscountType(index)}
-                        title="Toggle between fixed amount and percentage"
-                        className="flex-shrink-0 w-10 px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-xs font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-center"
-                      >
-                        {li._discountType === "percent" ? "%" : "₦"}
-                      </button>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={
-                          li._discountType === "percent"
-                            ? li._discountPercent
-                            : (li.lineDiscount ?? 0)
-                        }
-                        onChange={(e) => {
-                          const val = parseFloat(e.target.value) || 0;
-                          if (li._discountType === "percent") {
-                            handleLineChange(index, "_discountPercent", val);
-                          } else {
-                            handleLineChange(index, "lineDiscount", val);
-                          }
-                        }}
-                        className={`${inputCls} text-right`}
-                      />
-                    </div>
-                    {li._discountType === "percent" &&
-                      li._discountPercent > 0 && (
-                        <p className="text-xs text-gray-400 mt-0.5 text-right">
-                          = ₦
-                          {lineDiscountAmt(li).toLocaleString(undefined, {
-                            maximumFractionDigits: 2,
-                          })}
-                        </p>
-                      )}
-                  </div>
-
-                  {/* Net */}
-                  <div className="col-span-6 lg:col-span-1 flex flex-col items-end justify-center">
-                    <label className="text-xs text-gray-400 lg:hidden mb-0.5">
-                      Net
-                    </label>
-                    <span className="text-sm font-semibold text-gray-800 dark:text-white">
-                      ₦
-                      {net.toLocaleString(undefined, {
-                        maximumFractionDigits: 0,
-                      })}
-                    </span>
-                  </div>
-
-                  {/* Tax */}
-                  <div className="col-span-5 lg:col-span-1 flex flex-col items-end justify-center">
-                    <label className="text-xs text-gray-400 lg:hidden mb-0.5">
-                      Tax
-                    </label>
-                    <span
-                      className={`text-xs font-medium ${taxRate > 0 ? "text-amber-600 dark:text-amber-400" : "text-gray-400"}`}
-                    >
-                      {!li.businessItemId
-                        ? "—"
-                        : taxRate > 0
-                          ? `₦${tax.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-                          : "Exempt"}
-                    </span>
-                  </div>
-
-                  {/* Remove */}
-                  <div className="col-span-1 flex items-center justify-center pt-1">
-                    <button
-                      type="button"
-                      onClick={() => removeLine(index)}
-                      disabled={lineItems.length === 1}
-                      className="text-gray-300 hover:text-red-500 disabled:opacity-20 transition-colors"
-                    >
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M6 18L18 6M6 6l12 12"
-                        />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {items.length === 0 && (
-            <div className="mt-3 text-xs text-amber-600 dark:text-amber-400">
-              No business items found.{" "}
-              <a href="/items" className="underline">
-                Add items NRSt.
-              </a>
-            </div>
-          )}
-        </div>
-
-        </div>{/* end disabled wrapper */}
+        {/* end disabled wrapper */}
 
         {/* Totals */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
@@ -1420,7 +1508,11 @@ export default function CreateInvoice() {
             disabled={submitting}
             className="px-6 py-2.5 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-xl disabled:opacity-50 transition-colors"
           >
-            {submitting ? "Creating..." : isNote ? `Create ${noteLabel}` : "Create Invoice"}
+            {submitting
+              ? "Creating..."
+              : isNote
+                ? `Create ${noteLabel}`
+                : "Create Invoice"}
           </button>
         </div>
       </form>

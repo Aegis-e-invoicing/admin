@@ -28,7 +28,9 @@ export default function VendorGroupList() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<FormData>(emptyForm);
   const [editing, setEditing] = useState<VendorGroup | null>(null);
-  const [deleting, setDeleting] = useState<string | null>(null);
+  const [deactivateModal, setDeactivateModal] = useState<VendorGroup | null>(
+    null,
+  );
 
   const load = async (p = page) => {
     if (USE_MOCK) {
@@ -110,27 +112,23 @@ export default function VendorGroupList() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (
-      !confirm(
-        "Delete this vendor group? All vendors in it will need to be reassigned.",
-      )
-    )
-      return;
-    setDeleting(id);
+  const handleDeactivate = (g: VendorGroup) => setDeactivateModal(g);
+
+  const confirmDeactivate = async () => {
+    if (!deactivateModal) return;
+    const id = deactivateModal.id;
+    const name = deactivateModal.name;
+    setDeactivateModal(null);
     if (USE_MOCK) {
-      toast.success("Group deleted (mock)");
-      setDeleting(null);
+      toast.success(`"${name}" deactivated (mock)`);
       return;
     }
     try {
       await vendorGroupApi.delete(id);
-      toast.success("Group deleted");
+      toast.success(`"${name}" deactivated`);
       load(page);
     } catch {
-      toast.error("Failed to delete group");
-    } finally {
-      setDeleting(null);
+      toast.error("Failed to deactivate group");
     }
   };
 
@@ -187,7 +185,7 @@ export default function VendorGroupList() {
                 {groups.map((g) => (
                   <tr
                     key={g.id}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                    className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
                   >
                     <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">
                       {g.name}
@@ -210,11 +208,10 @@ export default function VendorGroupList() {
                           Edit
                         </button>
                         <button
-                          onClick={() => handleDelete(g.id)}
-                          disabled={deleting === g.id}
-                          className="text-red-500 hover:underline text-xs"
+                          onClick={() => handleDeactivate(g)}
+                          className="text-amber-500 hover:underline text-xs"
                         >
-                          {deleting === g.id ? "Deleting..." : "Delete"}
+                          Deactivate
                         </button>
                       </td>
                     )}
@@ -301,6 +298,38 @@ export default function VendorGroupList() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Deactivate confirmation modal */}
+      {deactivateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-sm p-6">
+            <h3 className="text-base font-semibold text-gray-800 dark:text-white mb-2">
+              Deactivate Vendor Group
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">
+              Are you sure you want to deactivate{" "}
+              <span className="font-medium text-gray-700 dark:text-gray-200">
+                {deactivateModal.name}
+              </span>
+              ? Vendors in this group will need to be reassigned.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setDeactivateModal(null)}
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeactivate}
+                className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm rounded-xl transition-colors"
+              >
+                Deactivate
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </>

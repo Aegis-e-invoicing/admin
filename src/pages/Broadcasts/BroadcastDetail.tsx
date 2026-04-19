@@ -14,12 +14,17 @@ import {
 } from "../../lib/mockData";
 import { useIsAdmin } from "../../context/AuthContext";
 
-const statusColors: Record<string, string> = {
+const paymentStatusColors: Record<string, string> = {
   Pending: "bg-yellow-100 text-yellow-700",
   Paid: "bg-green-100 text-green-700",
   Rejected: "bg-red-100 text-red-700",
+  Dismissed: "bg-gray-100 text-gray-500",
   Cancelled: "bg-gray-100 text-gray-500",
 };
+
+const NRS_STATUSES = ["signed", "transmitted", "completelytransmitted"];
+const isNrsTransmitted = (s: BroadcastSubmission) =>
+  NRS_STATUSES.includes(s.invoiceStatus.toLowerCase());
 
 export default function BroadcastDetail() {
   const { id } = useParams<{ id: string }>();
@@ -37,6 +42,13 @@ export default function BroadcastDetail() {
   const [editTitle, setEditTitle] = useState("");
   const [editNote, setEditNote] = useState("");
   const [showEdit, setShowEdit] = useState(false);
+
+  // Approve confirmation modal
+  const [showApproveModal, setShowApproveModal] = useState(false);
+  const [approveResult, setApproveResult] = useState<{
+    succeeded: number;
+    message: string;
+  } | null>(null);
 
   const load = async () => {
     if (!id) return;
@@ -95,24 +107,6 @@ export default function BroadcastDetail() {
     }
   };
 
-  const handleRejectAll = async () => {
-    if (
-      !id ||
-      !confirm("Reject all pending submissions? This cannot be undone.")
-    )
-      return;
-    setActioning(true);
-    try {
-      await broadcastApi.rejectAll(id);
-      toast.success("All submissions rejected");
-      load();
-    } catch {
-      toast.error("Failed to reject all");
-    } finally {
-      setActioning(false);
-    }
-  };
-
   const handleExtend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!id || !extendDate) return;
@@ -155,6 +149,8 @@ export default function BroadcastDetail() {
         : [...s, invoiceId],
     );
 
+  // ── No-approval path actions ───────────────────────────────────────────────
+
   const handleMarkPaid = async () => {
     if (!selected.length) return;
     setActioning(true);
@@ -185,11 +181,85 @@ export default function BroadcastDetail() {
     }
   };
 
+  // ── Approval path actions ──────────────────────────────────────────────────
+
+  const handleApproveConfirm = async () => {
+    if (!selected.length) return;
+    setActioning(true);
+    setShowApproveModal(false);
+    try {
+      const res = await broadcastApi.approveSubmissions(selected);
+      const count = selected.length;
+      setApproveResult({
+        succeeded: count,
+        message: res.message ?? `${count} invoice(s) submitted to NRS`,
+      });
+      setSelected([]);
+      load();
+    } catch {
+      toast.error("Failed to approve submissions");
+    } finally {
+      setActioning(false);
+    }
+  };
+
+  const handleDismiss = async () => {
+    if (!selected.length) return;
+    setActioning(true);
+    try {
+      await broadcastApi.dismissSubmissions(selected);
+      toast.success(`${selected.length} submission(s) dismissed`);
+      setSelected([]);
+      load();
+    } catch {
+      toast.error("Failed to dismiss submissions");
+    } finally {
+      setActioning(false);
+    }
+  };
+
+  const handleDismissRemaining = async () => {
+    const remainingIds = submissions
+      .filter(
+        (s) =>
+          s.invoiceStatus.toLowerCase() === "pending_approval" &&
+          s.paymentStatus.toLowerCase() === "pending",
+      )
+      .map((s) => s.invoiceId);
+
+    if (!remainingIds.length) {
+      setApproveResult(null);
+      return;
+    }
+    setActioning(true);
+    try {
+      await broadcastApi.dismissSubmissions(remainingIds);
+      toast.success(`${remainingIds.length} remaining submission(s) dismissed`);
+      load();
+    } catch {
+      toast.error("Failed to dismiss remaining submissions");
+    } finally {
+      setActioning(false);
+      setApproveResult(null);
+    }
+  };
+
   if (loading) return <div className="p-6 text-gray-500">Loading...</div>;
   if (!broadcast)
     return <div className="p-6 text-gray-500">Broadcast not found.</div>;
 
   const isActive = broadcast.status === "Active";
+  const requiresApproval = broadcast.requiresApproval;
+
+  const selectedCanReject = selected.every((sid) =>
+    submissions.find((s) => s.invoiceId === sid && isNrsTransmitted(s)),
+  );
+
+  const remainingPendingApprovalCount = submissions.filter(
+    (s) =>
+      s.invoiceStatus.toLowerCase() === "pending_approval" &&
+      s.paymentStatus.toLowerCase() === "pending",
+  ).length;
 
   return (
     <>
@@ -232,13 +302,6 @@ export default function BroadcastDetail() {
                 className="px-3 py-1.5 text-sm border border-red-300 text-red-600 rounded-lg hover:bg-red-50"
               >
                 Deactivate
-              </button>
-              <button
-                onClick={handleRejectAll}
-                disabled={actioning}
-                className="px-3 py-1.5 text-sm border border-orange-300 text-orange-600 rounded-lg hover:bg-orange-50"
-              >
-                Reject All
               </button>
             </div>
           )}
@@ -300,22 +363,53 @@ export default function BroadcastDetail() {
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
               Submissions
             </h2>
-            {isAdmin && selected.length > 0 && (
+            {isAdmin && (
               <div className="flex gap-2">
-                <button
-                  onClick={handleMarkPaid}
-                  disabled={actioning}
-                  className="px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg"
-                >
-                  Mark Paid ({selected.length})
-                </button>
-                <button
-                  onClick={handleMarkRejected}
-                  disabled={actioning}
-                  className="px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg"
-                >
-                  Reject ({selected.length})
-                </button>
+                {requiresApproval ? (
+                  <>
+                    <button
+                      onClick={() => setShowApproveModal(true)}
+                      disabled={actioning || selected.length === 0}
+                      className="px-3 py-1.5 text-sm bg-brand-500 text-white rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+                    >
+                      Approve
+                      {selected.length > 0 ? ` (${selected.length})` : ""}
+                    </button>
+                    <button
+                      onClick={handleDismiss}
+                      disabled={actioning || selected.length === 0}
+                      className="px-3 py-1.5 text-sm bg-gray-500 text-white rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+                    >
+                      Dismiss
+                      {selected.length > 0 ? ` (${selected.length})` : ""}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={handleMarkPaid}
+                      disabled={actioning || selected.length === 0}
+                      className="px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+                    >
+                      Mark Paid
+                      {selected.length > 0 ? ` (${selected.length})` : ""}
+                    </button>
+                    <button
+                      onClick={handleMarkRejected}
+                      disabled={
+                        actioning || selected.length === 0 || !selectedCanReject
+                      }
+                      title={
+                        selected.length > 0 && !selectedCanReject
+                          ? "Only NRS-transmitted invoices can be rejected"
+                          : undefined
+                      }
+                      className="px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+                    >
+                      Reject{selected.length > 0 ? ` (${selected.length})` : ""}
+                    </button>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -352,7 +446,7 @@ export default function BroadcastDetail() {
                   {submissions.map((s) => (
                     <tr
                       key={s.broadcastVendorId}
-                      className="hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                      className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
                     >
                       {isAdmin && (
                         <td className="px-4 py-3">
@@ -379,7 +473,7 @@ export default function BroadcastDetail() {
                       </td>
                       <td className="px-4 py-3">
                         <span
-                          className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[s.paymentStatus] ?? "bg-gray-100 text-gray-600"}`}
+                          className={`px-2 py-0.5 rounded-full text-xs font-medium ${paymentStatusColors[s.paymentStatus] ?? "bg-gray-100 text-gray-600"}`}
                         >
                           {s.paymentStatus}
                         </span>
@@ -420,6 +514,7 @@ export default function BroadcastDetail() {
         </div>
       </div>
 
+      {/* Edit modal */}
       {showEdit && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <form
@@ -468,6 +563,98 @@ export default function BroadcastDetail() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Approve confirmation modal */}
+      {showApproveModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-6 w-full max-w-md space-y-4">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Approve & Submit to NRS
+            </h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              This will validate and submit{" "}
+              <strong>{selected.length} invoice(s)</strong> to the NRS. Once
+              transmitted you will have a <strong>72-hour window</strong> to
+              reject if needed. This action cannot be undone.
+            </p>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={handleApproveConfirm}
+                disabled={actioning}
+                className="flex-1 py-2 bg-brand-500 text-white rounded-lg disabled:opacity-60 text-sm font-medium"
+              >
+                {actioning ? "Submitting..." : "Confirm & Submit"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowApproveModal(false)}
+                className="flex-1 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 text-sm"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Post-approve: offer to dismiss remaining */}
+      {approveResult && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-6 w-full max-w-md space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                <svg
+                  className="w-5 h-5 text-green-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+              </div>
+              <div>
+                <h2 className="text-base font-semibold text-gray-900 dark:text-white">
+                  Submitted to NRS
+                </h2>
+                <p className="text-sm text-gray-500">{approveResult.message}</p>
+              </div>
+            </div>
+            {remainingPendingApprovalCount > 0 && (
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg p-3">
+                <p className="text-sm text-amber-800 dark:text-amber-300">
+                  There {remainingPendingApprovalCount === 1 ? "is" : "are"}{" "}
+                  <strong>{remainingPendingApprovalCount}</strong> other
+                  submission(s) still waiting. Would you like to dismiss them?
+                  They were not selected and will not be processed.
+                </p>
+              </div>
+            )}
+            <div className="flex gap-3 pt-1">
+              {remainingPendingApprovalCount > 0 && (
+                <button
+                  onClick={handleDismissRemaining}
+                  disabled={actioning}
+                  className="flex-1 py-2 bg-gray-600 text-white rounded-lg disabled:opacity-60 text-sm font-medium"
+                >
+                  Dismiss Remaining ({remainingPendingApprovalCount})
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setApproveResult(null)}
+                className="flex-1 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 text-sm"
+              >
+                {remainingPendingApprovalCount > 0 ? "Keep for Now" : "Close"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </>

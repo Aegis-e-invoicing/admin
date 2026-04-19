@@ -399,7 +399,7 @@ export default function Schedules() {
               >
                 {/* Schedule header row */}
                 <div
-                  className="flex flex-col sm:flex-row sm:items-center gap-3 px-5 py-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors select-none"
+                  className="flex flex-col sm:flex-row sm:items-center gap-3 px-5 py-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors select-none"
                   onClick={() => toggleExpand(sch.id)}
                 >
                   {/* Period */}
@@ -561,7 +561,7 @@ export default function Schedules() {
                             {sch.items.map((item, idx) => (
                               <tr
                                 key={item.id}
-                                className="hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors"
+                                className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
                               >
                                 <td className="px-4 py-2.5 text-gray-400">
                                   {idx + 1}

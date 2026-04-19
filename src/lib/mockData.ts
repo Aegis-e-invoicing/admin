@@ -1550,6 +1550,17 @@ export interface MockScheduleItem {
   paymentStatus: string;
 }
 
+export interface MockInputScheduleItem {
+  id: string;
+  irn: string;
+  supplierName: string;
+  supplierTin?: string;
+  issueDate: string;
+  taxableAmount: number;
+  vatAmount: number;
+  totalAmount: number;
+}
+
 export interface MockSchedule {
   id: string;
   year: number;
@@ -1557,14 +1568,19 @@ export interface MockSchedule {
   monthName: string;
   periodStart: string;
   periodEnd: string;
-  dueDate: string; // always 14th of month+1
+  dueDate: string;
   status: "Generated" | "Filed";
   filedAt?: string;
   generatedAt: string;
   totalInvoiceCount: number;
   totalTaxableAmount: number;
   totalVatAmount: number;
+  totalInputInvoiceCount: number;
+  totalInputTaxableAmount: number;
+  totalInputVatAmount: number;
+  netVatPayable: number;
   items: MockScheduleItem[];
+  inputItems: MockInputScheduleItem[];
 }
 
 const _marchItems: MockScheduleItem[] = [
@@ -1812,13 +1828,18 @@ export const MOCK_VAT_SCHEDULES: MockSchedule[] = [
     monthName: "March",
     periodStart: "2026-03-01",
     periodEnd: "2026-03-31",
-    dueDate: "2026-04-14",
+    dueDate: "2026-04-21",
     status: "Generated",
     generatedAt: "2026-03-30T09:15:00Z",
     totalInvoiceCount: 8,
     totalTaxableAmount: _marchItems.reduce((s, i) => s + i.taxableAmount, 0),
     totalVatAmount: _marchItems.reduce((s, i) => s + i.vatAmount, 0),
+    totalInputInvoiceCount: 0,
+    totalInputTaxableAmount: 0,
+    totalInputVatAmount: 0,
+    netVatPayable: _marchItems.reduce((s, i) => s + i.vatAmount, 0),
     items: _marchItems,
+    inputItems: [],
   },
   {
     id: "sch-feb-2026",
@@ -1827,14 +1848,19 @@ export const MOCK_VAT_SCHEDULES: MockSchedule[] = [
     monthName: "February",
     periodStart: "2026-02-01",
     periodEnd: "2026-02-28",
-    dueDate: "2026-03-14",
+    dueDate: "2026-03-21",
     status: "Filed",
     filedAt: "2026-03-13T14:30:00Z",
     generatedAt: "2026-02-28T10:00:00Z",
     totalInvoiceCount: 6,
     totalTaxableAmount: _febItems.reduce((s, i) => s + i.taxableAmount, 0),
     totalVatAmount: _febItems.reduce((s, i) => s + i.vatAmount, 0),
+    totalInputInvoiceCount: 0,
+    totalInputTaxableAmount: 0,
+    totalInputVatAmount: 0,
+    netVatPayable: _febItems.reduce((s, i) => s + i.vatAmount, 0),
     items: _febItems,
+    inputItems: [],
   },
   {
     id: "sch-jan-2026",
@@ -1843,14 +1869,19 @@ export const MOCK_VAT_SCHEDULES: MockSchedule[] = [
     monthName: "January",
     periodStart: "2026-01-01",
     periodEnd: "2026-01-31",
-    dueDate: "2026-02-14",
+    dueDate: "2026-02-21",
     status: "Filed",
     filedAt: "2026-02-12T11:00:00Z",
     generatedAt: "2026-01-31T10:00:00Z",
     totalInvoiceCount: 5,
     totalTaxableAmount: _janItems.reduce((s, i) => s + i.taxableAmount, 0),
     totalVatAmount: _janItems.reduce((s, i) => s + i.vatAmount, 0),
+    totalInputInvoiceCount: 0,
+    totalInputTaxableAmount: 0,
+    totalInputVatAmount: 0,
+    netVatPayable: _janItems.reduce((s, i) => s + i.vatAmount, 0),
     items: _janItems,
+    inputItems: [],
   },
   {
     id: "sch-dec-2025",
@@ -1859,14 +1890,19 @@ export const MOCK_VAT_SCHEDULES: MockSchedule[] = [
     monthName: "December",
     periodStart: "2025-12-01",
     periodEnd: "2025-12-31",
-    dueDate: "2026-01-14",
+    dueDate: "2026-01-21",
     status: "Filed",
     filedAt: "2026-01-13T09:00:00Z",
     generatedAt: "2025-12-31T10:00:00Z",
     totalInvoiceCount: 7,
     totalTaxableAmount: 33_153_488,
     totalVatAmount: 2_486_512,
+    totalInputInvoiceCount: 0,
+    totalInputTaxableAmount: 0,
+    totalInputVatAmount: 0,
+    netVatPayable: 2_486_512,
     items: [],
+    inputItems: [],
   },
   {
     id: "sch-nov-2025",
@@ -1875,14 +1911,19 @@ export const MOCK_VAT_SCHEDULES: MockSchedule[] = [
     monthName: "November",
     periodStart: "2025-11-01",
     periodEnd: "2025-11-30",
-    dueDate: "2025-12-14",
+    dueDate: "2025-12-21",
     status: "Filed",
     filedAt: "2025-12-12T10:00:00Z",
     generatedAt: "2025-11-30T10:00:00Z",
     totalInvoiceCount: 6,
     totalTaxableAmount: 28_400_000,
     totalVatAmount: 2_130_000,
+    totalInputInvoiceCount: 0,
+    totalInputTaxableAmount: 0,
+    totalInputVatAmount: 0,
+    netVatPayable: 2_130_000,
     items: [],
+    inputItems: [],
   },
 ];
 

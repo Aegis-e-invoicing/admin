@@ -45,6 +45,7 @@ export default function PartyList() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<CreatePartyPayload>(emptyForm);
   const [editingParty, setEditingParty] = useState<Party | null>(null);
+  const [deactivateModal, setDeactivateModal] = useState<Party | null>(null);
 
   // TIN validation (skipped in edit mode)
   const [tinStatus, setTinStatus] = useState<TinStatus>("idle");
@@ -190,14 +191,24 @@ export default function PartyList() {
     }
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!window.confirm(`Delete "${name}"? This cannot be undone.`)) return;
+  const handleDeactivate = (party: Party) => setDeactivateModal(party);
+
+  const confirmDeactivate = async () => {
+    if (!deactivateModal) return;
+    const id = deactivateModal.id;
+    const name = deactivateModal.name;
+    setDeactivateModal(null);
+    if (USE_MOCK) {
+      setParties((prev) => prev.filter((p) => p.id !== id));
+      toast.success(`"${name}" deactivated.`);
+      return;
+    }
     try {
-      await partyApi.delete(id);
-      toast.success("Party deleted.");
+      await partyApi.deactivate(id);
+      toast.success(`"${name}" deactivated.`);
       load(page, pageSize);
     } catch {
-      toast.error("Failed to delete party.");
+      toast.error("Failed to deactivate party.");
     }
   };
 
@@ -552,10 +563,10 @@ export default function PartyList() {
                               Edit
                             </button>
                             <button
-                              onClick={() => handleDelete(p.id, p.name)}
-                              className="text-red-500 hover:text-red-600 text-xs font-medium"
+                              onClick={() => handleDeactivate(p)}
+                              className="text-amber-500 hover:text-amber-600 text-xs font-medium"
                             >
-                              Delete
+                              Deactivate
                             </button>
                           </div>
                         </td>
@@ -590,6 +601,38 @@ export default function PartyList() {
           </>
         )}
       </div>
+
+      {/* Deactivate confirmation modal */}
+      {deactivateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-sm p-6">
+            <h3 className="text-base font-semibold text-gray-800 dark:text-white mb-2">
+              Deactivate Party
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">
+              Are you sure you want to deactivate{" "}
+              <span className="font-medium text-gray-700 dark:text-gray-200">
+                {deactivateModal.name}
+              </span>
+              ? They will no longer appear in active records.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setDeactivateModal(null)}
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeactivate}
+                className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm rounded-xl transition-colors"
+              >
+                Deactivate
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
