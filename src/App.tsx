@@ -15,6 +15,7 @@ import UserList from "./pages/Users/UserList";
 import Settings from "./pages/Settings/Settings";
 import Analytics from "./pages/Reports/Analytics";
 import Schedules from "./pages/Reports/Schedules";
+import WhtSchedules from "./pages/Reports/WhtSchedules";
 import InvoiceDetail from "./pages/Invoices/InvoiceDetail";
 import Onboarding from "./pages/Onboarding";
 import PaymentCallback from "./pages/PaymentCallback";
@@ -56,6 +57,7 @@ export default function App() {
               <Route path="/invoices/:id" element={<InvoiceDetail />} />
               <Route path="/reports/analytics" element={<Analytics />} />
               <Route path="/reports/schedules" element={<Schedules />} />
+              <Route path="/reports/wht-schedules" element={<WhtSchedules />} />
               <Route path="/app-providers" element={<AppProviderList />} />
               <Route path="/businesses" element={<BusinessList />} />
               <Route path="/vendor-groups" element={<VendorGroupList />} />

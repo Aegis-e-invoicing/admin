@@ -51,6 +51,38 @@ export default function ReceivedInvoiceList() {
     setPage(1);
   };
 
+  // Payment status update
+  const [payModal, setPayModal] = useState<{
+    id: string;
+    code: string;
+  } | null>(null);
+  const [payStatus, setPayStatus] = useState("PAID");
+  const [payReference, setPayReference] = useState("");
+  const [updatingPay, setUpdatingPay] = useState(false);
+
+  const handleUpdatePaymentStatus = async () => {
+    if (!payModal) return;
+    setUpdatingPay(true);
+    try {
+      await invoiceApi.updateReceivedInvoicePaymentStatus(payModal.id, {
+        paymentStatus: payStatus,
+        reference: payReference.trim() || undefined,
+      });
+      toast.success(`Payment status updated to ${payStatus}.`);
+      setInvoices((prev) =>
+        prev.map((i) =>
+          i.id === payModal.id ? { ...i, paymentStatus: payStatus } : i,
+        ),
+      );
+      setPayModal(null);
+      setPayReference("");
+    } catch {
+      toast.error("Failed to update payment status.");
+    } finally {
+      setUpdatingPay(false);
+    }
+  };
+
   return (
     <>
       <PageMeta
@@ -124,6 +156,9 @@ export default function ReceivedInvoiceList() {
                   <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">
                     IRN
                   </th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -161,6 +196,18 @@ export default function ReceivedInvoiceList() {
                     <td className="px-4 py-3 text-gray-400 dark:text-gray-500 text-xs font-mono">
                       {inv.irn ? inv.irn.substring(0, 16) + "…" : "—"}
                     </td>
+                    <td className="px-4 py-3">
+                      {inv.paymentStatus !== "PAID" && (
+                        <button
+                          onClick={() =>
+                            setPayModal({ id: inv.id, code: inv.invoiceCode })
+                          }
+                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-lg transition-colors whitespace-nowrap"
+                        >
+                          Update Payment
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -190,6 +237,94 @@ export default function ReceivedInvoiceList() {
           </div>
         </div>
       </div>
+
+      {/* Payment Status Update Modal */}
+      {payModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 w-full max-w-md shadow-xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
+                Update Payment Status
+              </h2>
+              <button
+                onClick={() => {
+                  setPayModal(null);
+                  setPayReference("");
+                }}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div className="px-6 py-4 space-y-4">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Invoice:{" "}
+                <span className="font-medium text-gray-800 dark:text-white">
+                  {payModal.code}
+                </span>
+              </p>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  New Payment Status
+                </label>
+                <select
+                  value={payStatus}
+                  onChange={(e) => setPayStatus(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl text-sm bg-white dark:bg-gray-900 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+                >
+                  <option value="PAID">Paid</option>
+                  <option value="REJECTED">Rejected</option>
+                  <option value="CANCELLED">Cancelled</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Payment Reference{" "}
+                  <span className="text-gray-400 font-normal">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={payReference}
+                  onChange={(e) => setPayReference(e.target.value)}
+                  placeholder="e.g. TXN-12345"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl text-sm bg-white dark:bg-gray-900 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+              <button
+                onClick={() => {
+                  setPayModal(null);
+                  setPayReference("");
+                }}
+                disabled={updatingPay}
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdatePaymentStatus}
+                disabled={updatingPay}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-xl disabled:opacity-50 transition-colors min-w-20"
+              >
+                {updatingPay ? "Saving..." : "Confirm"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

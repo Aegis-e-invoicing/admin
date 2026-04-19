@@ -400,11 +400,10 @@ export const invoiceApi = {
       .post<ApiResponse<SubmitInvoiceResult>>(`/invoice/submit-invoice/${id}`)
       .then(unwrap),
 
-  updatePaymentStatus: (payload: {
-    invoiceId: string;
-    paymentStatus: string;
-    paymentReference?: string;
-  }) => api.put("/invoice/update-invoice-payment-status", payload),
+  updatePaymentStatus: (
+    id: string,
+    payload: { paymentStatus: string; reference?: string },
+  ) => api.patch(`/invoice/update-payment-status/${id}`, payload),
 
   receivedList: (params?: { page?: number; pageSize?: number }) =>
     api

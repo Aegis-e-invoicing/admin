@@ -127,6 +127,7 @@ const AppSidebar: React.FC = () => {
           subItems: [
             { name: "Analytics", path: "/reports/analytics" },
             { name: "VAT Schedule", path: "/reports/schedules" },
+            { name: "WHT Schedule", path: "/reports/wht-schedules" },
           ],
         },
         { icon: <GroupIcon />, name: "Parties", path: "/parties" },

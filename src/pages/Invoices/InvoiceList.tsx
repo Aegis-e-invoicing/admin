@@ -232,6 +232,40 @@ export default function InvoiceList() {
   const [processing, setProcessing] = useState(false);
   const [submissionResult, setSubmissionResult] =
     useState<SubmitInvoiceResult | null>(null);
+
+  // Payment status update
+  const [payModal, setPayModal] = useState<{
+    id: string;
+    code: string;
+    currentStatus: string;
+  } | null>(null);
+  const [payStatus, setPayStatus] = useState("PAID");
+  const [payReference, setPayReference] = useState("");
+  const [updatingPay, setUpdatingPay] = useState(false);
+
+  const handleUpdatePaymentStatus = async () => {
+    if (!payModal) return;
+    setUpdatingPay(true);
+    try {
+      await invoiceApi.updatePaymentStatus(payModal.id, {
+        paymentStatus: payStatus,
+        reference: payReference.trim() || undefined,
+      });
+      toast.success(`Payment status updated to ${payStatus}.`);
+      setInvoices((prev) =>
+        prev.map((i) =>
+          i.id === payModal.id ? { ...i, paymentStatus: payStatus } : i,
+        ),
+      );
+      setPayModal(null);
+      setPayReference("");
+    } catch {
+      toast.error("Failed to update payment status.");
+    } finally {
+      setUpdatingPay(false);
+    }
+  };
+
   const [pendingPage, setPendingPage] = useState(1);
   const [pendingPageSize, setPendingPageSize] = useState(10);
   const [pendingTotalPages, setPendingTotalPages] = useState(1);
@@ -829,42 +863,61 @@ export default function InvoiceList() {
                           {inv.irn ? inv.irn.substring(0, 16) + "..." : "—"}
                         </td>
                         <td className="px-4 py-3">
-                          {inv.status === "APPROVED" && (
-                            <button
-                              onClick={() =>
-                                handlePushToNRS(inv.id, inv.invoiceCode)
-                              }
-                              disabled={pushingNRS.has(inv.id)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 bg-brand-500 hover:bg-brand-600 text-white text-xs font-medium rounded-lg disabled:opacity-50 transition-colors whitespace-nowrap"
-                            >
-                              {pushingNRS.has(inv.id) ? (
-                                <>
-                                  <svg
-                                    className="w-3 h-3 animate-spin"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <circle
-                                      className="opacity-25"
-                                      cx="12"
-                                      cy="12"
-                                      r="10"
-                                      stroke="currentColor"
-                                      strokeWidth="4"
-                                    />
-                                    <path
-                                      className="opacity-75"
-                                      fill="currentColor"
-                                      d="M4 12a8 8 0 018-8v8H4z"
-                                    />
-                                  </svg>
-                                  Pushing...
-                                </>
-                              ) : (
-                                "Push to NRS"
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {inv.status === "APPROVED" && (
+                              <button
+                                onClick={() =>
+                                  handlePushToNRS(inv.id, inv.invoiceCode)
+                                }
+                                disabled={pushingNRS.has(inv.id)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 bg-brand-500 hover:bg-brand-600 text-white text-xs font-medium rounded-lg disabled:opacity-50 transition-colors whitespace-nowrap"
+                              >
+                                {pushingNRS.has(inv.id) ? (
+                                  <>
+                                    <svg
+                                      className="w-3 h-3 animate-spin"
+                                      fill="none"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <circle
+                                        className="opacity-25"
+                                        cx="12"
+                                        cy="12"
+                                        r="10"
+                                        stroke="currentColor"
+                                        strokeWidth="4"
+                                      />
+                                      <path
+                                        className="opacity-75"
+                                        fill="currentColor"
+                                        d="M4 12a8 8 0 018-8v8H4z"
+                                      />
+                                    </svg>
+                                    Pushing...
+                                  </>
+                                ) : (
+                                  "Push to NRS"
+                                )}
+                              </button>
+                            )}
+                            {(inv.status === "TRANSMITTED" ||
+                              inv.status === "ACKNOWLEDGED" ||
+                              inv.status === "COMPLETELYTRANSMITTED") &&
+                              inv.paymentStatus !== "PAID" && (
+                                <button
+                                  onClick={() =>
+                                    setPayModal({
+                                      id: inv.id,
+                                      code: inv.invoiceCode,
+                                      currentStatus: inv.paymentStatus,
+                                    })
+                                  }
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-lg transition-colors whitespace-nowrap"
+                                >
+                                  Update Payment
+                                </button>
                               )}
-                            </button>
-                          )}
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -1370,6 +1423,94 @@ export default function InvoiceList() {
                 className="px-6 py-2.5 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-xl transition-colors"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Payment Status Update Modal */}
+      {payModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 w-full max-w-md shadow-xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
+                Update Payment Status
+              </h2>
+              <button
+                onClick={() => {
+                  setPayModal(null);
+                  setPayReference("");
+                }}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div className="px-6 py-4 space-y-4">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Invoice:{" "}
+                <span className="font-medium text-gray-800 dark:text-white">
+                  {payModal.code}
+                </span>
+              </p>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  New Payment Status
+                </label>
+                <select
+                  value={payStatus}
+                  onChange={(e) => setPayStatus(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl text-sm bg-white dark:bg-gray-900 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+                >
+                  <option value="PAID">Paid</option>
+                  <option value="REJECTED">Rejected</option>
+                  <option value="CANCELLED">Cancelled</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Payment Reference{" "}
+                  <span className="text-gray-400 font-normal">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={payReference}
+                  onChange={(e) => setPayReference(e.target.value)}
+                  placeholder="e.g. TXN-12345"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl text-sm bg-white dark:bg-gray-900 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+              <button
+                onClick={() => {
+                  setPayModal(null);
+                  setPayReference("");
+                }}
+                disabled={updatingPay}
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdatePaymentStatus}
+                disabled={updatingPay}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-xl disabled:opacity-50 transition-colors min-w-20"
+              >
+                {updatingPay ? "Saving..." : "Confirm"}
               </button>
             </div>
           </div>
