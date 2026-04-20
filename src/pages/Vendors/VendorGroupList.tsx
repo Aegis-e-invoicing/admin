@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import PageMeta from "../../components/common/PageMeta";
+import TablePagination from "../../components/common/TablePagination";
+import { SkeletonTableRows } from "../../components/ui/skeleton/Skeleton";
 import { vendorGroupApi, type VendorGroup } from "../../lib/api";
 import {
   USE_MOCK,
@@ -165,22 +167,31 @@ export default function VendorGroupList() {
           onChange={(e) => setSearch(e.target.value)}
         />
 
-        {loading ? (
-          <p className="text-sm text-gray-500">Loading...</p>
-        ) : groups.length === 0 ? (
-          <p className="text-sm text-gray-500">No vendor groups found.</p>
-        ) : (
-          <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-            <table className="min-w-full text-sm">
-              <thead className="bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 uppercase text-xs">
-                <tr>
-                  <th className="px-4 py-3 text-left">Name</th>
-                  <th className="px-4 py-3 text-left">Description</th>
-                  <th className="px-4 py-3 text-right">Vendors</th>
-                  <th className="px-4 py-3 text-right">Created</th>
-                  {isAdmin && <th className="px-4 py-3 text-right">Actions</th>}
-                </tr>
-              </thead>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+          {loading ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <tbody>
+                  <SkeletonTableRows rows={8} colWidths={["w-36", "w-48", "w-16", "w-24", "w-20"]} />
+                </tbody>
+              </table>
+            </div>
+          ) : groups.length === 0 ? (
+            <div className="text-center py-16">
+              <p className="text-gray-500 dark:text-gray-400">No vendor groups found.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40">
+                    <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">Name</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">Description</th>
+                    <th className="px-4 py-3 text-right font-medium text-gray-500 dark:text-gray-400">Vendors</th>
+                    <th className="px-4 py-3 text-right font-medium text-gray-500 dark:text-gray-400">Created</th>
+                    {isAdmin && <th className="px-4 py-3 text-right font-medium text-gray-500 dark:text-gray-400">Actions</th>}
+                  </tr>
+                </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                 {groups.map((g) => (
                   <tr
@@ -220,29 +231,14 @@ export default function VendorGroupList() {
               </tbody>
             </table>
           </div>
-        )}
-
-        {totalPages > 1 && (
-          <div className="flex items-center gap-2 text-sm">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="px-3 py-1 border rounded disabled:opacity-40"
-            >
-              Prev
-            </button>
-            <span className="text-gray-500">
-              Page {page} of {totalPages}
-            </span>
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className="px-3 py-1 border rounded disabled:opacity-40"
-            >
-              Next
-            </button>
-          </div>
-        )}
+          )}
+          <TablePagination
+            page={page}
+            totalPages={totalPages}
+            onPrev={() => setPage((p) => Math.max(1, p - 1))}
+            onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
+          />
+        </div>
       </div>
 
       {/* Form Modal */}

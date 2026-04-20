@@ -156,7 +156,16 @@ const AppSidebar: React.FC = () => {
           ],
         },
         ...(isAdmin
-          ? [{ icon: <UserCircleIcon />, name: "Users", path: "/users" }]
+          ? [
+              {
+                icon: <UserCircleIcon />,
+                name: "Users & Roles",
+                subItems: [
+                  { name: "Users", path: "/users" },
+                  { name: "Roles", path: "/roles" },
+                ],
+              },
+            ]
           : []),
         { icon: <TableIcon />, name: "Settings", path: "/settings" },
       ];

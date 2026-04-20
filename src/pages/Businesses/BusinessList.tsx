@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import PageMeta from "../../components/common/PageMeta";
+import TablePagination from "../../components/common/TablePagination";
+import { SkeletonTableRows } from "../../components/ui/skeleton/Skeleton";
 import { businessesApi, type BusinessSummary } from "../../lib/api";
 import { USE_MOCK, MOCK_BUSINESSES } from "../../lib/mockData";
 
@@ -163,8 +165,12 @@ export default function BusinessList() {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <div className="w-8 h-8 border-4 border-brand-500 border-t-transparent rounded-full animate-spin" />
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <tbody>
+                <SkeletonTableRows rows={10} colWidths={["w-40", "w-28", "w-20", "w-24", "w-24", "w-24", "w-16"]} />
+              </tbody>
+            </table>
           </div>
         ) : businesses.length === 0 ? (
           <div className="text-center py-16">
@@ -174,28 +180,28 @@ export default function BusinessList() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-gray-800">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40">
+                  <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">
                     Business
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                  <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">
                     TIN
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                  <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">
                     Plan
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                  <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">
                     Industry
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                  <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">
                     Status
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                  <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">
                     Registered
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                  <th className="px-4 py-3 text-right font-medium text-gray-500 dark:text-gray-400">
                     Actions
                   </th>
                 </tr>
@@ -284,27 +290,12 @@ export default function BusinessList() {
           </div>
         )}
 
-        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700">
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Page {page} of {totalPages}
-          </p>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="px-3 py-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-700"
-            >
-              Previous
-            </button>
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className="px-3 py-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-700"
-            >
-              Next
-            </button>
-          </div>
-        </div>
+        <TablePagination
+          page={page}
+          totalPages={totalPages}
+          onPrev={() => setPage((p) => Math.max(1, p - 1))}
+          onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
+        />
       </div>
     </>
   );

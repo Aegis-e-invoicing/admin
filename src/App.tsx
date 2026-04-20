@@ -12,6 +12,7 @@ import ReceivedInvoiceList from "./pages/Invoices/ReceivedInvoiceList";
 import PartyList from "./pages/Parties/PartyList";
 import ItemList from "./pages/Items/ItemList";
 import UserList from "./pages/Users/UserList";
+import RoleList from "./pages/Users/RoleList";
 import Settings from "./pages/Settings/Settings";
 import Analytics from "./pages/Reports/Analytics";
 import Schedules from "./pages/Reports/Schedules";
@@ -52,6 +53,7 @@ export default function App() {
               <Route path="/parties" element={<PartyList />} />
               <Route path="/items" element={<ItemList />} />
               <Route path="/users" element={<UserList />} />
+              <Route path="/roles" element={<RoleList />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/reports/vat-analytics" element={<Analytics />} />
               <Route path="/invoices/:id" element={<InvoiceDetail />} />

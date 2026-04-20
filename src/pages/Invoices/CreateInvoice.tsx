@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { useNavigate, useLocation } from "react-router";
+import { useNavigate, useLocation, useSearchParams } from "react-router";
 import toast from "react-hot-toast";
 import PageMeta from "../../components/common/PageMeta";
 import DatePicker from "../../components/form/date-picker";
@@ -135,6 +135,7 @@ interface FromInvoiceState {
 export default function CreateInvoice() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const fromState = (location.state ?? {}) as Partial<FromInvoiceState>;
   const noteType = fromState.noteType ?? null;
   const fromInvoice = fromState.fromInvoice ?? null;
@@ -167,6 +168,10 @@ export default function CreateInvoice() {
   const [invoices, setInvoices] = useState<InvoiceSummary[]>([]);
   const [loadingLookups, setLoadingLookups] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [draftId, setDraftId] = useState<string | null>(
+    searchParams.get("draftId"),
+  );
   const [showDocRefs, setShowDocRefs] = useState(false);
   const [createdInvoiceId, setCreatedInvoiceId] = useState<string | null>(null);
   const [showPushModal, setShowPushModal] = useState(false);
@@ -277,6 +282,37 @@ export default function CreateInvoice() {
         setInvoices(inv);
       })
       .finally(() => setLoadingLookups(false));
+  }, []);
+
+  // Resume draft: load and populate form when draftId is present in URL
+  useEffect(() => {
+    const resumeId = searchParams.get("draftId");
+    if (!resumeId || USE_MOCK) return;
+    invoiceApi
+      .listDrafts()
+      .then((drafts) => {
+        const draft = drafts.find((d) => d.id === resumeId);
+        if (!draft) {
+          toast.error("Draft not found.");
+          return;
+        }
+        try {
+          const saved = JSON.parse(draft.draftPayload) as {
+            form?: typeof form;
+            lineItems?: LineItem[];
+            docRefs?: typeof docRefs;
+          };
+          if (saved.form) setForm(saved.form);
+          if (saved.lineItems) setLineItems(saved.lineItems);
+          if (saved.docRefs) setDocRefs(saved.docRefs);
+          setDraftId(resumeId);
+          toast.success("Draft loaded. Continue where you left off.");
+        } catch {
+          toast.error("Could not parse draft data.");
+        }
+      })
+      .catch(() => toast.error("Failed to load draft."));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleFieldChange =
@@ -469,6 +505,39 @@ export default function CreateInvoice() {
     0,
   );
   const grandTotal = grandSubtotal + totalTax;
+
+  const handleSaveDraft = async () => {
+    if (USE_MOCK) {
+      toast.success("Draft saved (mock).");
+      return;
+    }
+    const payload = JSON.stringify({ form, lineItems, docRefs });
+    const partyName =
+      parties.find((p) => p.id === form.partyId)?.name ?? undefined;
+    setSavingDraft(true);
+    try {
+      if (draftId) {
+        await invoiceApi.updateDraft(draftId, {
+          draftPayload: payload,
+          partyName,
+          issueDate: form.issueDate,
+        });
+        toast.success("Draft updated.");
+      } else {
+        const result = await invoiceApi.saveDraft({
+          draftPayload: payload,
+          partyName,
+          issueDate: form.issueDate,
+        });
+        setDraftId(result.draftId);
+        toast.success("Draft saved.");
+      }
+    } catch {
+      toast.error("Failed to save draft.");
+    } finally {
+      setSavingDraft(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1502,6 +1571,14 @@ export default function CreateInvoice() {
             className="px-5 py-2.5 border border-red-500 dark:border-red-500 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           >
             Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleSaveDraft}
+            disabled={savingDraft || submitting}
+            className="px-5 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors"
+          >
+            {savingDraft ? "Saving..." : draftId ? "Update Draft" : "Save Draft"}
           </button>
           <button
             type="submit"

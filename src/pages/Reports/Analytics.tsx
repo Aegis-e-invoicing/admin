@@ -4,6 +4,7 @@ import type { ApexOptions } from "apexcharts";
 import PageMeta from "../../components/common/PageMeta";
 import { analyticsV2Api, type AnalyticsV2Result } from "../../lib/api";
 import { USE_MOCK, MOCK_ANALYTICS_V2 } from "../../lib/mockData";
+import { Skeleton, SkeletonStatCard, SkeletonChart } from "../../components/ui/skeleton/Skeleton";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const fmt = (n: number) =>
@@ -17,6 +18,52 @@ const fmt = (n: number) =>
 
 const pct = (num: number, den: number) =>
   den === 0 ? "0%" : `${((num / den) * 100).toFixed(1)}%`;
+
+// ── Analytics Skeleton ────────────────────────────────────────────────────────
+function AnalyticsSkeleton() {
+  return (
+    <div className="space-y-6">
+      {/* KPI row */}
+      <div className="grid grid-cols-2 xl:grid-cols-5 gap-4">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <SkeletonStatCard key={i} />
+        ))}
+      </div>
+
+      {/* Two charts side by side */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+        <SkeletonChart height={260} />
+        <SkeletonChart height={260} />
+      </div>
+
+      {/* VAT trend + summary panel */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+        <div className="xl:col-span-2">
+          <SkeletonChart height={260} />
+        </div>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 flex flex-col gap-4">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-3 w-24" />
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
+              <Skeleton className="h-3 w-36" />
+              <Skeleton className="h-3 w-16" />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Full-width chart */}
+      <SkeletonChart height={280} />
+
+      {/* Two charts side by side */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+        <SkeletonChart height={240} />
+        <SkeletonChart height={240} />
+      </div>
+    </div>
+  );
+}
 
 // ── KPI Card ──────────────────────────────────────────────────────────────────
 function KpiCard({
@@ -652,9 +699,7 @@ export default function Analytics() {
 
       <div>
       {loading ? (
-        <div className="flex items-center justify-center py-24">
-          <div className="w-8 h-8 border-4 border-brand-500 border-t-transparent rounded-full animate-spin" />
-        </div>
+        <AnalyticsSkeleton />
       ) : !g || !vt ? (
         <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl p-4 text-sm text-amber-700 dark:text-amber-300">
           Analytics data unavailable. Please refresh the page.

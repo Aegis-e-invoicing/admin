@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import Chart from "react-apexcharts";
 import { ApexOptions } from "apexcharts";
 import PageMeta from "../../components/common/PageMeta";
+import { SkeletonStatCard, SkeletonChart, SkeletonMiniTableRows } from "../../components/ui/skeleton/Skeleton";
 import {
   businessApi,
   businessesApi,
@@ -557,9 +558,41 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-64">
-        <div className="w-8 h-8 border-4 border-brand-500 border-t-transparent rounded-full animate-spin" />
-      </div>
+      <>
+        <PageMeta
+          title="Dashboard | Aegis EInvoicing Portal"
+          description="Aegis NRS e-invoicing dashboard"
+        />
+        {/* Header skeleton */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="space-y-2">
+            <div className="h-7 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+            <div className="h-4 w-64 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+          </div>
+          <div className="h-9 w-28 bg-gray-200 dark:bg-gray-700 rounded-xl animate-pulse" />
+        </div>
+        {/* Stat cards skeleton */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <SkeletonStatCard key={i} />
+          ))}
+        </div>
+        {/* Charts skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <SkeletonChart height={220} />
+          <SkeletonChart height={220} />
+          <SkeletonChart height={220} />
+        </div>
+        {/* Mini table skeleton */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
+          <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-4" />
+          <table className="w-full text-sm">
+            <tbody>
+              <SkeletonMiniTableRows rows={5} cols={4} />
+            </tbody>
+          </table>
+        </div>
+      </>
     );
   }
 

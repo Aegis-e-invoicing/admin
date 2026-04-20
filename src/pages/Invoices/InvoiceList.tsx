@@ -1,14 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import toast from "react-hot-toast";
+import { SkeletonTableRows } from "../../components/ui/skeleton/Skeleton";
 import PageMeta from "../../components/common/PageMeta";
+import TablePagination from "../../components/common/TablePagination";
 import {
   invoiceApi,
   type InvoiceSummary,
+  type InvoiceDraftSummary,
   type UploadInvoiceResult,
   type SubmitInvoiceResult,
 } from "../../lib/api";
 import { useCanCreateInvoice, useIsAdmin } from "../../context/AuthContext";
+import { usePermissions, Permission } from "../../hooks/usePermissions";
 import { USE_MOCK, MOCK_INVOICES } from "../../lib/mockData";
 import { useEnvMode } from "../../context/EnvModeContext";
 
@@ -63,7 +67,6 @@ const PAY_STATUS_COLORS: Record<string, string> = {
     "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400",
   PAID: "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400",
   REJECTED: "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400",
-  CANCELLED: "bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400",
   FAILED: "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400",
 };
 
@@ -71,7 +74,6 @@ const PAY_STATUS_LABELS: Record<string, string> = {
   PENDING: "Pending",
   PAID: "Paid",
   REJECTED: "Rejected",
-  CANCELLED: "Cancelled",
   FAILED: "Failed",
 };
 
@@ -88,6 +90,9 @@ const STATUS_OPTIONS = [
 
 export default function InvoiceList() {
   const canCreate = useCanCreateInvoice();
+  const { can } = usePermissions();
+  const canApprove = can(Permission.ApproveInvoices);
+  const canReject = can(Permission.RejectInvoices);
   const { envMode } = useEnvMode();
   const [invoices, setInvoices] = useState<InvoiceSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -216,9 +221,12 @@ export default function InvoiceList() {
   };
 
   const isAdmin = useIsAdmin();
-  const [activeTab, setActiveTab] = useState<"all" | "approvals">("all");
+  const [activeTab, setActiveTab] = useState<"all" | "approvals" | "drafts">("all");
   const [pendingInvoices, setPendingInvoices] = useState<InvoiceSummary[]>([]);
   const [loadingPending, setLoadingPending] = useState(false);
+  const [drafts, setDrafts] = useState<InvoiceDraftSummary[]>([]);
+  const [loadingDrafts, setLoadingDrafts] = useState(false);
+  const [deletingDraftId, setDeletingDraftId] = useState<string | null>(null);
   const [pushingNRS, setPushingNRS] = useState<Set<string>>(new Set());
   const [approveModal, setApproveModal] = useState<{
     id: string;
@@ -299,7 +307,28 @@ export default function InvoiceList() {
   useEffect(() => {
     if (isAdmin && activeTab === "approvals")
       loadPendingApprovals(pendingPage, pendingPageSize);
+    if (activeTab === "drafts") {
+      setLoadingDrafts(true);
+      invoiceApi
+        .listDrafts()
+        .then(setDrafts)
+        .catch(() => toast.error("Failed to load drafts."))
+        .finally(() => setLoadingDrafts(false));
+    }
   }, [activeTab, isAdmin, pendingPage, pendingPageSize]);
+
+  const handleDeleteDraft = async (id: string) => {
+    setDeletingDraftId(id);
+    try {
+      await invoiceApi.deleteDraft(id);
+      setDrafts((prev) => prev.filter((d) => d.id !== id));
+      toast.success("Draft deleted.");
+    } catch {
+      toast.error("Failed to delete draft.");
+    } finally {
+      setDeletingDraftId(null);
+    }
+  };
 
   const handlePushToNRS = async (id: string, code: string) => {
     setPushingNRS((prev) => new Set(prev).add(id));
@@ -731,6 +760,17 @@ export default function InvoiceList() {
               </span>
             )}
           </button>
+          <button
+            onClick={() => setActiveTab("drafts")}
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors flex items-center gap-2 ${activeTab === "drafts" ? "border-brand-500 text-brand-600 dark:text-brand-400" : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"}`}
+          >
+            Drafts
+            {drafts.length > 0 && (
+              <span className="inline-flex items-center justify-center h-4 min-w-[1rem] px-1 text-[10px] font-bold bg-gray-400 text-white rounded-full">
+                {drafts.length}
+              </span>
+            )}
+          </button>
         </div>
       )}
 
@@ -769,8 +809,24 @@ export default function InvoiceList() {
 
           <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
             {loading ? (
-              <div className="flex items-center justify-center py-16">
-                <div className="w-8 h-8 border-4 border-brand-500 border-t-transparent rounded-full animate-spin" />
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <tbody>
+                    <SkeletonTableRows
+                      rows={pageSize}
+                      colWidths={[
+                        "w-28",
+                        "w-32",
+                        "w-20",
+                        "w-24",
+                        "w-20",
+                        "w-16",
+                        "w-28",
+                        "w-16",
+                      ]}
+                    />
+                  </tbody>
+                </table>
               </div>
             ) : invoices.length === 0 ? (
               <div className="text-center py-16">
@@ -926,29 +982,12 @@ export default function InvoiceList() {
               </div>
             )}
 
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700">
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Page {page} of {totalPages}
-                </p>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={page === 1}
-                    className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
-                  >
-                    Previous
-                  </button>
-                  <button
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={page === totalPages}
-                    className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
-            )}
+            <TablePagination
+              page={page}
+              totalPages={totalPages}
+              onPrev={() => setPage((p) => Math.max(1, p - 1))}
+              onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
+            />
           </div>
         </>
       )}
@@ -982,8 +1021,23 @@ export default function InvoiceList() {
             </div>
           </div>
           {loadingPending ? (
-            <div className="flex items-center justify-center py-16">
-              <div className="w-8 h-8 border-4 border-brand-500 border-t-transparent rounded-full animate-spin" />
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <tbody>
+                  <SkeletonTableRows
+                    rows={pendingPageSize}
+                    colWidths={[
+                      "w-28",
+                      "w-32",
+                      "w-20",
+                      "w-24",
+                      "w-20",
+                      "w-16",
+                      "w-16",
+                    ]}
+                  />
+                </tbody>
+              </table>
             </div>
           ) : pendingInvoices.length === 0 ? (
             <div className="text-center py-16">
@@ -1055,28 +1109,133 @@ export default function InvoiceList() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <button
-                            onClick={() =>
-                              setApproveModal({
-                                id: inv.id,
-                                code: inv.invoiceCode,
-                              })
-                            }
-                            className="px-2.5 py-1 bg-green-500 hover:bg-green-600 text-white text-xs font-medium rounded-lg transition-colors"
+                          {canApprove && (
+                            <button
+                              onClick={() =>
+                                setApproveModal({
+                                  id: inv.id,
+                                  code: inv.invoiceCode,
+                                })
+                              }
+                              className="px-2.5 py-1 bg-green-500 hover:bg-green-600 text-white text-xs font-medium rounded-lg transition-colors"
+                            >
+                              Approve
+                            </button>
+                          )}
+                          {canReject && (
+                            <button
+                              onClick={() => {
+                                setRejectReason("");
+                                setRejectModal({
+                                  id: inv.id,
+                                  code: inv.invoiceCode,
+                                });
+                              }}
+                              className="px-2.5 py-1 bg-red-500 hover:bg-red-600 text-white text-xs font-medium rounded-lg transition-colors"
+                            >
+                              Reject
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <TablePagination
+            page={pendingPage}
+            totalPages={pendingTotalPages}
+            onPrev={() => setPendingPage((p) => Math.max(1, p - 1))}
+            onNext={() => setPendingPage((p) => Math.min(pendingTotalPages, p + 1))}
+          />
+        </div>
+      )}
+
+      {/* -- Drafts tab -- */}
+      {activeTab === "drafts" && (
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-gray-700 dark:text-white">
+              Saved Drafts
+            </h2>
+            <Link
+              to="/invoices/create"
+              className="px-3 py-1.5 text-xs font-medium bg-brand-500 hover:bg-brand-600 text-white rounded-lg transition-colors"
+            >
+              New Invoice
+            </Link>
+          </div>
+          {loadingDrafts ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <tbody>
+                  <SkeletonTableRows cols={4} rows={5} colWidths={["w-24", "w-32", "w-20", "w-16"]} />
+                </tbody>
+              </table>
+            </div>
+          ) : drafts.length === 0 ? (
+            <div className="text-center py-16">
+              <svg
+                className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-3"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1.5}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+              <p className="text-gray-500 dark:text-gray-400">No saved drafts.</p>
+              <Link
+                to="/invoices/create"
+                className="inline-block mt-3 text-sm text-brand-500 hover:text-brand-600 font-medium"
+              >
+                Create a new invoice
+              </Link>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40">
+                    <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">Party</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">Issue Date</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">Last Saved</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                  {drafts.map((draft) => (
+                    <tr key={draft.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                      <td className="px-4 py-3 text-gray-700 dark:text-gray-300">
+                        {draft.partyName ?? <span className="text-gray-400 italic">Unknown party</span>}
+                      </td>
+                      <td className="px-4 py-3 text-gray-500 dark:text-gray-400">
+                        {draft.issueDate}
+                      </td>
+                      <td className="px-4 py-3 text-gray-500 dark:text-gray-400">
+                        {new Date(draft.updatedAt ?? draft.createdAt).toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <Link
+                            to={`/invoices/create?draftId=${draft.id}`}
+                            className="px-3 py-1 text-xs font-medium bg-brand-50 hover:bg-brand-100 text-brand-600 dark:bg-brand-900/20 dark:text-brand-400 rounded-lg transition-colors"
                           >
-                            Approve
-                          </button>
+                            Resume
+                          </Link>
                           <button
-                            onClick={() => {
-                              setRejectReason("");
-                              setRejectModal({
-                                id: inv.id,
-                                code: inv.invoiceCode,
-                              });
-                            }}
-                            className="px-2.5 py-1 bg-red-500 hover:bg-red-600 text-white text-xs font-medium rounded-lg transition-colors"
+                            type="button"
+                            disabled={deletingDraftId === draft.id}
+                            onClick={() => handleDeleteDraft(draft.id)}
+                            className="px-3 py-1 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
                           >
-                            Reject
+                            {deletingDraftId === draft.id ? "Deleting..." : "Delete"}
                           </button>
                         </div>
                       </td>
@@ -1086,29 +1245,6 @@ export default function InvoiceList() {
               </table>
             </div>
           )}
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700">
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Page {pendingPage} of {pendingTotalPages}
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setPendingPage((p) => Math.max(1, p - 1))}
-                disabled={pendingPage === 1}
-                className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
-              >
-                Previous
-              </button>
-              <button
-                onClick={() =>
-                  setPendingPage((p) => Math.min(pendingTotalPages, p + 1))
-                }
-                disabled={pendingPage === pendingTotalPages}
-                className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
-              >
-                Next
-              </button>
-            </div>
-          </div>
         </div>
       )}
 
@@ -1476,22 +1612,44 @@ export default function InvoiceList() {
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl text-sm bg-white dark:bg-gray-900 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
                 >
                   <option value="PAID">Paid</option>
-                  <option value="REJECTED">Rejected</option>
-                  <option value="CANCELLED">Cancelled</option>
+
                 </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Payment Reference{" "}
-                  <span className="text-gray-400 font-normal">(optional)</span>
+                  {payStatus === "PAID" ? (
+                    <span className="text-red-500 font-normal">*required</span>
+                  ) : (
+                    <span className="text-gray-400 font-normal">(optional)</span>
+                  )}
+                  {/* NRS tooltip */}
+                  <span className="relative inline-block ml-1 group align-middle">
+                    <svg className="w-3.5 h-3.5 text-gray-400 cursor-help inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 rounded-lg bg-gray-900 text-white text-xs px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity z-50 shadow-lg">
+                      <strong className="block mb-1">Required by NRS for PAID invoices</strong>
+                      Enter the bank transfer reference, NEFT/RTGS transaction ID, or payment confirmation number. NRS uses this to match invoices to actual bank transactions during tax reconciliation and audit. Without it, the payment record may be flagged as unverifiable.
+                    </span>
+                  </span>
                 </label>
                 <input
                   type="text"
                   value={payReference}
                   onChange={(e) => setPayReference(e.target.value)}
-                  placeholder="e.g. TXN-12345"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl text-sm bg-white dark:bg-gray-900 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  placeholder={payStatus === "PAID" ? "Bank transfer ref / transaction ID" : "e.g. REF-12345 (optional)"}
+                  className={`w-full px-3 py-2 border rounded-xl text-sm bg-white dark:bg-gray-900 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500 ${
+                    payStatus === "PAID" && !payReference.trim()
+                      ? "border-red-300 dark:border-red-700"
+                      : "border-gray-300 dark:border-gray-600"
+                  }`}
                 />
+                {payStatus === "PAID" && !payReference.trim() && (
+                  <p className="mt-1 text-xs text-red-500">
+                    A payment reference is required by NRS when marking an invoice as Paid.
+                  </p>
+                )}
               </div>
             </div>
             <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
@@ -1507,7 +1665,7 @@ export default function InvoiceList() {
               </button>
               <button
                 onClick={handleUpdatePaymentStatus}
-                disabled={updatingPay}
+                disabled={updatingPay || (payStatus === "PAID" && !payReference.trim())}
                 className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-xl disabled:opacity-50 transition-colors min-w-20"
               >
                 {updatingPay ? "Saving..." : "Confirm"}

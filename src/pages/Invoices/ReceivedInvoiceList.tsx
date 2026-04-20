@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
+import { SkeletonTableRows } from "../../components/ui/skeleton/Skeleton";
 import PageMeta from "../../components/common/PageMeta";
+import TablePagination from "../../components/common/TablePagination";
 import { invoiceApi, type InvoiceSummary } from "../../lib/api";
 import { USE_MOCK, MOCK_RECEIVED_INVOICES } from "../../lib/mockData";
 
@@ -9,7 +11,6 @@ const PAY_STATUS_COLORS: Record<string, string> = {
   PENDING:
     "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
   REJECTED: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-  CANCELLED: "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400",
   FAILED: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
 };
 
@@ -20,6 +21,8 @@ export default function ReceivedInvoiceList() {
   const [pageSize, setPageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [senderFilter, setSenderFilter] = useState("");
+  const [payStatusFilter, setPayStatusFilter] = useState("");
 
   const fetchInvoices = (p: number, ps: number) => {
     if (USE_MOCK) {
@@ -46,6 +49,17 @@ export default function ReceivedInvoiceList() {
   useEffect(() => {
     fetchInvoices(page, pageSize);
   }, [page, pageSize]);
+
+  const filteredInvoices = invoices.filter((inv) => {
+    const matchesSender = senderFilter
+      ? (inv.partyName ?? "").toLowerCase().includes(senderFilter.toLowerCase())
+      : true;
+    const matchesStatus = payStatusFilter
+      ? inv.paymentStatus === payStatusFilter
+      : true;
+    return matchesSender && matchesStatus;
+  });
+
   const handlePageSizeChange = (ps: number) => {
     setPageSize(ps);
     setPage(1);
@@ -56,8 +70,6 @@ export default function ReceivedInvoiceList() {
     id: string;
     code: string;
   } | null>(null);
-  const [payStatus, setPayStatus] = useState("PAID");
-  const [payReference, setPayReference] = useState("");
   const [updatingPay, setUpdatingPay] = useState(false);
 
   const handleUpdatePaymentStatus = async () => {
@@ -65,19 +77,17 @@ export default function ReceivedInvoiceList() {
     setUpdatingPay(true);
     try {
       await invoiceApi.updateReceivedInvoicePaymentStatus(payModal.id, {
-        paymentStatus: payStatus,
-        reference: payReference.trim() || undefined,
+        paymentStatus: "REJECTED",
       });
-      toast.success(`Payment status updated to ${payStatus}.`);
+      toast.success("Invoice rejected.");
       setInvoices((prev) =>
         prev.map((i) =>
-          i.id === payModal.id ? { ...i, paymentStatus: payStatus } : i,
+          i.id === payModal.id ? { ...i, paymentStatus: "REJECTED" } : i,
         ),
       );
       setPayModal(null);
-      setPayReference("");
     } catch {
-      toast.error("Failed to update payment status.");
+      toast.error("Failed to reject invoice.");
     } finally {
       setUpdatingPay(false);
     }
@@ -95,16 +105,33 @@ export default function ReceivedInvoiceList() {
           Received Invoices
         </h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-          Invoices received from your trading partners via NRS NRS
+          Invoices received from your trading partners and vendors
         </p>
       </div>
 
       <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
         {/* Table toolbar */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+        <div className="flex items-center gap-3 flex-wrap px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+          <input
+            type="text"
+            placeholder="Search by sender..."
+            value={senderFilter}
+            onChange={(e) => setSenderFilter(e.target.value)}
+            className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-500 w-48"
+          />
+          <select
+            value={payStatusFilter}
+            onChange={(e) => setPayStatusFilter(e.target.value)}
+            className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-500"
+          >
+            <option value="">All Payment Statuses</option>
+            <option value="PENDING">Pending</option>
+            <option value="PAID">Paid</option>
+            <option value="REJECTED">Rejected</option>
+          </select>
+          <p className="text-sm text-gray-500 dark:text-gray-400 ml-auto">
             {totalCount > 0
-              ? `${totalCount} invoice${totalCount !== 1 ? "s" : ""}`
+              ? `${filteredInvoices.length} of ${totalCount} invoice${totalCount !== 1 ? "s" : ""}`
               : ""}
           </p>
           <div className="flex items-center gap-2">
@@ -124,13 +151,17 @@ export default function ReceivedInvoiceList() {
           </div>
         </div>
         {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <div className="w-8 h-8 border-4 border-brand-500 border-t-transparent rounded-full animate-spin" />
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <tbody>
+                <SkeletonTableRows rows={pageSize} colWidths={["w-28", "w-36", "w-20", "w-24", "w-20", "w-28", "w-16"]} />
+              </tbody>
+            </table>
           </div>
-        ) : invoices.length === 0 ? (
+        ) : filteredInvoices.length === 0 ? (
           <div className="text-center py-16">
             <p className="text-gray-500 dark:text-gray-400">
-              No received invoices found.
+              {senderFilter || payStatusFilter ? "No invoices match your filters." : "No received invoices found."}
             </p>
           </div>
         ) : (
@@ -162,7 +193,7 @@ export default function ReceivedInvoiceList() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                {invoices.map((inv) => (
+                {filteredInvoices.map((inv) => (
                   <tr
                     key={inv.id}
                     className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
@@ -197,14 +228,14 @@ export default function ReceivedInvoiceList() {
                       {inv.irn ? inv.irn.substring(0, 16) + "…" : "—"}
                     </td>
                     <td className="px-4 py-3">
-                      {inv.paymentStatus !== "PAID" && (
+                      {inv.paymentStatus !== "PAID" && inv.paymentStatus !== "REJECTED" && (
                         <button
                           onClick={() =>
                             setPayModal({ id: inv.id, code: inv.invoiceCode })
                           }
-                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-lg transition-colors whitespace-nowrap"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded-lg transition-colors whitespace-nowrap"
                         >
-                          Update Payment
+                          Reject
                         </button>
                       )}
                     </td>
@@ -215,27 +246,12 @@ export default function ReceivedInvoiceList() {
           </div>
         )}
 
-        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700">
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Page {page} of {totalPages}
-          </p>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
-            >
-              Previous
-            </button>
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
-            >
-              Next
-            </button>
-          </div>
-        </div>
+        <TablePagination
+          page={page}
+          totalPages={totalPages}
+          onPrev={() => setPage((p) => Math.max(1, p - 1))}
+          onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
+        />
       </div>
 
       {/* Payment Status Update Modal */}
@@ -244,12 +260,11 @@ export default function ReceivedInvoiceList() {
           <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 w-full max-w-md shadow-xl">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
               <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
-                Update Payment Status
+                Reject Invoice
               </h2>
               <button
                 onClick={() => {
                   setPayModal(null);
-                  setPayReference("");
                 }}
                 className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
               >
@@ -275,39 +290,19 @@ export default function ReceivedInvoiceList() {
                   {payModal.code}
                 </span>
               </p>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  New Payment Status
-                </label>
-                <select
-                  value={payStatus}
-                  onChange={(e) => setPayStatus(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl text-sm bg-white dark:bg-gray-900 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
-                >
-                  <option value="PAID">Paid</option>
-                  <option value="REJECTED">Rejected</option>
-                  <option value="CANCELLED">Cancelled</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Payment Reference{" "}
-                  <span className="text-gray-400 font-normal">(optional)</span>
-                </label>
-                <input
-                  type="text"
-                  value={payReference}
-                  onChange={(e) => setPayReference(e.target.value)}
-                  placeholder="e.g. TXN-12345"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl text-sm bg-white dark:bg-gray-900 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
-                />
+              <div className="flex items-start gap-3 p-3 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
+                <svg className="w-5 h-5 text-red-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <p className="text-sm text-red-700 dark:text-red-400">
+                  This will mark the invoice as <strong>Rejected</strong> and report the rejection to <strong>NRS</strong>. The sender will be notified. This action cannot be undone.
+                </p>
               </div>
             </div>
             <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
               <button
                 onClick={() => {
                   setPayModal(null);
-                  setPayReference("");
                 }}
                 disabled={updatingPay}
                 className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors"
@@ -317,9 +312,9 @@ export default function ReceivedInvoiceList() {
               <button
                 onClick={handleUpdatePaymentStatus}
                 disabled={updatingPay}
-                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-xl disabled:opacity-50 transition-colors min-w-20"
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-xl disabled:opacity-50 transition-colors min-w-20"
               >
-                {updatingPay ? "Saving..." : "Confirm"}
+                {updatingPay ? "Rejecting..." : "Reject Invoice"}
               </button>
             </div>
           </div>

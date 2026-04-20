@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import PageMeta from "../../components/common/PageMeta";
+import TablePagination from "../../components/common/TablePagination";
+import { SkeletonTableRows } from "../../components/ui/skeleton/Skeleton";
 import {
   vendorApi,
   vendorGroupApi,
@@ -227,23 +229,32 @@ export default function VendorList() {
           </select>
         </div>
 
-        {loading ? (
-          <p className="text-sm text-gray-500">Loading...</p>
-        ) : vendors.length === 0 ? (
-          <p className="text-sm text-gray-500">No vendors found.</p>
-        ) : (
-          <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-            <table className="min-w-full text-sm">
-              <thead className="bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 uppercase text-xs">
-                <tr>
-                  <th className="px-4 py-3 text-left">Business Name</th>
-                  <th className="px-4 py-3 text-left">Email</th>
-                  <th className="px-4 py-3 text-left">Phone</th>
-                  <th className="px-4 py-3 text-left">Group</th>
-                  <th className="px-4 py-3 text-left">Status</th>
-                  {isAdmin && <th className="px-4 py-3 text-right">Actions</th>}
-                </tr>
-              </thead>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+          {loading ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <tbody>
+                  <SkeletonTableRows rows={8} colWidths={["w-36", "w-40", "w-28", "w-28", "w-20", "w-16"]} />
+                </tbody>
+              </table>
+            </div>
+          ) : vendors.length === 0 ? (
+            <div className="text-center py-16">
+              <p className="text-gray-500 dark:text-gray-400">No vendors found.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40">
+                    <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">Business Name</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">Email</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">Phone</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">Group</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">Status</th>
+                    {isAdmin && <th className="px-4 py-3 text-right font-medium text-gray-500 dark:text-gray-400">Actions</th>}
+                  </tr>
+                </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                 {vendors.map((v) => (
                   <tr
@@ -293,29 +304,14 @@ export default function VendorList() {
               </tbody>
             </table>
           </div>
-        )}
-
-        {totalPages > 1 && (
-          <div className="flex items-center gap-2 text-sm">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="px-3 py-1 border rounded disabled:opacity-40"
-            >
-              Prev
-            </button>
-            <span className="text-gray-500">
-              Page {page} of {totalPages}
-            </span>
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className="px-3 py-1 border rounded disabled:opacity-40"
-            >
-              Next
-            </button>
-          </div>
-        )}
+          )}
+          <TablePagination
+            page={page}
+            totalPages={totalPages}
+            onPrev={() => setPage((p) => Math.max(1, p - 1))}
+            onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
+          />
+        </div>
       </div>
 
       {/* ── Toggle Status Confirmation Modal ── */}

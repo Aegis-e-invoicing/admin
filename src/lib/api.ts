@@ -365,6 +365,29 @@ export interface FlowRulePayload {
   priority: number;
 }
 
+// ── Invoice Drafts ────────────────────────────────────────────────────────────
+export interface InvoiceDraftSummary {
+  id: string;
+  partyName?: string;
+  issueDate: string;
+  draftPayload: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface SaveDraftPayload {
+  draftId?: string;
+  draftPayload: string;
+  partyName?: string;
+  issueDate: string;
+}
+
+export interface SaveDraftResult {
+  draftId: string;
+  isSuccess: boolean;
+  message: string;
+}
+
 export const invoiceApi = {
   list: (params?: {
     page?: number;
@@ -448,6 +471,22 @@ export const invoiceApi = {
       params,
       responseType: "blob",
     }),
+
+  // ── Drafts ──────────────────────────────────────────────────────────────
+  listDrafts: () =>
+    api.get<ApiResponse<InvoiceDraftSummary[]>>("/invoice/drafts").then(unwrap),
+
+  saveDraft: (payload: SaveDraftPayload) =>
+    api
+      .post<ApiResponse<SaveDraftResult>>("/invoice/drafts", payload)
+      .then(unwrap),
+
+  updateDraft: (id: string, payload: SaveDraftPayload) =>
+    api
+      .put<ApiResponse<SaveDraftResult>>(`/invoice/drafts/${id}`, payload)
+      .then(unwrap),
+
+  deleteDraft: (id: string) => api.delete(`/invoice/drafts/${id}`),
 };
 
 // ── TIN Validation ────────────────────────────────────────────────────────────
@@ -683,6 +722,42 @@ export const userMgmtApi = {
     api.post(`/usermanagement/users/${userId}/reset-password`),
   assignRole: (userId: string, roleId: string) =>
     api.post(`/usermanagement/users/${userId}/roles`, { roleId }),
+};
+
+// ── Role Management ───────────────────────────────────────────────────────────
+export interface RoleSummary {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  isSystemRole: boolean;
+  isActive: boolean;
+  permissions: string[];
+  assignedUserCount: number;
+  createdAt: string;
+  updatedAt?: string;
+}
+export interface CreateRolePayload {
+  name: string;
+  description: string;
+  permissions: string[];
+}
+export interface UpdateRolePermissionsPayload {
+  permissions: string[];
+}
+
+export const roleApi = {
+  list: () =>
+    api.get<ApiResponse<RoleSummary[]>>("/role-management/roles").then(unwrap),
+  create: (payload: CreateRolePayload) =>
+    api
+      .post<
+        ApiResponse<{ roleId: string; name: string }>
+      >("/role-management/roles", payload)
+      .then(unwrap),
+  updatePermissions: (roleId: string, payload: UpdateRolePermissionsPayload) =>
+    api.put(`/role-management/roles/${roleId}/permissions`, payload),
+  delete: (roleId: string) => api.delete(`/role-management/roles/${roleId}`),
 };
 
 // ── Miscellaneous ─────────────────────────────────────────────────────────────

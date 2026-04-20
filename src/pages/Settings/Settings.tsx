@@ -22,7 +22,7 @@ import {
   MOCK_API_CREDENTIALS,
   MOCK_SFTP_CREDENTIALS,
 } from "../../lib/mockData";
-import { useIsAegis, useIsAdmin, useAuth } from "../../context/AuthContext";
+import { useIsAegis, useIsAdmin, useCanManageAppSettings, useAuth } from "../../context/AuthContext";
 
 const inputCls =
   "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-500";
@@ -57,6 +57,7 @@ export default function Settings() {
   const { user } = useAuth();
   const isAegis = useIsAegis();
   const isAdmin = useIsAdmin();
+  const canManageAppSettings = useCanManageAppSettings();
   const canEdit = isAdmin || isAegis;
 
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
@@ -178,9 +179,9 @@ export default function Settings() {
       .catch(() => toast.error("Failed to load business profile."))
       .finally(() => setLoadingProfile(false));
 
-    // Load APP provider settings (ClientAdmin + AegisAdmin)
+    // Load APP provider settings (requires business.manage_settings permission)
     const businessId = user?.businessId;
-    if ((isAdmin || isAegis) && businessId && !USE_MOCK) {
+    if (canManageAppSettings && businessId && !USE_MOCK) {
       setAppSettingsLoading(true);
       Promise.all([
         appProviderApi.list(1, 50),
@@ -964,8 +965,8 @@ export default function Settings() {
               </Section>
             )}
 
-            {/* APP Provider — ClientAdmin + AegisAdmin */}
-            {(isAdmin || isAegis) && !USE_MOCK && (
+            {/* APP Provider — requires business.manage_settings permission */}
+            {canManageAppSettings && !USE_MOCK && (
               <Section
                 title="Access Point Provider"
                 description="Select which provider transmits your invoices to NRS. Switching requires you to register with the new provider on the NRS portal first."
@@ -1002,8 +1003,8 @@ export default function Settings() {
               </Section>
             )}
 
-            {/* Environment Mode — ClientAdmin + AegisAdmin */}
-            {(isAdmin || isAegis) && !USE_MOCK && (
+            {/* Environment Mode — requires business.manage_settings permission */}
+            {canManageAppSettings && !USE_MOCK && (
               <Section
                 title="Environment Mode"
                 description="Controls which credential set is used when transmitting invoices."

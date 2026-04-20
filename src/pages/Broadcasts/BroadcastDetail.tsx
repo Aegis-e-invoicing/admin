@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router";
 import toast from "react-hot-toast";
 import PageMeta from "../../components/common/PageMeta";
+import TablePagination from "../../components/common/TablePagination";
 import {
   broadcastApi,
   type BroadcastDetail,
@@ -364,8 +365,9 @@ export default function BroadcastDetail() {
               Submissions
             </h2>
             {isAdmin && (
-              <div className="flex gap-2">
-                {requiresApproval ? (
+              <div className="flex gap-2 flex-wrap">
+                {/* Approve / Dismiss — only for broadcasts that require approval */}
+                {requiresApproval && (
                   <>
                     <button
                       onClick={() => setShowApproveModal(true)}
@@ -384,31 +386,35 @@ export default function BroadcastDetail() {
                       {selected.length > 0 ? ` (${selected.length})` : ""}
                     </button>
                   </>
-                ) : (
-                  <>
-                    <button
-                      onClick={handleMarkPaid}
-                      disabled={actioning || selected.length === 0}
-                      className="px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
-                    >
-                      Mark Paid
-                      {selected.length > 0 ? ` (${selected.length})` : ""}
-                    </button>
-                    <button
-                      onClick={handleMarkRejected}
-                      disabled={
-                        actioning || selected.length === 0 || !selectedCanReject
-                      }
-                      title={
-                        selected.length > 0 && !selectedCanReject
-                          ? "Only NRS-transmitted invoices can be rejected"
-                          : undefined
-                      }
-                      className="px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
-                    >
-                      Reject{selected.length > 0 ? ` (${selected.length})` : ""}
-                    </button>
-                  </>
+                )}
+
+                {/* Mark Paid — available on both paths, for any NRS-transmitted invoice */}
+                <button
+                  onClick={handleMarkPaid}
+                  disabled={actioning || selected.length === 0}
+                  title={selected.length === 0 ? "Select invoices to mark as paid" : undefined}
+                  className="px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+                >
+                  Mark Paid
+                  {selected.length > 0 ? ` (${selected.length})` : ""}
+                </button>
+
+                {/* Reject — only for non-approval broadcasts, NRS-transmitted only */}
+                {!requiresApproval && (
+                  <button
+                    onClick={handleMarkRejected}
+                    disabled={
+                      actioning || selected.length === 0 || !selectedCanReject
+                    }
+                    title={
+                      selected.length > 0 && !selectedCanReject
+                        ? "Only NRS-transmitted invoices can be rejected"
+                        : undefined
+                    }
+                    className="px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+                  >
+                    Reject{selected.length > 0 ? ` (${selected.length})` : ""}
+                  </button>
                 )}
               </div>
             )}
@@ -488,29 +494,12 @@ export default function BroadcastDetail() {
             </div>
           )}
 
-          {subTotalPages > 1 && (
-            <div className="flex items-center gap-2 text-sm mt-3">
-              <button
-                onClick={() => setSubPage((p) => Math.max(1, p - 1))}
-                disabled={subPage === 1}
-                className="px-3 py-1 border rounded disabled:opacity-40"
-              >
-                Prev
-              </button>
-              <span className="text-gray-500">
-                Page {subPage} of {subTotalPages}
-              </span>
-              <button
-                onClick={() =>
-                  setSubPage((p) => Math.min(subTotalPages, p + 1))
-                }
-                disabled={subPage === subTotalPages}
-                className="px-3 py-1 border rounded disabled:opacity-40"
-              >
-                Next
-              </button>
-            </div>
-          )}
+          <TablePagination
+            page={subPage}
+            totalPages={subTotalPages}
+            onPrev={() => setSubPage((p) => Math.max(1, p - 1))}
+            onNext={() => setSubPage((p) => Math.min(subTotalPages, p + 1))}
+          />
         </div>
       </div>
 

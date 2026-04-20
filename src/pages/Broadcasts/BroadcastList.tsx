@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import toast from "react-hot-toast";
 import PageMeta from "../../components/common/PageMeta";
+import TablePagination from "../../components/common/TablePagination";
+import { SkeletonTableRows } from "../../components/ui/skeleton/Skeleton";
 import {
   broadcastApi,
   vendorApi,
@@ -165,7 +167,13 @@ export default function BroadcastList() {
         </div>
 
         {loading ? (
-          <p className="text-sm text-gray-500">Loading...</p>
+          <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+            <table className="min-w-full text-sm">
+              <tbody>
+                <SkeletonTableRows rows={8} colWidths={["w-40", "w-20", "w-24", "w-16", "w-16", "w-16"]} />
+              </tbody>
+            </table>
+          </div>
         ) : broadcasts.length === 0 ? (
           <p className="text-sm text-gray-500">No broadcasts found.</p>
         ) : (
@@ -221,27 +229,12 @@ export default function BroadcastList() {
           </div>
         )}
 
-        {totalPages > 1 && (
-          <div className="flex items-center gap-2 text-sm">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="px-3 py-1 border rounded disabled:opacity-40"
-            >
-              Prev
-            </button>
-            <span className="text-gray-500">
-              Page {page} of {totalPages}
-            </span>
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className="px-3 py-1 border rounded disabled:opacity-40"
-            >
-              Next
-            </button>
-          </div>
-        )}
+        <TablePagination
+          page={page}
+          totalPages={totalPages}
+          onPrev={() => setPage((p) => Math.max(1, p - 1))}
+          onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
+        />
       </div>
 
       {showForm && (

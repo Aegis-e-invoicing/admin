@@ -9,6 +9,7 @@ import {
   useIsAegis,
   useIsAdmin,
   useCanCreateInvoice,
+  useCanManageAppSettings,
   useAuth,
 } from "../context/AuthContext";
 import {
@@ -89,7 +90,7 @@ function ConfirmDialog({
 
 // ── APP provider + environment switcher (client users only) ──────────────────
 function AppEnvSwitcher() {
-  const isAegis = useIsAegis();
+  const canManage = useCanManageAppSettings();
   const { user } = useAuth();
   const { setEnvMode: setGlobalEnvMode } = useEnvMode();
   const [adapters, setAdapters] = useState<AppAdapterOption[]>([]);
@@ -104,7 +105,7 @@ function AppEnvSwitcher() {
   const [pendingEnvToggle, setPendingEnvToggle] = useState(false);
 
   useEffect(() => {
-    if (isAegis || !user?.businessId) return;
+    if (!canManage || !user?.businessId) return;
 
     if (USE_MOCK) {
       setAdapters(MOCK_ADAPTER_OPTIONS);
@@ -126,7 +127,7 @@ function AppEnvSwitcher() {
         setGlobalEnvMode(s.environmentMode);
       })
       .catch(() => {});
-  }, [isAegis, user?.businessId]);
+  }, [canManage, user?.businessId]);
 
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
@@ -138,7 +139,7 @@ function AppEnvSwitcher() {
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
-  if (isAegis || !user?.businessId) return null;
+  if (!canManage || !user?.businessId) return null;
 
   const activeAdapter = adapters.find((a) => a.adapterKey === activeKey);
   const isTest = envMode === 1;

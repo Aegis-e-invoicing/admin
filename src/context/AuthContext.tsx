@@ -173,22 +173,41 @@ export const useIsAegis = () => {
 
 export const useIsAdmin = () => {
   const { user } = useAuth();
-  return user?.roles.includes("Admin") === true;
+  return (
+    user?.isAegisUser === true ||
+    user?.roles.includes("ClientAdmin") === true ||
+    user?.roles.includes("Admin") === true // legacy
+  );
 };
 
 export const useIsUser = () => {
   const { user } = useAuth();
-  return user?.roles.includes("User") === true;
+  return (
+    user?.roles.includes("ClientUser") === true ||
+    user?.roles.includes("User") === true
+  );
 };
 
 export const useCanCreateInvoice = () => {
   const { user } = useAuth();
   if (!user) return false;
-  // Portal (SaaS) plan can create invoices on portal
-  // SFTP and API plans cannot
   if (user.subscriptionTier === "SFTP" || user.subscriptionTier === "ApiOnly")
     return false;
+  // If the user has explicit permissions, check invoices.create
+  if (user.permissions.length > 0)
+    return user.isAegisUser || user.permissions.includes("invoices.create");
+  // Fallback: allow if no permission system is in use yet
   return true;
+};
+
+export const useCanManageAppSettings = () => {
+  const { user } = useAuth();
+  if (!user) return false;
+  if (user.isAegisUser) return true;
+  if (user.permissions.length > 0)
+    return user.permissions.includes("business.manage_settings");
+  // Fallback: ClientAdmin role without explicit permissions list
+  return user.roles.includes("ClientAdmin");
 };
 
 export const useSubscriptionTier = () => {

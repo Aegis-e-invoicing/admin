@@ -1,16 +1,21 @@
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
+import { SkeletonTableRows } from "../../components/ui/skeleton/Skeleton";
 import PageMeta from "../../components/common/PageMeta";
+import TablePagination from "../../components/common/TablePagination";
 import {
   userMgmtApi,
   aegisUserApi,
+  roleApi,
   type UserSummary,
   type AegisUserSummary,
+  type RoleSummary,
   type CreateUserPayload,
   type CreateAegisUserPayload,
 } from "../../lib/api";
-import { USE_MOCK, MOCK_USERS, MOCK_AEGIS_USERS } from "../../lib/mockData";
+import { USE_MOCK, MOCK_USERS, MOCK_AEGIS_USERS, MOCK_ROLES } from "../../lib/mockData";
 import { useIsAdmin, useIsAegis } from "../../context/AuthContext";
+import { usePermissions, Permission } from "../../hooks/usePermissions";
 
 const inputCls =
   "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-500";
@@ -21,11 +26,6 @@ const STATUS_COLORS: Record<string, string> = {
   Inactive: "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300",
   Suspended: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
 };
-
-const CLIENT_ROLE_OPTIONS = [
-  { id: "Admin", label: "Client Admin" },
-  { id: "User", label: "Client User" },
-];
 
 const AEGIS_ROLE_OPTIONS = [
   { id: "SuperAdmin", label: "Super Admin" },
@@ -52,7 +52,13 @@ const emptyAegisForm: CreateAegisUserPayload = {
 export default function UserList() {
   const isAdmin = useIsAdmin();
   const isAegis = useIsAegis();
-  const canManage = isAdmin || isAegis;
+  const { can } = usePermissions();
+  const [availableRoles, setAvailableRoles] = useState<RoleSummary[]>([]);
+  const canManageUsers = isAegis || can(Permission.CreateUsers);
+  const canActivate = isAegis || can(Permission.ActivateUsers);
+  const canDeactivate = isAegis || can(Permission.DeactivateUsers);
+  const canResetPwd = isAegis || can(Permission.ResetPasswords);
+  const canManage = isAdmin || isAegis || canManageUsers;
 
   const [users, setUsers] = useState<(UserSummary | AegisUserSummary)[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,6 +90,7 @@ export default function UserList() {
           ? (MOCK_AEGIS_USERS as AegisUserSummary[])
           : (MOCK_USERS as UserSummary[]),
       );
+      if (!isAegis) setAvailableRoles(MOCK_ROLES as RoleSummary[]);
       setLoading(false);
       return;
     }
@@ -93,6 +100,9 @@ export default function UserList() {
       .then(setAllUsers)
       .catch(() => toast.error("Failed to load users."))
       .finally(() => setLoading(false));
+    if (!isAegis) {
+      roleApi.list().then(setAvailableRoles).catch(() => {});
+    }
   };
 
   useEffect(() => {
@@ -347,11 +357,18 @@ export default function UserList() {
                   }
                   className={inputCls}
                 >
-                  {CLIENT_ROLE_OPTIONS.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.label}
-                    </option>
-                  ))}
+                  {availableRoles.length > 0 ? (
+                    availableRoles.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name}{r.isSystemRole ? "" : " (custom)"}
+                      </option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="Admin">Client Admin</option>
+                      <option value="User">Client User</option>
+                    </>
+                  )}
                 </select>
               )}
             </div>
@@ -400,8 +417,12 @@ export default function UserList() {
           </div>
         </div>
         {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <div className="w-8 h-8 border-4 border-brand-500 border-t-transparent rounded-full animate-spin" />
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <tbody>
+                <SkeletonTableRows rows={10} colWidths={["w-32", "w-40", "w-24", "w-20", "w-24", "w-16"]} />
+              </tbody>
+            </table>
           </div>
         ) : users.length === 0 ? (
           <div className="text-center py-16">
@@ -421,9 +442,9 @@ export default function UserList() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-gray-800">
-                <tr>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40">
                   <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">
                     Name
                   </th>
@@ -497,24 +518,32 @@ export default function UserList() {
                     {canManage && (
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-3">
-                          <button
-                            onClick={() => handleToggleStatus(u)}
-                            disabled={actioning === u.id}
-                            className={`text-xs font-medium disabled:opacity-40 transition-colors ${
-                              u.status === "Active"
-                                ? "text-amber-600 hover:text-amber-700"
-                                : "text-green-600 hover:text-green-700"
-                            }`}
-                          >
-                            {u.status === "Active" ? "Deactivate" : "Activate"}
-                          </button>
-                          <button
-                            onClick={() => handleResetPassword(u)}
-                            disabled={actioning === u.id}
-                            className="text-xs font-medium text-brand-500 hover:text-brand-600 disabled:opacity-40 transition-colors"
-                          >
-                            Reset PWD
-                          </button>
+                          {(u.status === "Active"
+                            ? canDeactivate
+                            : canActivate) && (
+                            <button
+                              onClick={() => handleToggleStatus(u)}
+                              disabled={actioning === u.id}
+                              className={`text-xs font-medium disabled:opacity-40 transition-colors ${
+                                u.status === "Active"
+                                  ? "text-amber-600 hover:text-amber-700"
+                                  : "text-green-600 hover:text-green-700"
+                              }`}
+                            >
+                              {u.status === "Active"
+                                ? "Deactivate"
+                                : "Activate"}
+                            </button>
+                          )}
+                          {canResetPwd && (
+                            <button
+                              onClick={() => handleResetPassword(u)}
+                              disabled={actioning === u.id}
+                              className="text-xs font-medium text-brand-500 hover:text-brand-600 disabled:opacity-40 transition-colors"
+                            >
+                              Reset PWD
+                            </button>
+                          )}
                         </div>
                       </td>
                     )}
@@ -525,27 +554,12 @@ export default function UserList() {
           </div>
         )}
 
-        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700">
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Page {page} of {totalPages}
-          </p>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="px-3 py-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-700"
-            >
-              Previous
-            </button>
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className="px-3 py-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-700"
-            >
-              Next
-            </button>
-          </div>
-        </div>
+        <TablePagination
+          page={page}
+          totalPages={totalPages}
+          onPrev={() => setPage((p) => Math.max(1, p - 1))}
+          onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
+        />
       </div>
 
       {/* ── Reset Password Confirmation Modal ── */}
