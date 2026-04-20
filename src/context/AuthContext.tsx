@@ -6,7 +6,7 @@ import React, {
   useEffect,
 } from "react";
 import { authApi, type TokenClaims, type LoginPayload } from "../lib/api";
-import { setAccessToken } from "../lib/apiClient";
+import { setAccessToken, setRefreshToken } from "../lib/apiClient";
 import {
   USE_MOCK,
   MOCK_USER,
@@ -89,6 +89,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         const refreshed = await authApi.refresh();
         if (refreshed.accessToken) {
           setAccessToken(refreshed.accessToken);
+          if (refreshed.refreshToken) setRefreshToken(refreshed.refreshToken);
           const claims = await authApi.tokenClaims();
           setUser(claimsToUser(claims, "", claims.mustChangePassword ?? false));
         }
@@ -112,6 +113,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
     const result = await authApi.login(_payload);
     setAccessToken(result.accessToken);
+    setRefreshToken(result.refreshToken);
     const u = claimsToUser(
       result.claims,
       result.userId,
@@ -128,7 +130,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       /* ignore */
     }
     setAccessToken(null);
-    sessionStorage.removeItem("mock_user_email");
+    setRefreshToken(null);
     setUser(null);
   }, []);
 

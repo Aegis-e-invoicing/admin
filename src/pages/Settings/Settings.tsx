@@ -127,6 +127,10 @@ export default function Settings() {
   });
 
   useEffect(() => {
+    if (isAegis) {
+      setLoadingProfile(false);
+      return;
+    }
     if (USE_MOCK) {
       const prof = MOCK_BUSINESS_PROFILE as unknown as BusinessProfile;
       setProfile(prof);

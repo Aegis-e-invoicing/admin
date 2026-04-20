@@ -42,9 +42,11 @@ export default function SignInForm() {
         navigate(from, { replace: true });
       }
     } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { message?: string; success?: boolean } }; message?: string };
       const msg =
-        (err as { response?: { data?: { message?: string } } })?.response?.data
-          ?.message ?? "Login failed. Please check your credentials.";
+        axiosErr?.response?.data?.message ??
+        axiosErr?.message ??
+        "Login failed. Please check your credentials.";
       toast.error(msg);
     } finally {
       setLoading(false);

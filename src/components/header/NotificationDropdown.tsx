@@ -4,6 +4,88 @@ import { Dropdown } from "../ui/dropdown/Dropdown";
 import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { useIsAegis, useIsAdmin } from "../../context/AuthContext";
 
+// ── Navigation destinations per notification type ────────────────────────────
+const NOTIF_ROUTES: Record<NotifType, string> = {
+  invoice_raised: "/invoices",
+  invoice_approved: "/invoices",
+  invoice_transmitted: "/invoices",
+  invoice_rejected: "/invoices",
+  rule_triggered: "/invoices",
+  plan_expiry: "/settings",
+  new_business: "/businesses",
+};
+
+// ── Single-notification detail modal ─────────────────────────────────────────
+function NotificationDetailModal({
+  notification,
+  onClose,
+}: {
+  notification: Notification;
+  onClose: () => void;
+}) {
+  const navigate = useNavigate();
+  const n = notification;
+  const route = NOTIF_ROUTES[n.type];
+
+  return (
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center">
+      <div
+        className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <div className="relative z-10 w-full max-w-md mx-4 bg-white dark:bg-gray-dark rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700">
+        {/* Header */}
+        <div className="flex items-start gap-3 px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+          <NotifIcon type={n.type} />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-gray-800 dark:text-white leading-snug">
+              {n.title}
+            </p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+              {n.time}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shrink-0"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="px-5 py-4">
+          <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+            {n.body}
+          </p>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-100 dark:border-gray-700">
+          <button
+            onClick={onClose}
+            className="px-3 py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+          >
+            Dismiss
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Notification types ────────────────────────────────────────────────────────
 type NotifType =
   | "invoice_raised"
@@ -372,22 +454,12 @@ function NotificationsModal({
 }
 
 // ── Main dropdown ─────────────────────────────────────────────────────────────
-// -- Navigation destinations per notification type
-const NOTIF_ROUTES: Record<NotifType, string> = {
-  invoice_raised: "/invoices",
-  invoice_approved: "/invoices",
-  invoice_transmitted: "/invoices",
-  invoice_rejected: "/invoices",
-  rule_triggered: "/invoices",
-  plan_expiry: "/settings",
-  new_business: "/businesses",
-};
 export default function NotificationDropdown() {
   const isAegis = useIsAegis();
   const isAdmin = useIsAdmin();
-  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  const [selectedNotif, setSelectedNotif] = useState<Notification | null>(null);
   const [items, setItems] = useState<Notification[]>(INITIAL_NOTIFICATIONS);
 
   const visible = items.filter((n) => {
@@ -488,7 +560,7 @@ export default function NotificationDropdown() {
                   onItemClick={() => {
                     markRead(n.id);
                     setIsOpen(false);
-                    navigate(NOTIF_ROUTES[n.type]);
+                    setSelectedNotif(n);
                   }}
                   className={`flex gap-3 rounded-xl px-3 py-3 transition-colors cursor-pointer ${
                     !n.read
@@ -539,6 +611,13 @@ export default function NotificationDropdown() {
         <NotificationsModal
           items={visible}
           onClose={() => setModalOpen(false)}
+        />
+      )}
+
+      {selectedNotif && (
+        <NotificationDetailModal
+          notification={selectedNotif}
+          onClose={() => setSelectedNotif(null)}
         />
       )}
     </div>

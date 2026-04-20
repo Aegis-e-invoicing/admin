@@ -34,12 +34,19 @@ function requiresEncryption(url: string): boolean {
 
 // In-memory token storage (never in localStorage for security)
 let accessToken: string | null = null;
+let refreshTokenInMemory: string | null = null;
 
 export const setAccessToken = (token: string | null) => {
   accessToken = token;
 };
 
 export const getAccessToken = () => accessToken;
+
+export const setRefreshToken = (token: string | null) => {
+  refreshTokenInMemory = token;
+};
+
+export const getRefreshToken = () => refreshTokenInMemory;
 
 const api: AxiosInstance = axios.create({
   baseURL: BASE_URL,
@@ -115,14 +122,17 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
+        const body = refreshTokenInMemory ? { refreshToken: refreshTokenInMemory } : {};
         const { data } = await axios.post(
           `${BASE_URL}/auth/refresh`,
-          {},
+          body,
           { withCredentials: true }
         );
         const newToken = data.data?.accessToken;
+        const newRefresh = data.data?.refreshToken;
         if (newToken) {
           setAccessToken(newToken);
+          if (newRefresh) setRefreshToken(newRefresh);
           processQueue(null, newToken);
           originalRequest.headers.Authorization = `Bearer ${newToken}`;
           return api(originalRequest);

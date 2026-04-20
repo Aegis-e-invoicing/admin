@@ -6,6 +6,7 @@ import { SkeletonTableRows } from "../../components/ui/skeleton/Skeleton";
 import {
   appProviderApi,
   type AccessPointProviderDto,
+  type AccessPointProviderEditDto,
   type AppAdapterOption,
   type CreateAppProviderPayload,
   type UpdateAppProviderPayload,
@@ -311,7 +312,27 @@ function EditModal({
     sandboxBaseUrl: provider.sandboxBaseUrl ?? "",
     sandboxCredentialsJson: "",
   });
+  const [loadingDetails, setLoadingDetails] = useState(!USE_MOCK);
   const [saving, setSaving] = useState(false);
+
+  // Fetch full details (including decrypted credentials) on open
+  useEffect(() => {
+    if (USE_MOCK) return;
+    appProviderApi
+      .getById(provider.id)
+      .then((detail: AccessPointProviderEditDto) => {
+        setForm({
+          name: detail.name,
+          description: detail.description ?? "",
+          baseUrl: detail.baseUrl,
+          credentialsJson: detail.credentialsJson ?? "",
+          sandboxBaseUrl: detail.sandboxBaseUrl ?? "",
+          sandboxCredentialsJson: detail.sandboxCredentialsJson ?? "",
+        });
+      })
+      .catch(() => toast.error("Failed to load provider details."))
+      .finally(() => setLoadingDetails(false));
+  }, [provider.id]);
 
   const set = <K extends keyof UpdateAppProviderPayload>(
     key: K,
@@ -345,11 +366,15 @@ function EditModal({
 
   return (
     <ModalShell title={`Edit — ${provider.displayName}`} onClose={onClose}>
-      <p className="text-xs text-gray-500 dark:text-gray-400 -mt-1 mb-4">
-        Adapter cannot be changed. Leave credential fields blank to keep
-        existing values.
-      </p>
+      {loadingDetails ? (
+        <div className="flex items-center justify-center py-12 text-sm text-gray-500 dark:text-gray-400">
+          Loading provider details…
+        </div>
+      ) : (
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+        <p className="text-xs text-gray-500 dark:text-gray-400 -mt-1 mb-1">
+          Adapter cannot be changed. Credential fields are pre-filled — edit only what needs changing.
+        </p>
         <Section title="Identity">
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1">
@@ -401,9 +426,6 @@ function EditModal({
                 onChange={(e) => set("credentialsJson", e.target.value)}
                 placeholder={'{\n  "key": "value"\n}'}
               />
-              <p className="text-xs text-gray-400 dark:text-gray-500">
-                Leave blank to keep existing credentials.
-              </p>
             </div>
           </div>
         </Section>
@@ -441,6 +463,7 @@ function EditModal({
 
         <ModalFooter onCancel={onClose} saving={saving} label="Save Changes" />
       </form>
+      )}
     </ModalShell>
   );
 }

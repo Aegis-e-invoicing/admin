@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { SkeletonTableRows } from "../../components/ui/skeleton/Skeleton";
 import PageMeta from "../../components/common/PageMeta";
@@ -27,10 +27,78 @@ const STATUS_COLORS: Record<string, string> = {
   Suspended: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
 };
 
-const AEGIS_ROLE_OPTIONS = [
-  { id: "SuperAdmin", label: "Super Admin" },
-  { id: "Operations", label: "Operations" },
-  { id: "Support", label: "Support" },
+const AEGIS_PERMISSION_GROUPS: {
+  group: string;
+  items: { value: string; label: string }[];
+}[] = [
+  {
+    group: "Aegis Staff Management",
+    items: [
+      { value: "Aegis_users.create", label: "Create Staff" },
+      { value: "Aegis_users.view", label: "View Staff" },
+      { value: "Aegis_users.update_profile", label: "Update Profile" },
+      { value: "Aegis_users.update_role", label: "Update Role" },
+      { value: "Aegis_users.delete", label: "Delete Staff" },
+      { value: "Aegis_users.activate", label: "Activate" },
+      { value: "Aegis_users.deactivate", label: "Deactivate" },
+      { value: "Aegis_users.reset_password", label: "Reset Password" },
+    ],
+  },
+  {
+    group: "Business Management",
+    items: [
+      { value: "business.view", label: "View Businesses" },
+      { value: "business.update", label: "Update Businesses" },
+      { value: "business.manage_settings", label: "Manage Settings" },
+      { value: "business.manage_branches", label: "Manage Branches" },
+      { value: "business.manage_certificates", label: "Manage Certificates" },
+    ],
+  },
+  {
+    group: "Client User Management",
+    items: [
+      { value: "users.create", label: "Create Users" },
+      { value: "users.view", label: "View Users" },
+      { value: "users.update", label: "Update Users" },
+      { value: "users.delete", label: "Delete Users" },
+      { value: "users.activate", label: "Activate Users" },
+      { value: "users.deactivate", label: "Deactivate Users" },
+      { value: "users.reset_password", label: "Reset Passwords" },
+    ],
+  },
+  {
+    group: "Role Management",
+    items: [
+      { value: "roles.create", label: "Create Roles" },
+      { value: "roles.view", label: "View Roles" },
+      { value: "roles.update", label: "Update Roles" },
+      { value: "roles.delete", label: "Delete Roles" },
+      { value: "roles.assign", label: "Assign Roles" },
+    ],
+  },
+  {
+    group: "Invoices",
+    items: [
+      { value: "invoices.create", label: "Create" },
+      { value: "invoices.view", label: "View" },
+      { value: "invoices.update", label: "Update" },
+      { value: "invoices.delete", label: "Delete" },
+      { value: "invoices.submit", label: "Submit" },
+      { value: "invoices.approve", label: "Approve" },
+      { value: "invoices.reject", label: "Reject" },
+    ],
+  },
+  {
+    group: "System & Reporting",
+    items: [
+      { value: "system.view_audit_logs", label: "View Audit Logs" },
+      { value: "system.view_integration_logs", label: "View Integration Logs" },
+      { value: "system.manage_integrations", label: "Manage Integrations" },
+      { value: "tenant.manage", label: "Manage Tenant" },
+      { value: "tenant.view_settings", label: "View Tenant Settings" },
+      { value: "tenant.update_settings", label: "Update Tenant Settings" },
+    ],
+  },
 ];
 
 const emptyClientForm: CreateUserPayload = {
@@ -46,8 +114,33 @@ const emptyAegisForm: CreateAegisUserPayload = {
   lastName: "",
   email: "",
   phoneNumber: "",
-  aegisRole: "Support",
+  permissions: [],
 };
+
+// Checkbox that supports indeterminate state
+function GroupCheckbox({
+  checked,
+  indeterminate,
+  onChange,
+}: {
+  checked: boolean;
+  indeterminate: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = indeterminate;
+  }, [indeterminate]);
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      checked={checked}
+      onChange={(e) => onChange(e.target.checked)}
+      className="w-3.5 h-3.5 rounded border-gray-300 text-brand-500 focus:ring-brand-500 cursor-pointer"
+    />
+  );
+}
 
 export default function UserList() {
   const isAdmin = useIsAdmin();
@@ -331,25 +424,11 @@ export default function UserList() {
                 placeholder="+234..."
               />
             </div>
+            {!isAegis && (
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
                 Role
               </label>
-              {isAegis ? (
-                <select
-                  value={aegisForm.aegisRole}
-                  onChange={(e) =>
-                    setAegisForm((f) => ({ ...f, aegisRole: e.target.value }))
-                  }
-                  className={inputCls}
-                >
-                  {AEGIS_ROLE_OPTIONS.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.label}
-                    </option>
-                  ))}
-                </select>
-              ) : (
                 <select
                   value={clientForm.roleId}
                   onChange={(e) =>
@@ -370,9 +449,76 @@ export default function UserList() {
                     </>
                   )}
                 </select>
-              )}
             </div>
+            )}
           </div>
+
+          {/* Aegis staff: role badge + permission selection */}
+          {isAegis && (
+            <div className="mt-4">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Role</span>
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:text-brand-300">
+                  AegisAdmin
+                </span>
+                <span className="text-xs text-gray-400 dark:text-gray-500">— select specific permissions below</span>
+              </div>
+              <div className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 space-y-4">
+                {AEGIS_PERMISSION_GROUPS.map((group) => {
+                  const groupValues = group.items.map((i) => i.value);
+                  const perms = aegisForm.permissions ?? [];
+                  const selectedCount = groupValues.filter((v) => perms.includes(v)).length;
+                  const allSelected = selectedCount === groupValues.length;
+                  const someSelected = selectedCount > 0 && !allSelected;
+                  return (
+                  <div key={group.group}>
+                    <label className="flex items-center gap-2 mb-2 cursor-pointer">
+                      <GroupCheckbox
+                        checked={allSelected}
+                        indeterminate={someSelected}
+                        onChange={(on) =>
+                          setAegisForm((f) => ({
+                            ...f,
+                            permissions: on
+                              ? [...new Set([...(f.permissions ?? []), ...groupValues])]
+                              : (f.permissions ?? []).filter((p) => !groupValues.includes(p)),
+                          }))
+                        }
+                      />
+                      <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">{group.group}</span>
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1.5 pl-5">
+                      {group.items.map((item) => {
+                        const checked = perms.includes(item.value);
+                        return (
+                          <label key={item.value} className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={(e) =>
+                                setAegisForm((f) => ({
+                                  ...f,
+                                  permissions: e.target.checked
+                                    ? [...(f.permissions ?? []), item.value]
+                                    : (f.permissions ?? []).filter((p) => p !== item.value),
+                                }))
+                              }
+                              className="w-3.5 h-3.5 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
+                            />
+                            <span className="text-xs text-gray-600 dark:text-gray-300">{item.label}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
+                Leave all unchecked to grant full AegisAdmin access.
+              </p>
+            </div>
+          )}
           <div className="flex gap-3 justify-end mt-4">
             <button
               type="button"
@@ -507,8 +653,8 @@ export default function UserList() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-gray-500 dark:text-gray-400">
-                      {u.lastLogin
-                        ? new Date(u.lastLogin).toLocaleDateString("en-NG", {
+                      {(u.lastLoginAt ?? u.lastLogin)
+                        ? new Date((u.lastLoginAt ?? u.lastLogin)!).toLocaleDateString("en-NG", {
                             day: "2-digit",
                             month: "short",
                             year: "numeric",

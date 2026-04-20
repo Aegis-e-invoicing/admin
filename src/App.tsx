@@ -31,12 +31,14 @@ import VendorPortal from "./pages/VendorPortal/VendorPortal";
 import { PrivateRoute } from "./components/common/PrivateRoute";
 import { ScrollToTop } from "./components/common/ScrollToTop";
 import { EnvModeProvider } from "./context/EnvModeContext";
+import { Toaster } from "react-hot-toast";
 
 export default function App() {
   return (
     <EnvModeProvider>
       <Router>
         <ScrollToTop />
+        <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
         <Routes>
           {/* Protected routes — require authentication */}
           <Route element={<PrivateRoute />}>

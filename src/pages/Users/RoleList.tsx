@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import PageMeta from "../../components/common/PageMeta";
 import { SkeletonTableRows } from "../../components/ui/skeleton/Skeleton";
@@ -86,6 +86,30 @@ const emptyForm: CreateRolePayload = {
   description: "",
   permissions: [],
 };
+
+function GroupCheckbox({
+  checked,
+  indeterminate,
+  onChange,
+}: {
+  checked: boolean;
+  indeterminate: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = indeterminate;
+  }, [indeterminate]);
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      checked={checked}
+      onChange={(e) => onChange(e.target.checked)}
+      className="w-4 h-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500 cursor-pointer"
+    />
+  );
+}
 
 export default function RoleList() {
   const isAdmin = useIsAdmin();
@@ -286,12 +310,31 @@ export default function RoleList() {
             Permissions <span className="text-red-500">*</span>
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
-            {ASSIGNABLE_PERMISSIONS.map((group) => (
+            {ASSIGNABLE_PERMISSIONS.map((group) => {
+              const groupValues = group.items.map((i) => i.value);
+              const selectedCount = groupValues.filter((v) => form.permissions.includes(v)).length;
+              const allSelected = selectedCount === groupValues.length;
+              const someSelected = selectedCount > 0 && !allSelected;
+              return (
               <div key={group.group}>
-                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
-                  {group.group}
-                </p>
-                <div className="space-y-1.5">
+                <label className="flex items-center gap-2 mb-2 cursor-pointer">
+                  <GroupCheckbox
+                    checked={allSelected}
+                    indeterminate={someSelected}
+                    onChange={(on) =>
+                      setForm((f) => ({
+                        ...f,
+                        permissions: on
+                          ? [...new Set([...f.permissions, ...groupValues])]
+                          : f.permissions.filter((p) => !groupValues.includes(p)),
+                      }))
+                    }
+                  />
+                  <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                    {group.group}
+                  </span>
+                </label>
+                <div className="space-y-1.5 pl-6">
                   {group.items.map((item) => (
                     <label
                       key={item.value}
@@ -310,7 +353,8 @@ export default function RoleList() {
                   ))}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="flex gap-3">
@@ -451,12 +495,30 @@ export default function RoleList() {
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
-              {ASSIGNABLE_PERMISSIONS.map((group) => (
+              {ASSIGNABLE_PERMISSIONS.map((group) => {
+                const groupValues = group.items.map((i) => i.value);
+                const selectedCount = groupValues.filter((v) => editPerms.includes(v)).length;
+                const allSelected = selectedCount === groupValues.length;
+                const someSelected = selectedCount > 0 && !allSelected;
+                return (
                 <div key={group.group}>
-                  <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
-                    {group.group}
-                  </p>
-                  <div className="space-y-1.5">
+                  <label className="flex items-center gap-2 mb-2 cursor-pointer">
+                    <GroupCheckbox
+                      checked={allSelected}
+                      indeterminate={someSelected}
+                      onChange={(on) =>
+                        setEditPerms((prev) =>
+                          on
+                            ? [...new Set([...prev, ...groupValues])]
+                            : prev.filter((p) => !groupValues.includes(p))
+                        )
+                      }
+                    />
+                    <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                      {group.group}
+                    </span>
+                  </label>
+                  <div className="space-y-1.5 pl-6">
                     {group.items.map((item) => (
                       <label
                         key={item.value}
@@ -475,7 +537,8 @@ export default function RoleList() {
                     ))}
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
 
             <div className="flex gap-3">
