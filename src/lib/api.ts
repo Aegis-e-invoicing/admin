@@ -60,7 +60,11 @@ export const authApi = {
   refresh: () =>
     api
       .post<
-        ApiResponse<{ accessToken: string; refreshToken: string; expiresAt: string }>
+        ApiResponse<{
+          accessToken: string;
+          refreshToken: string;
+          expiresAt: string;
+        }>
       >("/auth/refresh")
       .then(unwrap),
 
@@ -663,6 +667,21 @@ export interface AegisUserSummary {
   lastLogin?: string;
 }
 
+export interface AegisUserDetail extends AegisUserSummary {
+  phoneNumber?: string;
+  aegisEmployeeId?: string;
+  aegisDepartment?: string;
+  permissions: string[];
+}
+
+export interface UpdateAegisUserProfilePayload {
+  NRStName: string;
+  lastName: string;
+  phoneNumber?: string;
+  aegisEmployeeId?: string;
+  aegisDepartment?: string;
+}
+
 export interface CreateAegisUserPayload {
   NRStName: string;
   lastName: string;
@@ -674,28 +693,33 @@ export interface CreateAegisUserPayload {
 export const aegisUserApi = {
   list: () =>
     api
-      .get<
-        ApiResponse<{ items: AegisUserSummary[] }>
-      >("/Aegis-user-management/Aegis-users")
+      .get<ApiResponse<{ items: AegisUserSummary[] }>>(
+        "/Aegis-user-management/Aegis-users",
+      )
       .then(unwrap)
       .then((r) =>
-        r.items.map((u: AegisUserSummary & { firstName?: string; lastLoginAt?: string }) => ({
-          ...u,
-          NRStName: u.firstName ?? u.NRStName,
-        }))
+        r.items.map(
+          (
+            u: AegisUserSummary & { firstName?: string; lastLoginAt?: string },
+          ) => ({
+            ...u,
+            NRStName: u.firstName ?? u.NRStName,
+          }),
+        ),
       ),
   create: (payload: CreateAegisUserPayload) =>
     api
-      .post<
-        ApiResponse<AegisUserSummary>
-      >("/Aegis-user-management/Aegis-users", {
-        firstName: payload.NRStName,
-        lastName: payload.lastName,
-        email: payload.email,
-        aegisRole: 1, // AegisRole.AegisAdmin
-        phoneNumber: payload.phoneNumber,
-        permissions: payload.permissions ?? [],
-      })
+      .post<ApiResponse<AegisUserSummary>>(
+        "/Aegis-user-management/Aegis-users",
+        {
+          firstName: payload.NRStName,
+          lastName: payload.lastName,
+          email: payload.email,
+          aegisRole: 1, // AegisRole.AegisAdmin
+          phoneNumber: payload.phoneNumber,
+          permissions: payload.permissions ?? [],
+        },
+      )
       .then(unwrap),
   activate: (userId: string) =>
     api.post(`/Aegis-user-management/Aegis-users/${userId}/activate`),
@@ -703,6 +727,33 @@ export const aegisUserApi = {
     api.post(`/Aegis-user-management/Aegis-users/${userId}/deactivate`),
   resetPassword: (userId: string) =>
     api.post(`/Aegis-user-management/Aegis-users/${userId}/reset-password`),
+  getDetail: (userId: string) =>
+    api
+      .get<ApiResponse<AegisUserDetail & { firstName?: string }>>(
+        `/Aegis-user-management/Aegis-users/${userId}`,
+      )
+      .then(unwrap)
+      .then((u) => ({
+        ...u,
+        NRStName: u.firstName ?? u.NRStName,
+        permissions: u.permissions ?? [],
+      })),
+  updateProfile: (userId: string, payload: UpdateAegisUserProfilePayload) =>
+    api
+      .put(`/Aegis-user-management/users/${userId}/profile`, {
+        firstName: payload.NRStName,
+        lastName: payload.lastName,
+        phoneNumber: payload.phoneNumber,
+        aegisEmployeeId: payload.aegisEmployeeId,
+        aegisDepartment: payload.aegisDepartment,
+      })
+      .then(unwrap),
+  updatePermissions: (userId: string, permissions: string[]) =>
+    api
+      .put(`/Aegis-user-management/users/${userId}/permissions`, {
+        permissions,
+      })
+      .then(unwrap),
 };
 
 // ── User Management ───────────────────────────────────────────────────────────
@@ -728,16 +779,23 @@ export interface CreateUserPayload {
 export const userMgmtApi = {
   list: () =>
     api
-      .get<ApiResponse<{ items: (UserSummary & { firstName?: string; roles?: ({ name: string } | string)[] })[] }>>("/usermanagement/users")
+      .get<
+        ApiResponse<{
+          items: (UserSummary & {
+            firstName?: string;
+            roles?: ({ name: string } | string)[];
+          })[];
+        }>
+      >("/usermanagement/users")
       .then(unwrap)
       .then((r) =>
         r.items.map((u) => ({
           ...u,
           NRStName: u.firstName ?? u.NRStName,
           roles: (u.roles ?? []).map((role) =>
-            typeof role === "string" ? role : (role as { name: string }).name
+            typeof role === "string" ? role : (role as { name: string }).name,
           ),
-        }))
+        })),
       ),
   create: (payload: CreateUserPayload) =>
     api
@@ -1127,7 +1185,9 @@ export interface AccessPointProviderEditDto {
 export const appProviderApi = {
   getById: (id: string) =>
     api
-      .get<ApiResponse<AccessPointProviderEditDto>>(`/access-point-providers/${id}`)
+      .get<
+        ApiResponse<AccessPointProviderEditDto>
+      >(`/access-point-providers/${id}`)
       .then(unwrap),
 
   getAdapterOptions: () =>
