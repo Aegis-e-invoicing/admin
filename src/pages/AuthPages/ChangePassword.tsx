@@ -47,8 +47,11 @@ export default function ChangePassword() {
       await logout();
       navigate("/signin", { replace: true });
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-        ?? "Failed to change password. Please try again.";
+      const data = (err as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } })?.response?.data;
+      const fieldErrors = data?.errors ? Object.values(data.errors).flat() : [];
+      const msg = fieldErrors.length > 0
+        ? fieldErrors[0]
+        : data?.message ?? "Failed to change password. Please try again.";
       toast.error(msg);
     } finally {
       setLoading(false);

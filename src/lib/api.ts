@@ -28,6 +28,7 @@ export interface TokenClaims {
   isAegisUser: boolean;
   aegisRole?: string;
   subscriptionTier?: string;
+  mustChangePassword: boolean;
 }
 export interface RegisterPayload {
   adminNRStName: string;
@@ -672,9 +673,10 @@ export const aegisUserApi = {
   list: () =>
     api
       .get<
-        ApiResponse<AegisUserSummary[]>
+        ApiResponse<{ items: AegisUserSummary[] }>
       >("/Aegis-user-management/Aegis-users")
-      .then(unwrap),
+      .then(unwrap)
+      .then((r) => r.items),
   create: (payload: CreateAegisUserPayload) =>
     api
       .post<
@@ -709,7 +711,10 @@ export interface CreateUserPayload {
 
 export const userMgmtApi = {
   list: () =>
-    api.get<ApiResponse<UserSummary[]>>("/usermanagement/users").then(unwrap),
+    api
+      .get<ApiResponse<{ items: UserSummary[] }>>("/usermanagement/users")
+      .then(unwrap)
+      .then((r) => r.items),
   create: (payload: CreateUserPayload) =>
     api
       .post<ApiResponse<UserSummary>>("/usermanagement/users", payload)

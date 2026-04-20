@@ -82,12 +82,24 @@ const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue = [];
 };
 
+// Auth paths that should never trigger token refresh on 401
+const NO_REFRESH_PATHS = ["/auth/login", "/auth/refresh", "/auth/logout", "/auth/forgot-password"];
+
+function isAuthPath(url: string): boolean {
+  const path = url.replace(/^.*\/api\/v\d+/, "");
+  return NO_REFRESH_PATHS.some((p) => path.toLowerCase().startsWith(p));
+}
+
 api.interceptors.response.use(
   (response: AxiosResponse) => response,
   async (error) => {
     const originalRequest = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !isAuthPath(originalRequest.url ?? "")
+    ) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
@@ -115,6 +127,10 @@ api.interceptors.response.use(
           originalRequest.headers.Authorization = `Bearer ${newToken}`;
           return api(originalRequest);
         }
+        // Refresh succeeded but no token returned — treat as auth failure
+        processQueue(new Error("No access token in refresh response"), null);
+        setAccessToken(null);
+        window.location.href = "/signin";
       } catch (refreshError) {
         processQueue(refreshError, null);
         setAccessToken(null);

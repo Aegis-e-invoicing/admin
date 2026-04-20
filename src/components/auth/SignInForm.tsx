@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router";
 import toast from "react-hot-toast";
 import { EyeCloseIcon, EyeIcon } from "../../icons";
@@ -11,19 +11,21 @@ export default function SignInForm() {
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const from =
+  const fromPath =
     (location.state as { from?: { pathname: string } })?.from?.pathname || "/";
-
-  // Already logged in (e.g. mock mode) — go straight to app
-  if (isAuthenticated) {
-    navigate(from, { replace: true });
-    return null;
-  }
+  const from = fromPath === "/change-password" ? "/" : fromPath;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Already logged in — redirect to app (must be after all hooks)
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate(from, { replace: true });
+    }
+  }, [isAuthenticated]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

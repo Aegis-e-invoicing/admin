@@ -90,7 +90,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         if (refreshed.accessToken) {
           setAccessToken(refreshed.accessToken);
           const claims = await authApi.tokenClaims();
-          setUser(claimsToUser(claims, "", false));
+          setUser(claimsToUser(claims, "", claims.mustChangePassword ?? false));
         }
       } catch {
         // No valid session
@@ -136,7 +136,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       const claims = await authApi.tokenClaims();
       setUser((prev) =>
-        prev ? claimsToUser(claims, prev.userId, false) : null,
+        prev ? claimsToUser(claims, prev.userId, claims.mustChangePassword ?? false) : null,
       );
     } catch {
       /* ignore */
