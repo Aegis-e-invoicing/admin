@@ -13,12 +13,13 @@ export interface LoginResponse {
   tenantId?: string;
   mustChangePassword: boolean;
   expiresAt: string;
-  claims: TokenClaims;
+  claims?: TokenClaims | null;
   terminatedSessionCount: number;
   sessionWarning?: string;
 }
 export interface TokenClaims {
   NRStName?: string;
+  firstName?: string; // backend may return firstName instead of NRStName
   lastName?: string;
   email?: string;
   roles: string[];
@@ -64,12 +65,16 @@ export const authApi = {
           accessToken: string;
           refreshToken: string;
           expiresAt: string;
+          claims?: TokenClaims | null;
         }>
       >("/auth/refresh")
       .then(unwrap),
 
   tokenClaims: () =>
-    api.get<ApiResponse<TokenClaims>>("/auth/token-claims").then(unwrap),
+    api
+      .get<ApiResponse<TokenClaims>>("/auth/token-claims")
+      .then(unwrap)
+      .then((c) => ({ ...c, NRStName: c.firstName ?? c.NRStName })),
 
   sendOtp: (phoneNo_Email: string) =>
     api.post("/auth/forgot-password-request-otp", { phoneNo_Email }),
@@ -729,14 +734,23 @@ export const aegisUserApi = {
     api.post(`/Aegis-user-management/Aegis-users/${userId}/reset-password`),
   getDetail: (userId: string) =>
     api
-      .get<ApiResponse<AegisUserDetail & { firstName?: string }>>(
-        `/Aegis-user-management/Aegis-users/${userId}`,
-      )
+      .get<
+        ApiResponse<
+          AegisUserDetail & {
+            firstName?: string;
+            userPermissions?: string[];
+            claims?: { permissions?: string[] };
+          }
+        >
+      >(`/Aegis-user-management/Aegis-users/${userId}`)
       .then(unwrap)
       .then((u) => ({
         ...u,
         NRStName: u.firstName ?? u.NRStName,
-        permissions: u.permissions ?? [],
+        permissions:
+          u.permissions?.length
+            ? u.permissions
+            : (u.userPermissions ?? u.claims?.permissions ?? []),
       })),
   updateProfile: (userId: string, payload: UpdateAegisUserProfilePayload) =>
     api

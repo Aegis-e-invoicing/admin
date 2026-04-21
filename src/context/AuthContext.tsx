@@ -52,20 +52,20 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 const claimsToUser = (
-  claims: TokenClaims,
+  claims: TokenClaims | null | undefined,
   userId: string,
   mustChangePassword: boolean,
 ): AuthUser => ({
   userId,
-  businessId: claims.businessId,
-  NRStName: claims.NRStName,
-  lastName: claims.lastName,
-  email: claims.email,
-  roles: claims.roles ?? [],
-  permissions: claims.permissions ?? [],
-  isAegisUser: claims.isAegisUser,
-  aegisRole: claims.aegisRole,
-  subscriptionTier: claims.subscriptionTier,
+  businessId: claims?.businessId,
+  NRStName: claims?.firstName ?? claims?.NRStName,
+  lastName: claims?.lastName,
+  email: claims?.email,
+  roles: claims?.roles ?? [],
+  permissions: claims?.permissions ?? [],
+  isAegisUser: claims?.isAegisUser ?? false,
+  aegisRole: claims?.aegisRole,
+  subscriptionTier: claims?.subscriptionTier,
   mustChangePassword,
 });
 
@@ -85,16 +85,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
     const restoreSession = async () => {
       try {
-        // Try refresh NRSt to get a new access token using the cookie
         const refreshed = await authApi.refresh();
         if (refreshed.accessToken) {
           setAccessToken(refreshed.accessToken);
           if (refreshed.refreshToken) setRefreshToken(refreshed.refreshToken);
-          const claims = await authApi.tokenClaims();
-          setUser(claimsToUser(claims, "", claims.mustChangePassword ?? false));
+          const claims = refreshed.claims ?? (await authApi.tokenClaims());
+          setUser(claimsToUser(claims, "", claims?.mustChangePassword ?? false));
         }
       } catch {
-        // No valid session
         setUser(null);
       } finally {
         setIsLoading(false);
@@ -114,11 +112,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     const result = await authApi.login(_payload);
     setAccessToken(result.accessToken);
     setRefreshToken(result.refreshToken);
-    const u = claimsToUser(
-      result.claims,
-      result.userId,
-      result.mustChangePassword,
-    );
+    // claims may be null if the backend omitted them — fall back to token-claims endpoint
+    const claims = result.claims ?? (await authApi.tokenClaims());
+    const u = claimsToUser(claims, result.userId, result.mustChangePassword);
     setUser(u);
     return { mustChangePassword: result.mustChangePassword };
   }, []);

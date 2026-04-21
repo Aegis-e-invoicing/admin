@@ -22,7 +22,7 @@ export default function UserInfoCard() {
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-7 2xl:gap-x-32">
             <div>
               <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
-                NRSt Name
+                First Name
               </p>
               <p className="text-sm font-medium text-gray-800 dark:text-white/90">
                 Musharof
@@ -142,7 +142,7 @@ export default function UserInfoCard() {
 
                 <div className="grid grid-cols-1 gap-x-6 gap-y-5 lg:grid-cols-2">
                   <div className="col-span-2 lg:col-span-1">
-                    <Label>NRSt Name</Label>
+                    <Label>First Name</Label>
                     <Input type="text" value="Musharof" />
                   </div>
 

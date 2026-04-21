@@ -73,8 +73,9 @@ export default function BroadcastDetail() {
       setEditNote(detail.note ?? "");
       setSubmissions(subs.items ?? []);
       setSubTotalPages(subs.totalPages ?? 1);
-    } catch {
-      toast.error("Failed to load broadcast");
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(e?.response?.data?.message || "Failed to load broadcast");
     } finally {
       setLoading(false);
     }
@@ -101,8 +102,9 @@ export default function BroadcastDetail() {
         });
       else toast.success("Broadcast deactivated");
       load();
-    } catch {
-      toast.error("Failed to deactivate");
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(e?.response?.data?.message || "Failed to deactivate");
     } finally {
       setActioning(false);
     }
@@ -117,8 +119,9 @@ export default function BroadcastDetail() {
       toast.success("Due date extended");
       setExtendDate("");
       load();
-    } catch {
-      toast.error("Failed to extend due date");
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(e?.response?.data?.message || "Failed to extend due date");
     } finally {
       setActioning(false);
     }
@@ -136,8 +139,9 @@ export default function BroadcastDetail() {
       toast.success("Broadcast updated");
       setShowEdit(false);
       load();
-    } catch {
-      toast.error("Failed to update");
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(e?.response?.data?.message || "Failed to update");
     } finally {
       setActioning(false);
     }
@@ -160,8 +164,9 @@ export default function BroadcastDetail() {
       toast.success(`${selected.length} invoice(s) marked paid`);
       setSelected([]);
       load();
-    } catch {
-      toast.error("Failed to mark as paid");
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(e?.response?.data?.message || "Failed to mark as paid");
     } finally {
       setActioning(false);
     }
@@ -175,8 +180,9 @@ export default function BroadcastDetail() {
       toast.success(`${selected.length} invoice(s) marked rejected`);
       setSelected([]);
       load();
-    } catch {
-      toast.error("Failed to mark as rejected");
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(e?.response?.data?.message || "Failed to mark as rejected");
     } finally {
       setActioning(false);
     }
@@ -197,8 +203,11 @@ export default function BroadcastDetail() {
       });
       setSelected([]);
       load();
-    } catch {
-      toast.error("Failed to approve submissions");
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(
+        e?.response?.data?.message || "Failed to approve submissions",
+      );
     } finally {
       setActioning(false);
     }
@@ -212,8 +221,11 @@ export default function BroadcastDetail() {
       toast.success(`${selected.length} submission(s) dismissed`);
       setSelected([]);
       load();
-    } catch {
-      toast.error("Failed to dismiss submissions");
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(
+        e?.response?.data?.message || "Failed to dismiss submissions",
+      );
     } finally {
       setActioning(false);
     }
@@ -237,8 +249,11 @@ export default function BroadcastDetail() {
       await broadcastApi.dismissSubmissions(remainingIds);
       toast.success(`${remainingIds.length} remaining submission(s) dismissed`);
       load();
-    } catch {
-      toast.error("Failed to dismiss remaining submissions");
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(
+        e?.response?.data?.message || "Failed to dismiss remaining submissions",
+      );
     } finally {
       setActioning(false);
       setApproveResult(null);
@@ -392,7 +407,11 @@ export default function BroadcastDetail() {
                 <button
                   onClick={handleMarkPaid}
                   disabled={actioning || selected.length === 0}
-                  title={selected.length === 0 ? "Select invoices to mark as paid" : undefined}
+                  title={
+                    selected.length === 0
+                      ? "Select invoices to mark as paid"
+                      : undefined
+                  }
                   className="px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
                 >
                   Mark Paid

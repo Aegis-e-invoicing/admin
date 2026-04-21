@@ -243,7 +243,7 @@ export default function SignUpForm() {
             <div className="space-y-5">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label>NRSt Name <span className="text-error-500">*</span></Label>
+                  <Label>First Name <span className="text-error-500">*</span></Label>
                   <Input placeholder="John" value={form.adminNRStName} onChange={handleFieldChange("adminNRStName")} />
                 </div>
                 <div>

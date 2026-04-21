@@ -165,8 +165,20 @@ export default function RoleList() {
       setForm(emptyForm);
       setShowForm(false);
       load();
-    } catch {
-      toast.error("Failed to create role.");
+    } catch (err: unknown) {
+      const e = err as {
+        response?: {
+          data?: { errors?: Record<string, string[]>; message?: string };
+        };
+      };
+      const apiErrors = e?.response?.data?.errors;
+      if (apiErrors) {
+        Object.values(apiErrors)
+          .flat()
+          .forEach((msg) => toast.error(msg));
+      } else {
+        toast.error(e?.response?.data?.message || "Failed to create role.");
+      }
     } finally {
       setSaving(false);
     }
@@ -208,8 +220,11 @@ export default function RoleList() {
       toast.success(`Permissions updated for '${editRole.name}'.`);
       setEditRole(null);
       load();
-    } catch {
-      toast.error("Failed to update permissions.");
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(
+        e?.response?.data?.message || "Failed to update permissions.",
+      );
     } finally {
       setEditSaving(false);
     }
@@ -224,8 +239,9 @@ export default function RoleList() {
       toast.success(`Role '${deleteTarget.name}' deleted.`);
       setDeleteTarget(null);
       load();
-    } catch {
-      toast.error("Failed to delete role.");
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(e?.response?.data?.message || "Failed to delete role.");
     } finally {
       setDeleting(false);
     }
@@ -312,47 +328,51 @@ export default function RoleList() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
             {ASSIGNABLE_PERMISSIONS.map((group) => {
               const groupValues = group.items.map((i) => i.value);
-              const selectedCount = groupValues.filter((v) => form.permissions.includes(v)).length;
+              const selectedCount = groupValues.filter((v) =>
+                form.permissions.includes(v),
+              ).length;
               const allSelected = selectedCount === groupValues.length;
               const someSelected = selectedCount > 0 && !allSelected;
               return (
-              <div key={group.group}>
-                <label className="flex items-center gap-2 mb-2 cursor-pointer">
-                  <GroupCheckbox
-                    checked={allSelected}
-                    indeterminate={someSelected}
-                    onChange={(on) =>
-                      setForm((f) => ({
-                        ...f,
-                        permissions: on
-                          ? [...new Set([...f.permissions, ...groupValues])]
-                          : f.permissions.filter((p) => !groupValues.includes(p)),
-                      }))
-                    }
-                  />
-                  <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                    {group.group}
-                  </span>
-                </label>
-                <div className="space-y-1.5 pl-6">
-                  {group.items.map((item) => (
-                    <label
-                      key={item.value}
-                      className="flex items-center gap-2 cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={form.permissions.includes(item.value)}
-                        onChange={() => toggleFormPerm(item.value)}
-                        className="w-4 h-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
-                      />
-                      <span className="text-xs text-gray-700 dark:text-gray-300">
-                        {item.label}
-                      </span>
-                    </label>
-                  ))}
+                <div key={group.group}>
+                  <label className="flex items-center gap-2 mb-2 cursor-pointer">
+                    <GroupCheckbox
+                      checked={allSelected}
+                      indeterminate={someSelected}
+                      onChange={(on) =>
+                        setForm((f) => ({
+                          ...f,
+                          permissions: on
+                            ? [...new Set([...f.permissions, ...groupValues])]
+                            : f.permissions.filter(
+                                (p) => !groupValues.includes(p),
+                              ),
+                        }))
+                      }
+                    />
+                    <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                      {group.group}
+                    </span>
+                  </label>
+                  <div className="space-y-1.5 pl-6">
+                    {group.items.map((item) => (
+                      <label
+                        key={item.value}
+                        className="flex items-center gap-2 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={form.permissions.includes(item.value)}
+                          onChange={() => toggleFormPerm(item.value)}
+                          className="w-4 h-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
+                        />
+                        <span className="text-xs text-gray-700 dark:text-gray-300">
+                          {item.label}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
-              </div>
               );
             })}
           </div>
@@ -385,7 +405,10 @@ export default function RoleList() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <tbody>
-                <SkeletonTableRows rows={6} colWidths={["w-36", "w-24", "w-48", "w-16", "w-20"]} />
+                <SkeletonTableRows
+                  rows={6}
+                  colWidths={["w-36", "w-24", "w-48", "w-16", "w-20"]}
+                />
               </tbody>
             </table>
           </div>
@@ -497,46 +520,48 @@ export default function RoleList() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
               {ASSIGNABLE_PERMISSIONS.map((group) => {
                 const groupValues = group.items.map((i) => i.value);
-                const selectedCount = groupValues.filter((v) => editPerms.includes(v)).length;
+                const selectedCount = groupValues.filter((v) =>
+                  editPerms.includes(v),
+                ).length;
                 const allSelected = selectedCount === groupValues.length;
                 const someSelected = selectedCount > 0 && !allSelected;
                 return (
-                <div key={group.group}>
-                  <label className="flex items-center gap-2 mb-2 cursor-pointer">
-                    <GroupCheckbox
-                      checked={allSelected}
-                      indeterminate={someSelected}
-                      onChange={(on) =>
-                        setEditPerms((prev) =>
-                          on
-                            ? [...new Set([...prev, ...groupValues])]
-                            : prev.filter((p) => !groupValues.includes(p))
-                        )
-                      }
-                    />
-                    <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                      {group.group}
-                    </span>
-                  </label>
-                  <div className="space-y-1.5 pl-6">
-                    {group.items.map((item) => (
-                      <label
-                        key={item.value}
-                        className="flex items-center gap-2 cursor-pointer"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={editPerms.includes(item.value)}
-                          onChange={() => toggleEditPerm(item.value)}
-                          className="w-4 h-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
-                        />
-                        <span className="text-xs text-gray-700 dark:text-gray-300">
-                          {item.label}
-                        </span>
-                      </label>
-                    ))}
+                  <div key={group.group}>
+                    <label className="flex items-center gap-2 mb-2 cursor-pointer">
+                      <GroupCheckbox
+                        checked={allSelected}
+                        indeterminate={someSelected}
+                        onChange={(on) =>
+                          setEditPerms((prev) =>
+                            on
+                              ? [...new Set([...prev, ...groupValues])]
+                              : prev.filter((p) => !groupValues.includes(p)),
+                          )
+                        }
+                      />
+                      <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                        {group.group}
+                      </span>
+                    </label>
+                    <div className="space-y-1.5 pl-6">
+                      {group.items.map((item) => (
+                        <label
+                          key={item.value}
+                          className="flex items-center gap-2 cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={editPerms.includes(item.value)}
+                            onChange={() => toggleEditPerm(item.value)}
+                            className="w-4 h-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
+                          />
+                          <span className="text-xs text-gray-700 dark:text-gray-300">
+                            {item.label}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
                   </div>
-                </div>
                 );
               })}
             </div>

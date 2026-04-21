@@ -22,7 +22,12 @@ import {
   MOCK_API_CREDENTIALS,
   MOCK_SFTP_CREDENTIALS,
 } from "../../lib/mockData";
-import { useIsAegis, useIsAdmin, useCanManageAppSettings, useAuth } from "../../context/AuthContext";
+import {
+  useIsAegis,
+  useIsAdmin,
+  useCanManageAppSettings,
+  useAuth,
+} from "../../context/AuthContext";
 
 const inputCls =
   "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-500";
@@ -244,8 +249,9 @@ export default function Settings() {
       setNewApiKey(null);
       setShowRotateApiModal(true);
       toast.success("OTP sent to your email.");
-    } catch {
-      toast.error("Failed to send OTP.");
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(e?.response?.data?.message || "Failed to send OTP.");
     }
   };
 
@@ -279,8 +285,9 @@ export default function Settings() {
       toast.success("API key rotated successfully.");
       const refreshed = await businessApi.getApiCredentials();
       setApiCredentials(refreshed);
-    } catch {
-      toast.error("Failed to rotate API key.");
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(e?.response?.data?.message || "Failed to rotate API key.");
     } finally {
       setRotatingApiKey(false);
     }
@@ -293,8 +300,9 @@ export default function Settings() {
       setSftpNewPassword("");
       setShowSftpPasswordModal(true);
       toast.success("OTP sent to your email.");
-    } catch {
-      toast.error("Failed to send OTP.");
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(e?.response?.data?.message || "Failed to send OTP.");
     }
   };
 
@@ -314,8 +322,11 @@ export default function Settings() {
       setShowSftpPasswordModal(false);
       setSftpOtp("");
       setSftpNewPassword("");
-    } catch {
-      toast.error("Failed to change SFTP password.");
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(
+        e?.response?.data?.message || "Failed to change SFTP password.",
+      );
     } finally {
       setChangingSftpPassword(false);
     }
@@ -339,8 +350,20 @@ export default function Settings() {
         },
       });
       toast.success("Business profile updated.");
-    } catch {
-      toast.error("Failed to update profile.");
+    } catch (err: unknown) {
+      const e = err as {
+        response?: {
+          data?: { errors?: Record<string, string[]>; message?: string };
+        };
+      };
+      const apiErrors = e?.response?.data?.errors;
+      if (apiErrors) {
+        Object.values(apiErrors)
+          .flat()
+          .forEach((msg) => toast.error(msg));
+      } else {
+        toast.error(e?.response?.data?.message || "Failed to update profile.");
+      }
     } finally {
       setSavingProfile(false);
     }
@@ -357,8 +380,11 @@ export default function Settings() {
       await businessApi.updateNRSCredentials(NRS);
       toast.success("NRS credentials updated.");
       setNRS({ apiKey: "", clientSecret: "" });
-    } catch {
-      toast.error("Failed to update NRS credentials.");
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(
+        e?.response?.data?.message || "Failed to update NRS credentials.",
+      );
     } finally {
       setSavingNRS(false);
     }
@@ -375,8 +401,9 @@ export default function Settings() {
       await businessApi.updateQrCodeConfig(qr);
       toast.success("QR code configuration updated.");
       setQr({ publicKey: "", certificate: "" });
-    } catch {
-      toast.error("Failed to update QR config.");
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(e?.response?.data?.message || "Failed to update QR config.");
     } finally {
       setSavingQr(false);
     }
@@ -406,8 +433,11 @@ export default function Settings() {
           adapterKey)
         : "platform default";
       toast.success(`APP provider switched to ${label}.`);
-    } catch {
-      toast.error("Failed to update APP provider.");
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(
+        e?.response?.data?.message || "Failed to update APP provider.",
+      );
     } finally {
       setSavingVendor(false);
       setPendingAdapterKey(null);
@@ -424,8 +454,11 @@ export default function Settings() {
       toast.success(
         `Environment switched to ${mode === 1 ? "Sandbox" : "Production"}.`,
       );
-    } catch {
-      toast.error("Failed to update environment mode.");
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(
+        e?.response?.data?.message || "Failed to update environment mode.",
+      );
     } finally {
       setSavingEnv(false);
     }
@@ -470,8 +503,11 @@ export default function Settings() {
         });
         toast.success("Approval rule saved.");
       }
-    } catch {
-      toast.error("Failed to save approval rule.");
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(
+        e?.response?.data?.message || "Failed to save approval rule.",
+      );
     } finally {
       setSavingFlowRule(false);
     }
@@ -496,8 +532,11 @@ export default function Settings() {
           "Approval rule removed. All invoices will be auto-approved.",
         );
       }
-    } catch {
-      toast.error("Failed to remove approval rule.");
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(
+        e?.response?.data?.message || "Failed to remove approval rule.",
+      );
     } finally {
       setSavingFlowRule(false);
     }

@@ -62,8 +62,9 @@ export default function VendorGroupList() {
       setGroups(res.items ?? []);
       setTotalCount(res.totalCount ?? 0);
       setTotalPages(res.totalPages ?? 1);
-    } catch {
-      toast.error("Failed to load vendor groups");
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(e?.response?.data?.message || "Failed to load vendor groups");
     } finally {
       setLoading(false);
     }
@@ -107,8 +108,20 @@ export default function VendorGroupList() {
       }
       setShowForm(false);
       load(1);
-    } catch {
-      toast.error("Failed to save group");
+    } catch (err: unknown) {
+      const e = err as {
+        response?: {
+          data?: { errors?: Record<string, string[]>; message?: string };
+        };
+      };
+      const apiErrors = e?.response?.data?.errors;
+      if (apiErrors) {
+        Object.values(apiErrors)
+          .flat()
+          .forEach((msg) => toast.error(msg));
+      } else {
+        toast.error(e?.response?.data?.message || "Failed to save group");
+      }
     } finally {
       setSaving(false);
     }
@@ -129,8 +142,9 @@ export default function VendorGroupList() {
       await vendorGroupApi.delete(id);
       toast.success(`"${name}" deactivated`);
       load(page);
-    } catch {
-      toast.error("Failed to deactivate group");
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(e?.response?.data?.message || "Failed to deactivate group");
     }
   };
 
@@ -172,65 +186,82 @@ export default function VendorGroupList() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <tbody>
-                  <SkeletonTableRows rows={8} colWidths={["w-36", "w-48", "w-16", "w-24", "w-20"]} />
+                  <SkeletonTableRows
+                    rows={8}
+                    colWidths={["w-36", "w-48", "w-16", "w-24", "w-20"]}
+                  />
                 </tbody>
               </table>
             </div>
           ) : groups.length === 0 ? (
             <div className="text-center py-16">
-              <p className="text-gray-500 dark:text-gray-400">No vendor groups found.</p>
+              <p className="text-gray-500 dark:text-gray-400">
+                No vendor groups found.
+              </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40">
-                    <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">Name</th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">Description</th>
-                    <th className="px-4 py-3 text-right font-medium text-gray-500 dark:text-gray-400">Vendors</th>
-                    <th className="px-4 py-3 text-right font-medium text-gray-500 dark:text-gray-400">Created</th>
-                    {isAdmin && <th className="px-4 py-3 text-right font-medium text-gray-500 dark:text-gray-400">Actions</th>}
-                  </tr>
-                </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                {groups.map((g) => (
-                  <tr
-                    key={g.id}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
-                  >
-                    <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">
-                      {g.name}
-                    </td>
-                    <td className="px-4 py-3 text-gray-500">
-                      {g.description ?? "—"}
-                    </td>
-                    <td className="px-4 py-3 text-right text-gray-700 dark:text-gray-300">
-                      {g.vendorCount}
-                    </td>
-                    <td className="px-4 py-3 text-right text-gray-500">
-                      {new Date(g.createdAt).toLocaleDateString()}
-                    </td>
+                    <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">
+                      Name
+                    </th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">
+                      Description
+                    </th>
+                    <th className="px-4 py-3 text-right font-medium text-gray-500 dark:text-gray-400">
+                      Vendors
+                    </th>
+                    <th className="px-4 py-3 text-right font-medium text-gray-500 dark:text-gray-400">
+                      Created
+                    </th>
                     {isAdmin && (
-                      <td className="px-4 py-3 text-right space-x-2">
-                        <button
-                          onClick={() => openEdit(g)}
-                          className="text-brand-500 hover:underline text-xs"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDeactivate(g)}
-                          className="text-amber-500 hover:underline text-xs"
-                        >
-                          Deactivate
-                        </button>
-                      </td>
+                      <th className="px-4 py-3 text-right font-medium text-gray-500 dark:text-gray-400">
+                        Actions
+                      </th>
                     )}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                  {groups.map((g) => (
+                    <tr
+                      key={g.id}
+                      className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
+                    >
+                      <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">
+                        {g.name}
+                      </td>
+                      <td className="px-4 py-3 text-gray-500">
+                        {g.description ?? "—"}
+                      </td>
+                      <td className="px-4 py-3 text-right text-gray-700 dark:text-gray-300">
+                        {g.vendorCount}
+                      </td>
+                      <td className="px-4 py-3 text-right text-gray-500">
+                        {new Date(g.createdAt).toLocaleDateString()}
+                      </td>
+                      {isAdmin && (
+                        <td className="px-4 py-3 text-right space-x-2">
+                          <button
+                            onClick={() => openEdit(g)}
+                            className="text-brand-500 hover:underline text-xs"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeactivate(g)}
+                            className="text-amber-500 hover:underline text-xs"
+                          >
+                            Deactivate
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
           <TablePagination
             page={page}

@@ -144,7 +144,7 @@ export default function Profile() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
             <div>
               <p className="text-xs font-medium text-gray-400 dark:text-gray-500 mb-0.5">
-                NRSt Name
+                First Name
               </p>
               <p className="text-gray-800 dark:text-white">
                 {user?.NRStName || "—"}

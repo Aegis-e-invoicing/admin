@@ -89,8 +89,9 @@ export default function VendorList() {
       setVendors(res.items ?? []);
       setTotalCount(res.totalCount ?? 0);
       setTotalPages(res.totalPages ?? 1);
-    } catch {
-      toast.error("Failed to load vendors");
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(e?.response?.data?.message || "Failed to load vendors");
     } finally {
       setLoading(false);
     }
@@ -153,8 +154,20 @@ export default function VendorList() {
       }
       setShowForm(false);
       load(1);
-    } catch {
-      toast.error("Failed to save vendor");
+    } catch (err: unknown) {
+      const e = err as {
+        response?: {
+          data?: { errors?: Record<string, string[]>; message?: string };
+        };
+      };
+      const apiErrors = e?.response?.data?.errors;
+      if (apiErrors) {
+        Object.values(apiErrors)
+          .flat()
+          .forEach((msg) => toast.error(msg));
+      } else {
+        toast.error(e?.response?.data?.message || "Failed to save vendor");
+      }
     } finally {
       setSaving(false);
     }
@@ -175,8 +188,9 @@ export default function VendorList() {
         `${vendor.businessName} ${vendor.isActive ? "deactivated" : "activated"}.`,
       );
       load(page);
-    } catch {
-      toast.error("Failed to update status.");
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(e?.response?.data?.message || "Failed to update status.");
     } finally {
       setToggling(null);
     }
@@ -234,76 +248,95 @@ export default function VendorList() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <tbody>
-                  <SkeletonTableRows rows={8} colWidths={["w-36", "w-40", "w-28", "w-28", "w-20", "w-16"]} />
+                  <SkeletonTableRows
+                    rows={8}
+                    colWidths={["w-36", "w-40", "w-28", "w-28", "w-20", "w-16"]}
+                  />
                 </tbody>
               </table>
             </div>
           ) : vendors.length === 0 ? (
             <div className="text-center py-16">
-              <p className="text-gray-500 dark:text-gray-400">No vendors found.</p>
+              <p className="text-gray-500 dark:text-gray-400">
+                No vendors found.
+              </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40">
-                    <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">Business Name</th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">Email</th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">Phone</th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">Group</th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">Status</th>
-                    {isAdmin && <th className="px-4 py-3 text-right font-medium text-gray-500 dark:text-gray-400">Actions</th>}
-                  </tr>
-                </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                {vendors.map((v) => (
-                  <tr
-                    key={v.id}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
-                  >
-                    <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">
-                      {v.businessName}
-                    </td>
-                    <td className="px-4 py-3 text-gray-500">{v.email}</td>
-                    <td className="px-4 py-3 text-gray-500">
-                      {v.phone ?? "—"}
-                    </td>
-                    <td className="px-4 py-3 text-gray-500">
-                      {v.vendorGroupName ?? "—"}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColor[String(v.isActive)]}`}
-                      >
-                        {v.isActive ? "Active" : "Inactive"}
-                      </span>
-                    </td>
+                    <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">
+                      Business Name
+                    </th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">
+                      Email
+                    </th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">
+                      Phone
+                    </th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">
+                      Group
+                    </th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">
+                      Status
+                    </th>
                     {isAdmin && (
-                      <td className="px-4 py-3 text-right space-x-2">
-                        <button
-                          onClick={() => openEdit(v)}
-                          className="text-brand-500 hover:underline text-xs"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleToggle(v)}
-                          disabled={toggling === v.id}
-                          className={`text-xs font-medium disabled:opacity-40 transition-colors ${
-                            v.isActive
-                              ? "text-amber-600 hover:text-amber-700"
-                              : "text-green-600 hover:text-green-700"
-                          }`}
-                        >
-                          {v.isActive ? "Deactivate" : "Activate"}
-                        </button>
-                      </td>
+                      <th className="px-4 py-3 text-right font-medium text-gray-500 dark:text-gray-400">
+                        Actions
+                      </th>
                     )}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                  {vendors.map((v) => (
+                    <tr
+                      key={v.id}
+                      className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
+                    >
+                      <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">
+                        {v.businessName}
+                      </td>
+                      <td className="px-4 py-3 text-gray-500">{v.email}</td>
+                      <td className="px-4 py-3 text-gray-500">
+                        {v.phone ?? "—"}
+                      </td>
+                      <td className="px-4 py-3 text-gray-500">
+                        {v.vendorGroupName ?? "—"}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColor[String(v.isActive)]}`}
+                        >
+                          {v.isActive ? "Active" : "Inactive"}
+                        </span>
+                      </td>
+                      {isAdmin && (
+                        <td className="px-4 py-3 text-right space-x-2">
+                          <button
+                            onClick={() => openEdit(v)}
+                            className="text-brand-500 hover:underline text-xs"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleToggle(v)}
+                            disabled={toggling === v.id}
+                            className={`text-xs font-medium disabled:opacity-40 transition-colors ${
+                              v.isActive
+                                ? "text-amber-600 hover:text-amber-700"
+                                : "text-green-600 hover:text-green-700"
+                            }`}
+                          >
+                            {v.isActive ? "Deactivate" : "Activate"}
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
           <TablePagination
             page={page}

@@ -15,7 +15,12 @@ import {
   type CreateUserPayload,
   type CreateAegisUserPayload,
 } from "../../lib/api";
-import { USE_MOCK, MOCK_USERS, MOCK_AEGIS_USERS, MOCK_ROLES } from "../../lib/mockData";
+import {
+  USE_MOCK,
+  MOCK_USERS,
+  MOCK_AEGIS_USERS,
+  MOCK_ROLES,
+} from "../../lib/mockData";
 import { useIsAdmin, useIsAegis } from "../../context/AuthContext";
 import { usePermissions, Permission } from "../../hooks/usePermissions";
 
@@ -76,18 +81,6 @@ const AEGIS_PERMISSION_GROUPS: {
       { value: "roles.update", label: "Update Roles" },
       { value: "roles.delete", label: "Delete Roles" },
       { value: "roles.assign", label: "Assign Roles" },
-    ],
-  },
-  {
-    group: "Invoices",
-    items: [
-      { value: "invoices.create", label: "Create" },
-      { value: "invoices.view", label: "View" },
-      { value: "invoices.update", label: "Update" },
-      { value: "invoices.delete", label: "Delete" },
-      { value: "invoices.submit", label: "Submit" },
-      { value: "invoices.approve", label: "Approve" },
-      { value: "invoices.reject", label: "Reject" },
     ],
   },
   {
@@ -175,18 +168,41 @@ export default function UserList() {
   >(null);
   const [editUser, setEditUser] = useState<AegisUserSummary | null>(null);
   const [editForm, setEditForm] = useState<{
-    NRStName: string; lastName: string; phoneNumber: string;
-    aegisEmployeeId: string; aegisDepartment: string; permissions: string[];
-  }>({ NRStName: "", lastName: "", phoneNumber: "", aegisEmployeeId: "", aegisDepartment: "", permissions: [] });
+    NRStName: string;
+    lastName: string;
+    phoneNumber: string;
+    aegisEmployeeId: string;
+    aegisDepartment: string;
+    permissions: string[];
+  }>({
+    NRStName: "",
+    lastName: "",
+    phoneNumber: "",
+    aegisEmployeeId: "",
+    aegisDepartment: "",
+    permissions: [],
+  });
   const [editLoading, setEditLoading] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
-  const [editCollapsedGroups, setEditCollapsedGroups] = useState<Set<string>>(new Set());
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
+    new Set(),
+  );
+  const [editCollapsedGroups, setEditCollapsedGroups] = useState<Set<string>>(
+    new Set(),
+  );
 
   const toggleGroup = (group: string) =>
-    setCollapsedGroups((prev) => { const n = new Set(prev); n.has(group) ? n.delete(group) : n.add(group); return n; });
+    setCollapsedGroups((prev) => {
+      const n = new Set(prev);
+      n.has(group) ? n.delete(group) : n.add(group);
+      return n;
+    });
   const toggleEditGroup = (group: string) =>
-    setEditCollapsedGroups((prev) => { const n = new Set(prev); n.has(group) ? n.delete(group) : n.add(group); return n; });
+    setEditCollapsedGroups((prev) => {
+      const n = new Set(prev);
+      n.has(group) ? n.delete(group) : n.add(group);
+      return n;
+    });
 
   const [allUsers, setAllUsers] = useState<(UserSummary | AegisUserSummary)[]>(
     [],
@@ -210,7 +226,10 @@ export default function UserList() {
       .catch(() => toast.error("Failed to load users."))
       .finally(() => setLoading(false));
     if (!isAegis) {
-      roleApi.list().then(setAvailableRoles).catch(() => {});
+      roleApi
+        .list()
+        .then(setAvailableRoles)
+        .catch(() => {});
     }
   };
 
@@ -233,7 +252,7 @@ export default function UserList() {
     e.preventDefault();
     const form = isAegis ? aegisForm : clientForm;
     if (!form.NRStName || !form.lastName || !form.email) {
-      toast.error("NRSt name, last name and email are required.");
+      toast.error("First name, last name and email are required.");
       return;
     }
     setSaving(true);
@@ -253,8 +272,22 @@ export default function UserList() {
       }
       setShowForm(false);
       load();
-    } catch {
-      toast.error("Failed to create user.");
+    } catch (err: unknown) {
+      const axiosErr = err as {
+        response?: {
+          data?: { errors?: Record<string, string[]>; message?: string };
+        };
+      };
+      const apiErrors = axiosErr?.response?.data?.errors;
+      if (apiErrors) {
+        Object.values(apiErrors)
+          .flat()
+          .forEach((msg) => toast.error(msg));
+      } else {
+        toast.error(
+          axiosErr?.response?.data?.message || "Failed to create user.",
+        );
+      }
     } finally {
       setSaving(false);
     }
@@ -292,8 +325,9 @@ export default function UserList() {
             : u,
         ),
       );
-    } catch {
-      toast.error("Action failed.");
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { message?: string } } };
+      toast.error(axiosErr?.response?.data?.message || "Action failed.");
     } finally {
       setActioning(null);
     }
@@ -315,8 +349,11 @@ export default function UserList() {
           : await userMgmtApi.resetPassword(user.id);
       }
       toast.success(`Password reset email sent to ${user.email}.`);
-    } catch {
-      toast.error("Failed to reset password.");
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { message?: string } } };
+      toast.error(
+        axiosErr?.response?.data?.message || "Failed to reset password.",
+      );
     } finally {
       setActioning(null);
     }
@@ -328,7 +365,13 @@ export default function UserList() {
     setEditCollapsedGroups(new Set());
     try {
       const detail: AegisUserDetail = USE_MOCK
-        ? { ...user, phoneNumber: "", aegisEmployeeId: "", aegisDepartment: "", permissions: [] }
+        ? {
+            ...user,
+            phoneNumber: "",
+            aegisEmployeeId: "",
+            aegisDepartment: "",
+            permissions: [],
+          }
         : await aegisUserApi.getDetail(user.id);
       setEditForm({
         NRStName: detail.NRStName,
@@ -338,8 +381,11 @@ export default function UserList() {
         aegisDepartment: (detail as AegisUserDetail).aegisDepartment ?? "",
         permissions: detail.permissions ?? [],
       });
-    } catch {
-      toast.error("Failed to load user details.");
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { message?: string } } };
+      toast.error(
+        axiosErr?.response?.data?.message || "Failed to load user details.",
+      );
       setEditUser(null);
     } finally {
       setEditLoading(false);
@@ -365,13 +411,27 @@ export default function UserList() {
         prev.map((u) =>
           u.id === editUser.id
             ? { ...u, NRStName: editForm.NRStName, lastName: editForm.lastName }
-            : u
-        )
+            : u,
+        ),
       );
       toast.success("User updated successfully.");
       setEditUser(null);
-    } catch {
-      toast.error("Failed to update user.");
+    } catch (err: unknown) {
+      const axiosErr = err as {
+        response?: {
+          data?: { errors?: Record<string, string[]>; message?: string };
+        };
+      };
+      const apiErrors = axiosErr?.response?.data?.errors;
+      if (apiErrors) {
+        Object.values(apiErrors)
+          .flat()
+          .forEach((msg) => toast.error(msg));
+      } else {
+        toast.error(
+          axiosErr?.response?.data?.message || "Failed to update user.",
+        );
+      }
     } finally {
       setEditSaving(false);
     }
@@ -411,217 +471,244 @@ export default function UserList() {
         )}
       </div>
 
+      {/* ── Invite Modal ── */}
       {showForm && (
-        <form
-          onSubmit={handleCreate}
-          className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 mb-6"
-        >
-          <h2 className="text-base font-semibold text-gray-700 dark:text-white mb-4">
-            Invite {isAegis ? "New Staff" : "New User"}
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                First Name *
-              </label>
-              <input
-                value={isAegis ? aegisForm.NRStName : clientForm.NRStName}
-                onChange={(e) =>
-                  isAegis
-                    ? setAegisForm((f) => ({ ...f, NRStName: e.target.value }))
-                    : setClientForm((f) => ({ ...f, NRStName: e.target.value }))
-                }
-                className={inputCls}
-                placeholder="First name"
-                required
-              />
+        <div className="fixed inset-0 z-[9999999] flex items-start justify-end p-4 bg-black/50">
+          <form
+            onSubmit={handleCreate}
+            className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 w-full max-w-2xl shadow-xl flex flex-col max-h-[calc(100vh-2rem)] mt-4 mr-2"
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700 shrink-0">
+              <h2 className="text-base font-semibold text-gray-800 dark:text-white">
+                Invite {isAegis ? "New Staff" : "New User"}
+              </h2>
+              <button
+                type="button"
+                onClick={() => setShowForm(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                Last Name *
-              </label>
-              <input
-                value={isAegis ? aegisForm.lastName : clientForm.lastName}
-                onChange={(e) =>
-                  isAegis
-                    ? setAegisForm((f) => ({ ...f, lastName: e.target.value }))
-                    : setClientForm((f) => ({ ...f, lastName: e.target.value }))
-                }
-                className={inputCls}
-                placeholder="Last name"
-                required
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                Email *
-              </label>
-              <input
-                value={isAegis ? aegisForm.email : clientForm.email}
-                onChange={(e) =>
-                  isAegis
-                    ? setAegisForm((f) => ({ ...f, email: e.target.value }))
-                    : setClientForm((f) => ({ ...f, email: e.target.value }))
-                }
-                className={inputCls}
-                placeholder={
-                  isAegis ? "staff@aegisnrs.com" : "user@example.com"
-                }
-                type="email"
-                required
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                Phone
-              </label>
-              <input
-                value={
-                  (isAegis ? aegisForm.phoneNumber : clientForm.phoneNumber) ??
-                  ""
-                }
-                onChange={(e) =>
-                  isAegis
-                    ? setAegisForm((f) => ({
-                        ...f,
-                        phoneNumber: e.target.value,
-                      }))
-                    : setClientForm((f) => ({
-                        ...f,
-                        phoneNumber: e.target.value,
-                      }))
-                }
-                className={inputCls}
-                placeholder="+234..."
-              />
-            </div>
-            {!isAegis && (
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                Role
-              </label>
-                <select
-                  value={clientForm.roleId}
-                  onChange={(e) =>
-                    setClientForm((f) => ({ ...f, roleId: e.target.value }))
-                  }
-                  className={inputCls}
-                >
-                  {availableRoles.length > 0 ? (
-                    availableRoles.map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.name}{r.isSystemRole ? "" : " (custom)"}
-                      </option>
-                    ))
-                  ) : (
-                    <>
-                      <option value="Admin">Client Admin</option>
-                      <option value="User">Client User</option>
-                    </>
-                  )}
-                </select>
-            </div>
-            )}
-          </div>
 
-          {/* Aegis staff: role badge + permission selection */}
-          {isAegis && (
-            <div className="mt-4">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Role</span>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:text-brand-300">
-                  AegisAdmin
-                </span>
-                <span className="text-xs text-gray-400 dark:text-gray-500">— select specific permissions below</span>
-              </div>
-              <div className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 space-y-4">
-                {AEGIS_PERMISSION_GROUPS.map((group) => {
-                  const groupValues = group.items.map((i) => i.value);
-                  const perms = aegisForm.permissions ?? [];
-                  const selectedCount = groupValues.filter((v) => perms.includes(v)).length;
-                  const allSelected = selectedCount === groupValues.length;
-                  const someSelected = selectedCount > 0 && !allSelected;
-                  const isCollapsed = collapsedGroups.has(group.group);
-                  return (
-                  <div key={group.group}>
-                    <div className="flex items-center gap-2 mb-2">
-                      <GroupCheckbox
-                        checked={allSelected}
-                        indeterminate={someSelected}
-                        onChange={(on) =>
-                          setAegisForm((f) => ({
-                            ...f,
-                            permissions: on
-                              ? [...new Set([...(f.permissions ?? []), ...groupValues])]
-                              : (f.permissions ?? []).filter((p) => !groupValues.includes(p)),
-                          }))
+            <div className="overflow-y-auto flex-1 px-5 py-4 space-y-5">
+              {/* Basic fields */}
+              <div>
+                <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+                  Details
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                      First Name *
+                    </label>
+                    <input
+                      value={isAegis ? aegisForm.NRStName : clientForm.NRStName}
+                      onChange={(e) =>
+                        isAegis
+                          ? setAegisForm((f) => ({ ...f, NRStName: e.target.value }))
+                          : setClientForm((f) => ({ ...f, NRStName: e.target.value }))
+                      }
+                      className={inputCls}
+                      placeholder="First name"
+                      required
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                      Last Name *
+                    </label>
+                    <input
+                      value={isAegis ? aegisForm.lastName : clientForm.lastName}
+                      onChange={(e) =>
+                        isAegis
+                          ? setAegisForm((f) => ({ ...f, lastName: e.target.value }))
+                          : setClientForm((f) => ({ ...f, lastName: e.target.value }))
+                      }
+                      className={inputCls}
+                      placeholder="Last name"
+                      required
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                      Email *
+                    </label>
+                    <input
+                      value={isAegis ? aegisForm.email : clientForm.email}
+                      onChange={(e) =>
+                        isAegis
+                          ? setAegisForm((f) => ({ ...f, email: e.target.value }))
+                          : setClientForm((f) => ({ ...f, email: e.target.value }))
+                      }
+                      className={inputCls}
+                      placeholder={isAegis ? "staff@aegisnrs.com" : "user@example.com"}
+                      type="email"
+                      required
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                      Phone
+                    </label>
+                    <input
+                      value={(isAegis ? aegisForm.phoneNumber : clientForm.phoneNumber) ?? ""}
+                      onChange={(e) =>
+                        isAegis
+                          ? setAegisForm((f) => ({ ...f, phoneNumber: e.target.value }))
+                          : setClientForm((f) => ({ ...f, phoneNumber: e.target.value }))
+                      }
+                      className={inputCls}
+                      placeholder="+234..."
+                    />
+                  </div>
+                  {!isAegis && (
+                    <div className="flex flex-col gap-1 sm:col-span-2">
+                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                        Role
+                      </label>
+                      <select
+                        value={clientForm.roleId}
+                        onChange={(e) =>
+                          setClientForm((f) => ({ ...f, roleId: e.target.value }))
                         }
-                      />
-                      <button
-                        type="button"
-                        onClick={() => toggleGroup(group.group)}
-                        className="flex items-center gap-1.5 flex-1 text-left cursor-pointer"
+                        className={inputCls}
                       >
-                        <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">{group.group}</span>
-                        {selectedCount > 0 && (
-                          <span className="text-xs text-brand-500 font-medium">({selectedCount}/{groupValues.length})</span>
+                        {availableRoles.length > 0 ? (
+                          availableRoles.map((r) => (
+                            <option key={r.id} value={r.id}>
+                              {r.name}
+                              {r.isSystemRole ? "" : " (custom)"}
+                            </option>
+                          ))
+                        ) : (
+                          <>
+                            <option value="Admin">Client Admin</option>
+                            <option value="User">Client User</option>
+                          </>
                         )}
-                        <svg className={`w-3 h-3 text-gray-400 ml-auto transition-transform ${isCollapsed ? "-rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </button>
+                      </select>
                     </div>
-                    {!isCollapsed && (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1.5 pl-5">
-                      {group.items.map((item) => {
-                        const checked = perms.includes(item.value);
-                        return (
-                          <label key={item.value} className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={(e) =>
+                  )}
+                </div>
+              </div>
+
+              {/* Aegis: role badge + permissions */}
+              {isAegis && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Permissions
+                    </h3>
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:text-brand-300">
+                      AegisAdmin
+                    </span>
+                  </div>
+                  <div className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 space-y-4">
+                    {AEGIS_PERMISSION_GROUPS.map((group) => {
+                      const groupValues = group.items.map((i) => i.value);
+                      const perms = aegisForm.permissions ?? [];
+                      const selectedCount = groupValues.filter((v) => perms.includes(v)).length;
+                      const allSelected = selectedCount === groupValues.length;
+                      const someSelected = selectedCount > 0 && !allSelected;
+                      const isCollapsed = collapsedGroups.has(group.group);
+                      return (
+                        <div key={group.group}>
+                          <div className="flex items-center gap-2 mb-2">
+                            <GroupCheckbox
+                              checked={allSelected}
+                              indeterminate={someSelected}
+                              onChange={(on) =>
                                 setAegisForm((f) => ({
                                   ...f,
-                                  permissions: e.target.checked
-                                    ? [...(f.permissions ?? []), item.value]
-                                    : (f.permissions ?? []).filter((p) => p !== item.value),
+                                  permissions: on
+                                    ? [...new Set([...(f.permissions ?? []), ...groupValues])]
+                                    : (f.permissions ?? []).filter((p) => !groupValues.includes(p)),
                                 }))
                               }
-                              className="w-3.5 h-3.5 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
                             />
-                            <span className="text-xs text-gray-600 dark:text-gray-300">{item.label}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                    )}
+                            <button
+                              type="button"
+                              onClick={() => toggleGroup(group.group)}
+                              className="flex items-center gap-1.5 flex-1 text-left cursor-pointer"
+                            >
+                              <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">
+                                {group.group}
+                              </span>
+                              {selectedCount > 0 && (
+                                <span className="text-xs text-brand-500 font-medium">
+                                  ({selectedCount}/{groupValues.length})
+                                </span>
+                              )}
+                              <svg
+                                className={`w-3 h-3 text-gray-400 ml-auto transition-transform ${isCollapsed ? "-rotate-90" : ""}`}
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth={2.5}
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+                          </div>
+                          {!isCollapsed && (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1.5 pl-5">
+                              {group.items.map((item) => {
+                                const checked = perms.includes(item.value);
+                                return (
+                                  <label key={item.value} className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={checked}
+                                      onChange={(e) =>
+                                        setAegisForm((f) => ({
+                                          ...f,
+                                          permissions: e.target.checked
+                                            ? [...(f.permissions ?? []), item.value]
+                                            : (f.permissions ?? []).filter((p) => p !== item.value),
+                                        }))
+                                      }
+                                      className="w-3.5 h-3.5 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
+                                    />
+                                    <span className="text-xs text-gray-600 dark:text-gray-300">
+                                      {item.label}
+                                    </span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
-                  );
-                })}
-              </div>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
-                Leave all unchecked to grant full AegisAdmin access.
-              </p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
+                    Leave all unchecked to grant full AegisAdmin access.
+                  </p>
+                </div>
+              )}
             </div>
-          )}
-          <div className="flex gap-3 justify-end mt-4">
-            <button
-              type="button"
-              onClick={() => setShowForm(false)}
-              className="px-4 py-2 border border-red-500 dark:border-red-500 text-sm rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm rounded-xl disabled:opacity-50 transition-colors"
-            >
-              {saving ? "Sending invite…" : "Invite"}
-            </button>
-          </div>
-        </form>
+
+            <div className="flex justify-end gap-2 px-5 py-4 border-t border-gray-200 dark:border-gray-700 shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowForm(false)}
+                className="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className="px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-xl disabled:opacity-50 transition-colors"
+              >
+                {saving ? "Sending invite…" : "Send Invite"}
+              </button>
+            </div>
+          </form>
+        </div>
       )}
 
       <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
@@ -652,7 +739,10 @@ export default function UserList() {
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
               <tbody>
-                <SkeletonTableRows rows={10} colWidths={["w-32", "w-40", "w-24", "w-20", "w-24", "w-16"]} />
+                <SkeletonTableRows
+                  rows={10}
+                  colWidths={["w-32", "w-40", "w-24", "w-20", "w-24", "w-16"]}
+                />
               </tbody>
             </table>
           </div>
@@ -713,20 +803,20 @@ export default function UserList() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
-                        {isAegis
-                          ? (
-                              <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-brand-50 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400">
-                                AegisAdmin
-                              </span>
-                            )
-                          : (u as UserSummary).roles?.map((role) => (
-                              <span
-                                key={role}
-                                className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-brand-50 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400"
-                              >
-                                {role}
-                              </span>
-                            ))}
+                        {isAegis ? (
+                          <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-brand-50 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400">
+                            AegisAdmin
+                          </span>
+                        ) : (
+                          (u as UserSummary).roles?.map((role) => (
+                            <span
+                              key={role}
+                              className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-brand-50 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400"
+                            >
+                              {role}
+                            </span>
+                          ))
+                        )}
                       </div>
                     </td>
                     <td className="px-4 py-3">
@@ -740,7 +830,9 @@ export default function UserList() {
                     </td>
                     <td className="px-4 py-3 text-gray-500 dark:text-gray-400">
                       {(u.lastLoginAt ?? u.lastLogin)
-                        ? new Date((u.lastLoginAt ?? u.lastLogin)!).toLocaleDateString("en-NG", {
+                        ? new Date(
+                            (u.lastLoginAt ?? u.lastLogin)!,
+                          ).toLocaleDateString("en-NG", {
                             day: "2-digit",
                             month: "short",
                             year: "numeric",
@@ -752,7 +844,9 @@ export default function UserList() {
                         <div className="flex items-center justify-end gap-3">
                           {isAegis && (
                             <button
-                              onClick={() => handleEditUser(u as AegisUserSummary)}
+                              onClick={() =>
+                                handleEditUser(u as AegisUserSummary)
+                              }
                               disabled={actioning === u.id}
                               className="text-xs font-medium text-blue-500 hover:text-blue-600 disabled:opacity-40 transition-colors"
                             >
@@ -805,7 +899,7 @@ export default function UserList() {
 
       {/* ── Reset Password Confirmation Modal ── */}
       {resetModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+        <div className="fixed inset-0 z-[9999999] flex items-center justify-center p-4 bg-black/50">
           <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 w-full max-w-sm shadow-xl">
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
               <h2 className="text-base font-semibold text-gray-800 dark:text-white">
@@ -862,7 +956,7 @@ export default function UserList() {
 
       {/* ── Activate / Deactivate Confirmation Modal ── */}
       {toggleModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+        <div className="fixed inset-0 z-[9999999] flex items-center justify-center p-4 bg-black/50">
           <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 w-full max-w-sm shadow-xl">
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
               <h2 className="text-base font-semibold text-gray-800 dark:text-white">
@@ -925,8 +1019,8 @@ export default function UserList() {
       )}
       {/* ── Edit Aegis User Modal ── */}
       {editUser && (
-        <div className="fixed inset-0 z-50 flex items-start justify-end p-4 bg-black/50">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 w-full max-w-lg shadow-xl flex flex-col max-h-[calc(100vh-2rem)] mt-4 mr-2">
+        <div className="fixed inset-0 z-[9999999] flex items-start justify-end p-4 bg-black/50">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 w-full max-w-2xl shadow-xl flex flex-col max-h-[calc(100vh-2rem)] mt-4 mr-2">
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700 shrink-0">
               <h2 className="text-base font-semibold text-gray-800 dark:text-white">
                 Edit Staff — {editUser.NRStName} {editUser.lastName}
@@ -935,55 +1029,148 @@ export default function UserList() {
                 onClick={() => setEditUser(null)}
                 className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
               >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
             </div>
             {editLoading ? (
               <div className="flex items-center justify-center py-12">
-                <svg className="animate-spin w-6 h-6 text-brand-500" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                <svg
+                  className="animate-spin w-6 h-6 text-brand-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8v8z"
+                  />
                 </svg>
               </div>
             ) : (
               <div className="overflow-y-auto flex-1 px-5 py-4 space-y-5">
                 {/* Profile fields */}
                 <div>
-                  <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Profile</h3>
+                  <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+                    Profile
+                  </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="flex flex-col gap-1">
-                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400">First Name *</label>
-                      <input value={editForm.NRStName} onChange={(e) => setEditForm((f) => ({ ...f, NRStName: e.target.value }))} className={inputCls} placeholder="First name" required />
+                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                        First Name *
+                      </label>
+                      <input
+                        value={editForm.NRStName}
+                        onChange={(e) =>
+                          setEditForm((f) => ({
+                            ...f,
+                            NRStName: e.target.value,
+                          }))
+                        }
+                        className={inputCls}
+                        placeholder="First name"
+                        required
+                      />
                     </div>
                     <div className="flex flex-col gap-1">
-                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Last Name *</label>
-                      <input value={editForm.lastName} onChange={(e) => setEditForm((f) => ({ ...f, lastName: e.target.value }))} className={inputCls} placeholder="Last name" required />
+                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                        Last Name *
+                      </label>
+                      <input
+                        value={editForm.lastName}
+                        onChange={(e) =>
+                          setEditForm((f) => ({
+                            ...f,
+                            lastName: e.target.value,
+                          }))
+                        }
+                        className={inputCls}
+                        placeholder="Last name"
+                        required
+                      />
                     </div>
                     <div className="flex flex-col gap-1">
-                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Phone</label>
-                      <input value={editForm.phoneNumber} onChange={(e) => setEditForm((f) => ({ ...f, phoneNumber: e.target.value }))} className={inputCls} placeholder="+234..." />
+                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                        Phone
+                      </label>
+                      <input
+                        value={editForm.phoneNumber}
+                        onChange={(e) =>
+                          setEditForm((f) => ({
+                            ...f,
+                            phoneNumber: e.target.value,
+                          }))
+                        }
+                        className={inputCls}
+                        placeholder="+234..."
+                      />
                     </div>
                     <div className="flex flex-col gap-1">
-                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Employee ID</label>
-                      <input value={editForm.aegisEmployeeId} onChange={(e) => setEditForm((f) => ({ ...f, aegisEmployeeId: e.target.value }))} className={inputCls} placeholder="EMP-001" />
+                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                        Employee ID
+                      </label>
+                      <input
+                        value={editForm.aegisEmployeeId}
+                        onChange={(e) =>
+                          setEditForm((f) => ({
+                            ...f,
+                            aegisEmployeeId: e.target.value,
+                          }))
+                        }
+                        className={inputCls}
+                        placeholder="EMP-001"
+                      />
                     </div>
                     <div className="flex flex-col gap-1 sm:col-span-2">
-                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Department</label>
-                      <input value={editForm.aegisDepartment} onChange={(e) => setEditForm((f) => ({ ...f, aegisDepartment: e.target.value }))} className={inputCls} placeholder="e.g. Operations" />
+                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                        Department
+                      </label>
+                      <input
+                        value={editForm.aegisDepartment}
+                        onChange={(e) =>
+                          setEditForm((f) => ({
+                            ...f,
+                            aegisDepartment: e.target.value,
+                          }))
+                        }
+                        className={inputCls}
+                        placeholder="e.g. Operations"
+                      />
                     </div>
                   </div>
                 </div>
 
                 {/* Permissions */}
                 <div>
-                  <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Permissions</h3>
+                  <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+                    Permissions
+                  </h3>
                   <div className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 space-y-3">
                     {AEGIS_PERMISSION_GROUPS.map((group) => {
                       const groupValues = group.items.map((i) => i.value);
                       const perms = editForm.permissions;
-                      const selectedCount = groupValues.filter((v) => perms.includes(v)).length;
+                      const selectedCount = groupValues.filter((v) =>
+                        perms.includes(v),
+                      ).length;
                       const allSelected = selectedCount === groupValues.length;
                       const someSelected = selectedCount > 0 && !allSelected;
                       const isCollapsed = editCollapsedGroups.has(group.group);
@@ -997,8 +1184,15 @@ export default function UserList() {
                                 setEditForm((f) => ({
                                   ...f,
                                   permissions: on
-                                    ? [...new Set([...f.permissions, ...groupValues])]
-                                    : f.permissions.filter((p) => !groupValues.includes(p)),
+                                    ? [
+                                        ...new Set([
+                                          ...f.permissions,
+                                          ...groupValues,
+                                        ]),
+                                      ]
+                                    : f.permissions.filter(
+                                        (p) => !groupValues.includes(p),
+                                      ),
                                 }))
                               }
                             />
@@ -1007,12 +1201,26 @@ export default function UserList() {
                               onClick={() => toggleEditGroup(group.group)}
                               className="flex items-center gap-1.5 flex-1 text-left"
                             >
-                              <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">{group.group}</span>
+                              <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">
+                                {group.group}
+                              </span>
                               {selectedCount > 0 && (
-                                <span className="text-xs text-brand-500 font-medium">({selectedCount}/{groupValues.length})</span>
+                                <span className="text-xs text-brand-500 font-medium">
+                                  ({selectedCount}/{groupValues.length})
+                                </span>
                               )}
-                              <svg className={`w-3 h-3 text-gray-400 ml-auto transition-transform ${isCollapsed ? "-rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                              <svg
+                                className={`w-3 h-3 text-gray-400 ml-auto transition-transform ${isCollapsed ? "-rotate-90" : ""}`}
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth={2.5}
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M19 9l-7 7-7-7"
+                                />
                               </svg>
                             </button>
                           </div>
@@ -1021,7 +1229,10 @@ export default function UserList() {
                               {group.items.map((item) => {
                                 const checked = perms.includes(item.value);
                                 return (
-                                  <label key={item.value} className="flex items-center gap-2 cursor-pointer">
+                                  <label
+                                    key={item.value}
+                                    className="flex items-center gap-2 cursor-pointer"
+                                  >
                                     <input
                                       type="checkbox"
                                       checked={checked}
@@ -1030,12 +1241,16 @@ export default function UserList() {
                                           ...f,
                                           permissions: e.target.checked
                                             ? [...f.permissions, item.value]
-                                            : f.permissions.filter((p) => p !== item.value),
+                                            : f.permissions.filter(
+                                                (p) => p !== item.value,
+                                              ),
                                         }))
                                       }
                                       className="w-3.5 h-3.5 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
                                     />
-                                    <span className="text-xs text-gray-600 dark:text-gray-300">{item.label}</span>
+                                    <span className="text-xs text-gray-600 dark:text-gray-300">
+                                      {item.label}
+                                    </span>
                                   </label>
                                 );
                               })}

@@ -38,7 +38,11 @@ export default function App() {
     <EnvModeProvider>
       <Router>
         <ScrollToTop />
-        <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
+        <Toaster
+          position="top-right"
+          toastOptions={{ duration: 8000 }}
+          containerStyle={{ zIndex: 99999999 }}
+        />
         <Routes>
           {/* Protected routes — require authentication */}
           <Route element={<PrivateRoute />}>

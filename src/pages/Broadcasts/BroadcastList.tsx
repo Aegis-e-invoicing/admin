@@ -84,8 +84,9 @@ export default function BroadcastList() {
       setBroadcasts(res.items ?? []);
       setTotalCount(res.totalCount ?? 0);
       setTotalPages(res.totalPages ?? 1);
-    } catch {
-      toast.error("Failed to load broadcasts");
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(e?.response?.data?.message || "Failed to load broadcasts");
     } finally {
       setLoading(false);
     }
@@ -122,8 +123,20 @@ export default function BroadcastList() {
       setShowForm(false);
       setForm(emptyForm);
       load(1);
-    } catch {
-      toast.error("Failed to create broadcast");
+    } catch (err: unknown) {
+      const e = err as {
+        response?: {
+          data?: { errors?: Record<string, string[]>; message?: string };
+        };
+      };
+      const apiErrors = e?.response?.data?.errors;
+      if (apiErrors) {
+        Object.values(apiErrors)
+          .flat()
+          .forEach((msg) => toast.error(msg));
+      } else {
+        toast.error(e?.response?.data?.message || "Failed to create broadcast");
+      }
     } finally {
       setSaving(false);
     }
@@ -170,7 +183,10 @@ export default function BroadcastList() {
           <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
             <table className="min-w-full text-sm">
               <tbody>
-                <SkeletonTableRows rows={8} colWidths={["w-40", "w-20", "w-24", "w-16", "w-16", "w-16"]} />
+                <SkeletonTableRows
+                  rows={8}
+                  colWidths={["w-40", "w-20", "w-24", "w-16", "w-16", "w-16"]}
+                />
               </tbody>
             </table>
           </div>

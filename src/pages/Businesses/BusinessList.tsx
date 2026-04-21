@@ -104,8 +104,11 @@ export default function BusinessList() {
       }
       // Refresh the list
       load();
-    } catch {
-      toast.error(`Failed to ${action} business.`);
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(
+        e?.response?.data?.message || `Failed to ${action} business.`,
+      );
     } finally {
       setActionLoading(null);
     }
@@ -168,7 +171,18 @@ export default function BusinessList() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <tbody>
-                <SkeletonTableRows rows={10} colWidths={["w-40", "w-28", "w-20", "w-24", "w-24", "w-24", "w-16"]} />
+                <SkeletonTableRows
+                  rows={10}
+                  colWidths={[
+                    "w-40",
+                    "w-28",
+                    "w-20",
+                    "w-24",
+                    "w-24",
+                    "w-24",
+                    "w-16",
+                  ]}
+                />
               </tbody>
             </table>
           </div>
