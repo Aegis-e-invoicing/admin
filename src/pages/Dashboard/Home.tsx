@@ -3,7 +3,11 @@ import { Link } from "react-router";
 import Chart from "react-apexcharts";
 import { ApexOptions } from "apexcharts";
 import PageMeta from "../../components/common/PageMeta";
-import { SkeletonStatCard, SkeletonChart, SkeletonMiniTableRows } from "../../components/ui/skeleton/Skeleton";
+import {
+  SkeletonStatCard,
+  SkeletonChart,
+  SkeletonMiniTableRows,
+} from "../../components/ui/skeleton/Skeleton";
 import {
   businessApi,
   businessesApi,
@@ -385,7 +389,7 @@ function PlanBar({
 
 // ─── Recent invoices mini-table ───────────────────────────────────────────────
 function RecentInvoicesTable({ invoices }: { invoices: InvoiceSummary[] }) {
-  if (invoices.length === 0) {
+  if (invoices?.length === 0) {
     return (
       <div className="text-center py-8 text-sm text-gray-400 dark:text-gray-500">
         No invoices yet.{" "}
@@ -418,7 +422,7 @@ function RecentInvoicesTable({ invoices }: { invoices: InvoiceSummary[] }) {
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
-          {invoices.map((inv) => (
+          {invoices?.map((inv) => (
             <tr key={inv.id}>
               <td className="py-2.5">
                 <Link
@@ -612,7 +616,7 @@ export default function Home() {
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
             {isAegis
               ? "Platform overview — all registered businesses"
-              : `${tier === "SaaS" ? "Portal" : tier === "SFTP" ? "SFTP" : tier === "ApiOnly" ? "API" : ""} plan · NRS e-invoicing portal`}
+              : `${tier === "SaaS" ? "Invoice Portal" : tier === "SFTP" ? "File Manager" : tier === "ApiOnly" ? "API Connect" : ""} plan · NRS e-invoicing portal`}
           </p>
         </div>
         {canCreate && !isAegis && (
@@ -732,19 +736,19 @@ export default function Home() {
                 </h3>
                 <div className="space-y-4 mt-6">
                   <PlanBar
-                    label="Portal (SaaS)"
+                    label="Invoice Portal"
                     value={stats.saaSBusinesses}
                     total={stats.totalBusinesses}
                     color="#465fff"
                   />
                   <PlanBar
-                    label="SFTP Plan"
+                    label="File Manager"
                     value={stats.sftpPlanBusinesses}
                     total={stats.totalBusinesses}
                     color="#10b981"
                   />
                   <PlanBar
-                    label="API Plan"
+                    label="API Connect"
                     value={stats.apiPlanBusinesses}
                     total={stats.totalBusinesses}
                     color="#f59e0b"
@@ -866,7 +870,13 @@ export default function Home() {
                                       : "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400"
                                 }`}
                               >
-                                {b.subscriptionTier}
+                                {b.subscriptionTier === "SaaS"
+                                  ? "Invoice Portal"
+                                  : b.subscriptionTier === "SFTP"
+                                    ? "File Manager"
+                                    : b.subscriptionTier === "ApiOnly"
+                                      ? "API Connect"
+                                      : b.subscriptionTier}
                               </span>
                             )}
                           </td>

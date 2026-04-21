@@ -54,6 +54,7 @@ const AEGIS_PERMISSION_GROUPS: {
   {
     group: "Business Management",
     items: [
+      { value: "business.create", label: "Create Business" },
       { value: "business.view", label: "View Businesses" },
       { value: "business.update", label: "Update Businesses" },
       { value: "business.manage_settings", label: "Manage Settings" },
@@ -471,29 +472,24 @@ export default function UserList() {
         )}
       </div>
 
-      {/* ── Invite Modal ── */}
+      {/* ── Invite Panel ── */}
       {showForm && (
-        <div className="fixed inset-0 z-[9999999] flex items-start justify-end p-4 bg-black/50">
-          <form
-            onSubmit={handleCreate}
-            className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 w-full max-w-2xl shadow-xl flex flex-col max-h-[calc(100vh-2rem)] mt-4 mr-2"
-          >
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700 shrink-0">
-              <h2 className="text-base font-semibold text-gray-800 dark:text-white">
-                Invite {isAegis ? "New Staff" : "New User"}
-              </h2>
-              <button
-                type="button"
-                onClick={() => setShowForm(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+        <div className="fixed inset-0 z-9999999 flex" aria-modal="true" role="dialog">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowForm(false)} />
+          <div className="relative ml-auto w-full max-w-2xl h-full bg-white dark:bg-gray-900 shadow-2xl flex flex-col">
+            <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+              <div>
+                <h2 className="text-base font-semibold text-gray-800 dark:text-white">
+                  Invite {isAegis ? "New Staff" : "New User"}
+                </h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  They will receive a temporary password by email
+                </p>
+              </div>
+              <button type="button" onClick={() => setShowForm(false)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500">✕</button>
             </div>
-
-            <div className="overflow-y-auto flex-1 px-5 py-4 space-y-5">
+          <form onSubmit={handleCreate} className="flex-1 flex flex-col min-h-0">
+            <div className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
               {/* Basic fields */}
               <div>
                 <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
@@ -508,8 +504,14 @@ export default function UserList() {
                       value={isAegis ? aegisForm.NRStName : clientForm.NRStName}
                       onChange={(e) =>
                         isAegis
-                          ? setAegisForm((f) => ({ ...f, NRStName: e.target.value }))
-                          : setClientForm((f) => ({ ...f, NRStName: e.target.value }))
+                          ? setAegisForm((f) => ({
+                              ...f,
+                              NRStName: e.target.value,
+                            }))
+                          : setClientForm((f) => ({
+                              ...f,
+                              NRStName: e.target.value,
+                            }))
                       }
                       className={inputCls}
                       placeholder="First name"
@@ -524,8 +526,14 @@ export default function UserList() {
                       value={isAegis ? aegisForm.lastName : clientForm.lastName}
                       onChange={(e) =>
                         isAegis
-                          ? setAegisForm((f) => ({ ...f, lastName: e.target.value }))
-                          : setClientForm((f) => ({ ...f, lastName: e.target.value }))
+                          ? setAegisForm((f) => ({
+                              ...f,
+                              lastName: e.target.value,
+                            }))
+                          : setClientForm((f) => ({
+                              ...f,
+                              lastName: e.target.value,
+                            }))
                       }
                       className={inputCls}
                       placeholder="Last name"
@@ -540,11 +548,19 @@ export default function UserList() {
                       value={isAegis ? aegisForm.email : clientForm.email}
                       onChange={(e) =>
                         isAegis
-                          ? setAegisForm((f) => ({ ...f, email: e.target.value }))
-                          : setClientForm((f) => ({ ...f, email: e.target.value }))
+                          ? setAegisForm((f) => ({
+                              ...f,
+                              email: e.target.value,
+                            }))
+                          : setClientForm((f) => ({
+                              ...f,
+                              email: e.target.value,
+                            }))
                       }
                       className={inputCls}
-                      placeholder={isAegis ? "staff@aegisnrs.com" : "user@example.com"}
+                      placeholder={
+                        isAegis ? "staff@aegisnrs.com" : "user@example.com"
+                      }
                       type="email"
                       required
                     />
@@ -554,11 +570,21 @@ export default function UserList() {
                       Phone
                     </label>
                     <input
-                      value={(isAegis ? aegisForm.phoneNumber : clientForm.phoneNumber) ?? ""}
+                      value={
+                        (isAegis
+                          ? aegisForm.phoneNumber
+                          : clientForm.phoneNumber) ?? ""
+                      }
                       onChange={(e) =>
                         isAegis
-                          ? setAegisForm((f) => ({ ...f, phoneNumber: e.target.value }))
-                          : setClientForm((f) => ({ ...f, phoneNumber: e.target.value }))
+                          ? setAegisForm((f) => ({
+                              ...f,
+                              phoneNumber: e.target.value,
+                            }))
+                          : setClientForm((f) => ({
+                              ...f,
+                              phoneNumber: e.target.value,
+                            }))
                       }
                       className={inputCls}
                       placeholder="+234..."
@@ -572,7 +598,10 @@ export default function UserList() {
                       <select
                         value={clientForm.roleId}
                         onChange={(e) =>
-                          setClientForm((f) => ({ ...f, roleId: e.target.value }))
+                          setClientForm((f) => ({
+                            ...f,
+                            roleId: e.target.value,
+                          }))
                         }
                         className={inputCls}
                       >
@@ -610,7 +639,9 @@ export default function UserList() {
                     {AEGIS_PERMISSION_GROUPS.map((group) => {
                       const groupValues = group.items.map((i) => i.value);
                       const perms = aegisForm.permissions ?? [];
-                      const selectedCount = groupValues.filter((v) => perms.includes(v)).length;
+                      const selectedCount = groupValues.filter((v) =>
+                        perms.includes(v),
+                      ).length;
                       const allSelected = selectedCount === groupValues.length;
                       const someSelected = selectedCount > 0 && !allSelected;
                       const isCollapsed = collapsedGroups.has(group.group);
@@ -624,8 +655,15 @@ export default function UserList() {
                                 setAegisForm((f) => ({
                                   ...f,
                                   permissions: on
-                                    ? [...new Set([...(f.permissions ?? []), ...groupValues])]
-                                    : (f.permissions ?? []).filter((p) => !groupValues.includes(p)),
+                                    ? [
+                                        ...new Set([
+                                          ...(f.permissions ?? []),
+                                          ...groupValues,
+                                        ]),
+                                      ]
+                                    : (f.permissions ?? []).filter(
+                                        (p) => !groupValues.includes(p),
+                                      ),
                                 }))
                               }
                             />
@@ -649,7 +687,11 @@ export default function UserList() {
                                 stroke="currentColor"
                                 strokeWidth={2.5}
                               >
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M19 9l-7 7-7-7"
+                                />
                               </svg>
                             </button>
                           </div>
@@ -658,7 +700,10 @@ export default function UserList() {
                               {group.items.map((item) => {
                                 const checked = perms.includes(item.value);
                                 return (
-                                  <label key={item.value} className="flex items-center gap-2 cursor-pointer">
+                                  <label
+                                    key={item.value}
+                                    className="flex items-center gap-2 cursor-pointer"
+                                  >
                                     <input
                                       type="checkbox"
                                       checked={checked}
@@ -666,8 +711,13 @@ export default function UserList() {
                                         setAegisForm((f) => ({
                                           ...f,
                                           permissions: e.target.checked
-                                            ? [...(f.permissions ?? []), item.value]
-                                            : (f.permissions ?? []).filter((p) => p !== item.value),
+                                            ? [
+                                                ...(f.permissions ?? []),
+                                                item.value,
+                                              ]
+                                            : (f.permissions ?? []).filter(
+                                                (p) => p !== item.value,
+                                              ),
                                         }))
                                       }
                                       className="w-3.5 h-3.5 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
@@ -691,23 +741,24 @@ export default function UserList() {
               )}
             </div>
 
-            <div className="flex justify-end gap-2 px-5 py-4 border-t border-gray-200 dark:border-gray-700 shrink-0">
+            <div className="sticky bottom-0 px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex gap-3">
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
-                className="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                className="flex-1 px-4 py-2 text-sm font-medium border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={saving}
-                className="px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-xl disabled:opacity-50 transition-colors"
+                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-brand-500 hover:bg-brand-600 disabled:opacity-60 rounded-lg transition-colors"
               >
                 {saving ? "Sending invite…" : "Send Invite"}
               </button>
             </div>
           </form>
+          </div>
         </div>
       )}
 
@@ -1017,32 +1068,19 @@ export default function UserList() {
           </div>
         </div>
       )}
-      {/* ── Edit Aegis User Modal ── */}
+      {/* ── Edit Aegis User Panel ── */}
       {editUser && (
-        <div className="fixed inset-0 z-[9999999] flex items-start justify-end p-4 bg-black/50">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 w-full max-w-2xl shadow-xl flex flex-col max-h-[calc(100vh-2rem)] mt-4 mr-2">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700 shrink-0">
-              <h2 className="text-base font-semibold text-gray-800 dark:text-white">
-                Edit Staff — {editUser.NRStName} {editUser.lastName}
-              </h2>
-              <button
-                onClick={() => setEditUser(null)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
+        <div className="fixed inset-0 z-9999999 flex" aria-modal="true" role="dialog">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setEditUser(null)} />
+          <div className="relative ml-auto w-full max-w-2xl h-full bg-white dark:bg-gray-900 shadow-2xl flex flex-col">
+            <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+              <div>
+                <h2 className="text-base font-semibold text-gray-800 dark:text-white">
+                  Edit Staff — {editUser.NRStName} {editUser.lastName}
+                </h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{editUser.email}</p>
+              </div>
+              <button type="button" onClick={() => setEditUser(null)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500">✕</button>
             </div>
             {editLoading ? (
               <div className="flex items-center justify-center py-12">
@@ -1266,17 +1304,18 @@ export default function UserList() {
                 </div>
               </div>
             )}
-            <div className="flex justify-end gap-2 px-5 py-4 border-t border-gray-200 dark:border-gray-700 shrink-0">
+            <div className="sticky bottom-0 px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex gap-3">
               <button
+                type="button"
                 onClick={() => setEditUser(null)}
-                className="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                className="flex-1 px-4 py-2 text-sm font-medium border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSaveEdit}
                 disabled={editSaving || editLoading}
-                className="px-4 py-2 text-sm bg-brand-500 hover:bg-brand-600 text-white font-medium rounded-xl disabled:opacity-50 transition-colors"
+                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-brand-500 hover:bg-brand-600 disabled:opacity-60 rounded-lg transition-colors"
               >
                 {editSaving ? "Saving…" : "Save Changes"}
               </button>

@@ -274,299 +274,317 @@ export default function ItemList() {
 
       {showForm && (
         <div
-          className="fixed inset-0 bg-black/40 z-50 overflow-y-auto"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
+          className="fixed inset-0 z-9999999 flex"
+          aria-modal="true"
+          role="dialog"
+        >
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => {
               setShowForm(false);
               setEditingItem(null);
-            }
-          }}
-        >
-          <div className="min-h-full flex items-center justify-center p-6">
+            }}
+          />
+          <div className="relative ml-auto w-full max-w-xl h-full bg-white dark:bg-gray-900 shadow-2xl flex flex-col">
+            <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+              <div>
+                <h2 className="text-base font-semibold text-gray-800 dark:text-white">
+                  {editingItem ? "Edit Item" : "New Item"}
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowForm(false);
+                  setEditingItem(null);
+                }}
+                className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500"
+              >
+                ✕
+              </button>
+            </div>
             <form
               onSubmit={handleSubmit}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 w-full max-w-2xl"
+              className="flex-1 flex flex-col min-h-0"
             >
-              <h2 className="text-base font-semibold text-gray-700 dark:text-white mb-4">
-                {editingItem ? "Edit Item" : "New Item"}
-              </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                    Name *
-                  </label>
-                  <input
-                    value={form.name}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, name: e.target.value }))
-                    }
-                    className={inputCls}
-                    placeholder="e.g. Consulting Service"
-                    required
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                    Item Type *
-                  </label>
-                  <select
-                    value={form.itemType}
-                    onChange={(e) =>
-                      setForm((f) => ({
-                        ...f,
-                        itemType: e.target.value as "Goods" | "Service",
-                        // reset code when switching type
-                        serviceCode: { code: "", name: "" },
-                      }))
-                    }
-                    className={inputCls}
-                    required
-                  >
-                    <option value="Service">Service</option>
-                    <option value="Goods">Goods</option>
-                  </select>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                    {form.itemType === "Service"
-                      ? "Service Code"
-                      : "Product Code"}{" "}
-                    *
-                  </label>
-                  <select
-                    value={form.serviceCode.code}
-                    onChange={(e) => {
-                      const codes =
-                        form.itemType === "Service"
-                          ? serviceCodes
-                          : productCodes;
-                      const selected = codes.find(
-                        (c) => c.code === e.target.value,
-                      );
-                      setForm((f) => ({
-                        ...f,
-                        serviceCode: {
-                          code: e.target.value,
-                          name: selected?.description ?? "",
-                        },
-                      }));
-                    }}
-                    className={inputCls}
-                    required
-                  >
-                    <option value="">— Select code —</option>
-                    {(form.itemType === "Service"
-                      ? serviceCodes
-                      : productCodes
-                    ).map((c) => (
-                      <option key={c.code} value={c.code}>
-                        {c.code} — {c.description}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                    Code Description
-                  </label>
-                  <input
-                    value={form.serviceCode.name}
-                    readOnly
-                    className={`${inputCls} bg-gray-50 dark:bg-gray-700 cursor-default`}
-                    placeholder="Auto-filled from selected code"
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                    Category
-                  </label>
-                  <input
-                    value={form.itemCategoryName}
-                    onChange={(e) =>
-                      setForm((f) => ({
-                        ...f,
-                        itemCategoryName: e.target.value,
-                      }))
-                    }
-                    className={inputCls}
-                    placeholder="e.g. Professional Services"
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                    Unit Price (NGN) *
-                  </label>
-                  <input
-                    value={form.unitPrice === 0 ? "" : form.unitPrice}
-                    onChange={(e) =>
-                      setForm((f) => ({
-                        ...f,
-                        unitPrice: parseFloat(e.target.value) || 0,
-                      }))
-                    }
-                    className={inputCls}
-                    placeholder="0.00"
-                    type="number"
-                    min="0.01"
-                    step="0.01"
-                    required
-                  />
-                </div>
-                <div className="flex flex-col gap-1 sm:col-span-2">
-                  <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                    Description *
-                  </label>
-                  <input
-                    value={form.itemDescription}
-                    onChange={(e) =>
-                      setForm((f) => ({
-                        ...f,
-                        itemDescription: e.target.value,
-                      }))
-                    }
-                    className={inputCls}
-                    placeholder="Item description"
-                    required
-                  />
-                </div>
-
-                {/* Tax Categories */}
-                <div className="flex flex-col gap-2 sm:col-span-2">
-                  <div className="flex items-center justify-between">
+              <div className="flex-1 overflow-y-auto px-6 py-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-1">
                     <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                      Tax Categories
+                      Name *
                     </label>
-                    <button
-                      type="button"
-                      onClick={addTaxEntry}
-                      className="text-xs text-brand-500 hover:text-brand-600 font-medium"
-                    >
-                      + Add Tax Category
-                    </button>
+                    <input
+                      value={form.name}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, name: e.target.value }))
+                      }
+                      className={inputCls}
+                      placeholder="e.g. Consulting Service"
+                      required
+                    />
                   </div>
-                  {form.taxCategories.map((tc, idx) => {
-                    const percentKnown = tc.code
-                      ? isNRSPercentKnown(tc.code)
-                      : false;
-                    return (
-                      <div
-                        key={idx}
-                        className="flex flex-col sm:flex-row gap-2 p-3 border border-gray-200 dark:border-gray-600 rounded-lg"
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                      Item Type *
+                    </label>
+                    <select
+                      value={form.itemType}
+                      onChange={(e) =>
+                        setForm((f) => ({
+                          ...f,
+                          itemType: e.target.value as "Goods" | "Service",
+                          // reset code when switching type
+                          serviceCode: { code: "", name: "" },
+                        }))
+                      }
+                      className={inputCls}
+                      required
+                    >
+                      <option value="Service">Service</option>
+                      <option value="Goods">Goods</option>
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                      {form.itemType === "Service"
+                        ? "Service Code"
+                        : "Product Code"}{" "}
+                      *
+                    </label>
+                    <select
+                      value={form.serviceCode.code}
+                      onChange={(e) => {
+                        const codes =
+                          form.itemType === "Service"
+                            ? serviceCodes
+                            : productCodes;
+                        const selected = codes.find(
+                          (c) => c.code === e.target.value,
+                        );
+                        setForm((f) => ({
+                          ...f,
+                          serviceCode: {
+                            code: e.target.value,
+                            name: selected?.description ?? "",
+                          },
+                        }));
+                      }}
+                      className={inputCls}
+                      required
+                    >
+                      <option value="">— Select code —</option>
+                      {(form.itemType === "Service"
+                        ? serviceCodes
+                        : productCodes
+                      ).map((c) => (
+                        <option key={c.code} value={c.code}>
+                          {c.code} — {c.description}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                      Code Description
+                    </label>
+                    <input
+                      value={form.serviceCode.name}
+                      readOnly
+                      className={`${inputCls} bg-gray-50 dark:bg-gray-700 cursor-default`}
+                      placeholder="Auto-filled from selected code"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                      Category
+                    </label>
+                    <input
+                      value={form.itemCategoryName}
+                      onChange={(e) =>
+                        setForm((f) => ({
+                          ...f,
+                          itemCategoryName: e.target.value,
+                        }))
+                      }
+                      className={inputCls}
+                      placeholder="e.g. Professional Services"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                      Unit Price (NGN) *
+                    </label>
+                    <input
+                      value={form.unitPrice === 0 ? "" : form.unitPrice}
+                      onChange={(e) =>
+                        setForm((f) => ({
+                          ...f,
+                          unitPrice: parseFloat(e.target.value) || 0,
+                        }))
+                      }
+                      className={inputCls}
+                      placeholder="0.00"
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      required
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1 sm:col-span-2">
+                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                      Description *
+                    </label>
+                    <input
+                      value={form.itemDescription}
+                      onChange={(e) =>
+                        setForm((f) => ({
+                          ...f,
+                          itemDescription: e.target.value,
+                        }))
+                      }
+                      className={inputCls}
+                      placeholder="Item description"
+                      required
+                    />
+                  </div>
+
+                  {/* Tax Categories */}
+                  <div className="flex flex-col gap-2 sm:col-span-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                        Tax Categories
+                      </label>
+                      <button
+                        type="button"
+                        onClick={addTaxEntry}
+                        className="text-xs text-brand-500 hover:text-brand-600 font-medium"
                       >
-                        {/* Pick from FIRS list */}
-                        <select
-                          value={tc.code}
-                          onChange={(e) =>
-                            applyNRSTaxCategory(idx, e.target.value)
-                          }
-                          className={`${inputCls} sm:w-56`}
+                        + Add Tax Category
+                      </button>
+                    </div>
+                    {form.taxCategories.map((tc, idx) => {
+                      const percentKnown = tc.code
+                        ? isNRSPercentKnown(tc.code)
+                        : false;
+                      return (
+                        <div
+                          key={idx}
+                          className="flex flex-col sm:flex-row gap-2 p-3 border border-gray-200 dark:border-gray-600 rounded-lg"
                         >
-                          <option value="">— Select FIRS code —</option>
-                          {taxCategories.map((nrs) => (
-                            <option key={nrs.code} value={nrs.code}>
-                              {nrs.value}
-                              {nrs.percent !== "Not Available" &&
-                              nrs.percent !== ""
-                                ? ` (${nrs.percent}%)`
-                                : ""}
-                            </option>
-                          ))}
-                        </select>
+                          {/* Pick from FIRS list */}
+                          <select
+                            value={tc.code}
+                            onChange={(e) =>
+                              applyNRSTaxCategory(idx, e.target.value)
+                            }
+                            className={`${inputCls} sm:w-56`}
+                          >
+                            <option value="">— Select FIRS code —</option>
+                            {taxCategories.map((nrs) => (
+                              <option key={nrs.code} value={nrs.code}>
+                                {nrs.value}
+                                {nrs.percent !== "Not Available" &&
+                                nrs.percent !== ""
+                                  ? ` (${nrs.percent}%)`
+                                  : ""}
+                              </option>
+                            ))}
+                          </select>
 
-                        {/* % / Flat toggle — disabled when rate is known from FIRS */}
-                        <select
-                          value={tc.isPercentage ? "percent" : "flat"}
-                          disabled={percentKnown}
-                          onChange={(e) =>
-                            updateTaxEntry(idx, {
-                              isPercentage: e.target.value === "percent",
-                              percent:
-                                e.target.value === "percent"
-                                  ? (tc.percent ?? 0)
-                                  : undefined,
-                              flatAmount:
-                                e.target.value === "flat"
-                                  ? (tc.flatAmount ?? 0)
-                                  : undefined,
-                            })
-                          }
-                          className={`${inputCls} sm:w-28 ${percentKnown ? "opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-700" : ""}`}
-                        >
-                          <option value="percent">%</option>
-                          <option value="flat">Flat ₦</option>
-                        </select>
-
-                        {/* Value input — disabled (auto-filled) when rate is known from FIRS */}
-                        {tc.isPercentage ? (
-                          <input
-                            type="number"
-                            min="0"
-                            max="100"
-                            step="0.01"
-                            value={tc.percent ?? ""}
+                          {/* % / Flat toggle — disabled when rate is known from FIRS */}
+                          <select
+                            value={tc.isPercentage ? "percent" : "flat"}
                             disabled={percentKnown}
                             onChange={(e) =>
                               updateTaxEntry(idx, {
-                                percent: parseFloat(e.target.value) || 0,
+                                isPercentage: e.target.value === "percent",
+                                percent:
+                                  e.target.value === "percent"
+                                    ? (tc.percent ?? 0)
+                                    : undefined,
+                                flatAmount:
+                                  e.target.value === "flat"
+                                    ? (tc.flatAmount ?? 0)
+                                    : undefined,
                               })
                             }
-                            placeholder="Enter rate %"
                             className={`${inputCls} sm:w-28 ${percentKnown ? "opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-700" : ""}`}
-                            required
-                          />
-                        ) : (
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={tc.flatAmount ?? ""}
-                            onChange={(e) =>
-                              updateTaxEntry(idx, {
-                                flatAmount: parseFloat(e.target.value) || 0,
-                              })
-                            }
-                            placeholder="Enter amount ₦"
-                            className={`${inputCls} sm:w-28`}
-                            required
-                          />
-                        )}
-
-                        {percentKnown && (
-                          <span className="text-xs text-gray-400 dark:text-gray-500 self-center whitespace-nowrap">
-                            Auto-filled by FIRS
-                          </span>
-                        )}
-
-                        {form.taxCategories.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => removeTaxEntry(idx)}
-                            className="text-red-500 hover:text-red-600 text-xs font-medium self-center"
                           >
-                            Remove
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
+                            <option value="percent">%</option>
+                            <option value="flat">Flat ₦</option>
+                          </select>
+
+                          {/* Value input — disabled (auto-filled) when rate is known from FIRS */}
+                          {tc.isPercentage ? (
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              step="0.01"
+                              value={tc.percent ?? ""}
+                              disabled={percentKnown}
+                              onChange={(e) =>
+                                updateTaxEntry(idx, {
+                                  percent: parseFloat(e.target.value) || 0,
+                                })
+                              }
+                              placeholder="Enter rate %"
+                              className={`${inputCls} sm:w-28 ${percentKnown ? "opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-700" : ""}`}
+                              required
+                            />
+                          ) : (
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={tc.flatAmount ?? ""}
+                              onChange={(e) =>
+                                updateTaxEntry(idx, {
+                                  flatAmount: parseFloat(e.target.value) || 0,
+                                })
+                              }
+                              placeholder="Enter amount ₦"
+                              className={`${inputCls} sm:w-28`}
+                              required
+                            />
+                          )}
+
+                          {percentKnown && (
+                            <span className="text-xs text-gray-400 dark:text-gray-500 self-center whitespace-nowrap">
+                              Auto-filled by FIRS
+                            </span>
+                          )}
+
+                          {form.taxCategories.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeTaxEntry(idx)}
+                              className="text-red-500 hover:text-red-600 text-xs font-medium self-center"
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
-              <div className="flex gap-3 justify-end mt-4">
+              <div className="sticky bottom-0 px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex gap-3">
                 <button
                   type="button"
                   onClick={() => {
                     setShowForm(false);
                     setEditingItem(null);
                   }}
-                  className="px-4 py-2 border border-red-500 dark:border-red-500 text-sm rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  className="flex-1 px-4 py-2 text-sm font-medium border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm rounded-xl disabled:opacity-50 transition-colors"
+                  className="flex-1 px-4 py-2 text-sm font-medium text-white bg-brand-500 hover:bg-brand-600 disabled:opacity-60 rounded-lg transition-colors"
                 >
                   {saving
                     ? "Saving…"
@@ -613,7 +631,10 @@ export default function ItemList() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <tbody>
-                <SkeletonTableRows rows={10} colWidths={["w-40", "w-24", "w-20", "w-28", "w-16"]} />
+                <SkeletonTableRows
+                  rows={10}
+                  colWidths={["w-40", "w-24", "w-20", "w-28", "w-16"]}
+                />
               </tbody>
             </table>
           </div>

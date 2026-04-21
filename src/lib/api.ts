@@ -38,8 +38,24 @@ export interface RegisterPayload {
   adminPhone: string;
   businessName: string;
   tin?: string;
-  platformSubscriptionId: string;
+  /** Array of selected plan IDs — supports multi-plan sign-up */
+  platformSubscriptionIds: string[];
   billingCycle: number; // 0=Monthly, 1=Annual
+}
+
+export interface CreateBusinessByAdminPayload {
+  adminFirstName: string;
+  adminLastName: string;
+  adminEmail: string;
+  adminPhone: string;
+  businessName: string;
+  businessDescription: string;
+  tin?: string;
+  industry?: string;
+  platformSubscriptionIds: string[];
+  billingCycle: number;
+  paymentReference: string;
+  paymentAmountNaira: number;
 }
 export interface RegisterResponse {
   pendingRegistrationId: string;
@@ -658,7 +674,34 @@ export const businessesApi = {
     api.post(`/business/${businessId}/suspend`, { reason }),
   activate: (businessId: string, reason?: string) =>
     api.post(`/business/${businessId}/activate`, { reason }),
+  createByAdmin: (payload: CreateBusinessByAdminPayload) =>
+    api
+      .post<
+        ApiResponse<{ businessId: string; message: string }>
+      >("/aegisadmin/create-business", payload)
+      .then(unwrap),
+  update: (businessId: string, payload: UpdateBusinessByAdminPayload) =>
+    api
+      .put<
+        ApiResponse<{ status: boolean; message: string }>
+      >(`/business/update-business/${businessId}`, payload)
+      .then(unwrap),
 };
+
+export interface UpdateBusinessByAdminPayload {
+  industry: string;
+  description: string;
+  invoicePrefix: string;
+  contactEmail: string;
+  contactPhone: string;
+  registeredAddress: {
+    street: string;
+    city: string;
+    state: string;
+    country: string;
+    postalCode: string;
+  };
+}
 
 export interface AegisUserSummary {
   id: string;
@@ -747,10 +790,9 @@ export const aegisUserApi = {
       .then((u) => ({
         ...u,
         NRStName: u.firstName ?? u.NRStName,
-        permissions:
-          u.permissions?.length
-            ? u.permissions
-            : (u.userPermissions ?? u.claims?.permissions ?? []),
+        permissions: u.permissions?.length
+          ? u.permissions
+          : (u.userPermissions ?? u.claims?.permissions ?? []),
       })),
   updateProfile: (userId: string, payload: UpdateAegisUserProfilePayload) =>
     api
@@ -1589,4 +1631,22 @@ export const vendorPortalApi = {
         ApiResponse<{ message: string }>
       >(`/vendor-portal/submit/${token}`, { lineItems })
       .then(vpUnwrap),
+};
+
+// ── Notifications ─────────────────────────────────────────────────────────────
+export interface NotificationDto {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  /** ISO 8601 timestamp string */
+  timestamp: string;
+  read: boolean;
+  aegisOnly: boolean;
+  adminOnly: boolean;
+}
+
+export const notificationsApi = {
+  getAll: () =>
+    api.get<ApiResponse<NotificationDto[]>>("/notifications").then(unwrap),
 };

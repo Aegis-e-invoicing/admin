@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router";
 import toast from "react-hot-toast";
 import PageMeta from "../../components/common/PageMeta";
 import {
@@ -642,9 +643,9 @@ export default function Settings() {
                     href: "/users",
                   },
                 ].map((item) => (
-                  <a
+                  <Link
                     key={item.href}
-                    href={item.href}
+                    to={item.href}
                     className="flex flex-col gap-1 p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-brand-300 dark:hover:border-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/10 transition-colors group"
                   >
                     <p className="text-sm font-medium text-gray-800 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400">
@@ -653,7 +654,7 @@ export default function Settings() {
                     <p className="text-xs text-gray-500 dark:text-gray-400">
                       {item.desc}
                     </p>
-                  </a>
+                  </Link>
                 ))}
               </div>
             </Section>

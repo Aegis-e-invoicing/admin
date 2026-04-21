@@ -241,19 +241,31 @@ export default function PartyList() {
       </div>
 
       {showForm && (
+        <div className="fixed inset-0 z-9999999 flex" aria-modal="true" role="dialog">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={handleCancelForm} />
+          <div className="relative ml-auto w-full max-w-xl h-full bg-white dark:bg-gray-900 shadow-2xl flex flex-col">
+            <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+              <div>
+                <h2 className="text-base font-semibold text-gray-800 dark:text-white">
+                  {editingParty ? "Edit Party" : "New Party"}
+                </h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  {editingParty ? "Update party details" : "Add a new supplier or customer"}
+                </p>
+              </div>
+              <button type="button" onClick={handleCancelForm} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500">✕</button>
+            </div>
         <form
           onSubmit={handleSubmit}
-          className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 mb-6"
+          className="flex-1 flex flex-col min-h-0"
         >
-          <h2 className="text-base font-semibold text-gray-700 dark:text-white mb-4">
-            {editingParty ? "Edit Party" : "New Party"}
-          </h2>
-
+          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
           {/* Core info */}
-          <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-3">
+          <fieldset className="space-y-3">
+          <legend className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-3">
             Basic Information
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+          </legend>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
                 Business Name *
@@ -357,10 +369,12 @@ export default function PartyList() {
             </div>
           </div>
 
+          </fieldset>
           {/* Address */}
-          <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-3">
+          <fieldset className="space-y-3">
+          <legend className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-3">
             Address
-          </p>
+          </legend>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="flex flex-col gap-1 sm:col-span-2">
               <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
@@ -447,27 +461,27 @@ export default function PartyList() {
               />
             </div>
           </div>
-          <div className="flex gap-3 justify-end mt-4">
+          </fieldset>
+          </div>
+          <div className="sticky bottom-0 px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex gap-3">
             <button
               type="button"
               onClick={handleCancelForm}
-              className="px-4 py-2 border border-red-500 dark:border-red-500 text-sm rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              className="flex-1 px-4 py-2 text-sm font-medium border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm rounded-xl disabled:opacity-50 transition-colors"
+              className="flex-1 px-4 py-2 text-sm font-medium text-white bg-brand-500 hover:bg-brand-600 disabled:opacity-60 rounded-lg transition-colors"
             >
-              {saving
-                ? "Saving…"
-                : editingParty
-                  ? "Update Party"
-                  : "Create Party"}
+              {saving ? "Saving…" : editingParty ? "Update Party" : "Create Party"}
             </button>
           </div>
         </form>
+          </div>
+        </div>
       )}
 
       <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">

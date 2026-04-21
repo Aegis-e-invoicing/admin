@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { Dropdown } from "../ui/dropdown/Dropdown";
 import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { useIsAegis, useIsAdmin } from "../../context/AuthContext";
+import { notificationsApi, type NotificationDto } from "../../lib/api";
 
 // ── Navigation destinations per notification type ────────────────────────────
 const NOTIF_ROUTES: Record<NotifType, string> = {
@@ -107,77 +108,36 @@ interface Notification {
   adminOnly?: boolean;
 }
 
-// ── Mock notifications ────────────────────────────────────────────────────────
-const INITIAL_NOTIFICATIONS: Notification[] = [
-  {
-    id: "n-001",
-    type: "rule_triggered",
-    title: "Approval rule triggered",
-    body: "Invoice INV-2026-0098 raised by Acme Engineering Ltd exceeds ₦2,000,000 — requires admin approval.",
-    time: "2 min ago",
-    read: false,
-  },
-  {
-    id: "n-002",
-    type: "invoice_approved",
-    title: "Invoice approved",
-    body: "Invoice INV-2026-0095 was approved by Chidi Okonkwo and submitted to NRS.",
-    time: "18 min ago",
-    read: false,
-    adminOnly: true,
-  },
-  {
-    id: "n-003",
-    type: "plan_expiry",
-    title: "Subscription expiring soon",
-    body: "Your SaaS Portal plan expires in 7 days (19 Apr 2026). Renew to avoid service interruption.",
-    time: "1 hr ago",
-    read: false,
-  },
-  {
-    id: "n-004",
-    type: "invoice_transmitted",
-    title: "Invoice transmitted to NRS",
-    body: "Invoice INV-2026-0091 was successfully transmitted to NRS. IRN FIR20260091ACME0000091 generated.",
-    time: "3 hrs ago",
-    read: true,
-  },
-  {
-    id: "n-005",
-    type: "invoice_rejected",
-    title: "Invoice rejected by NRS",
-    body: "Invoice INV-2026-0088 rejected by NRS. Reason: TIN mismatch on line item 3. Please review and resubmit.",
-    time: "5 hrs ago",
-    read: true,
-  },
-  {
-    id: "n-006",
-    type: "new_business",
-    title: "New business registered",
-    body: "Tech Innovations Ltd (TIN: 20481637-0001) completed onboarding and is pending NRS credential review.",
-    time: "2 hrs ago",
-    read: false,
-    aegisOnly: true,
-  },
-  {
-    id: "n-007",
-    type: "plan_expiry",
-    title: "Business subscription expiring",
-    body: "Acme Engineering Ltd's SaaS plan expires in 3 days. Consider reaching out to renew.",
-    time: "4 hrs ago",
-    read: true,
-    aegisOnly: true,
-  },
-  {
-    id: "n-008",
-    type: "invoice_raised",
-    title: "New invoice raised",
-    body: "Invoice INV-2026-0097 raised for Dangote Industries Ltd — ₦3,450,000.",
-    time: "Yesterday",
-    read: true,
-    adminOnly: true,
-  },
-];
+// ── Relative time helper ─────────────────────────────────────────────────────
+function toRelativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 2) return "Just now";
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs} hr${hrs !== 1 ? "s" : ""} ago`;
+  const days = Math.floor(hrs / 24);
+  if (days === 1) return "Yesterday";
+  if (days < 7) return `${days} days ago`;
+  return new Date(iso).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+  });
+}
+
+// ── Map backend DTO to local Notification ────────────────────────────────────
+function dtoToNotification(dto: NotificationDto): Notification {
+  return {
+    id: dto.id,
+    type: (dto.type as NotifType) ?? "rule_triggered",
+    title: dto.title,
+    body: dto.body,
+    time: toRelativeTime(dto.timestamp),
+    read: dto.read,
+    aegisOnly: dto.aegisOnly,
+    adminOnly: dto.adminOnly,
+  };
+}
 
 // ── Type-based icon (no user images) ─────────────────────────────────────────
 function NotifIcon({ type }: { type: NotifType }) {
@@ -460,7 +420,21 @@ export default function NotificationDropdown() {
   const [isOpen, setIsOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedNotif, setSelectedNotif] = useState<Notification | null>(null);
-  const [items, setItems] = useState<Notification[]>(INITIAL_NOTIFICATIONS);
+  const [items, setItems] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // Fetch on first open, then re-fetch every time dropdown opens
+  useEffect(() => {
+    if (!isOpen) return;
+    setLoading(true);
+    notificationsApi
+      .getAll()
+      .then((dtos) => setItems(dtos.map(dtoToNotification)))
+      .catch(() => {
+        /* silently keep current items */
+      })
+      .finally(() => setLoading(false));
+  }, [isOpen]);
 
   const visible = items.filter((n) => {
     if (n.aegisOnly && !isAegis) return false;
@@ -534,7 +508,20 @@ export default function NotificationDropdown() {
 
         {/* List */}
         <ul className="flex flex-col max-h-[400px] overflow-y-auto custom-scrollbar gap-0.5">
-          {visible.length === 0 ? (
+          {loading ? (
+            <li className="flex flex-col gap-2 px-3 py-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex gap-3 animate-pulse">
+                  <div className="w-9 h-9 rounded-xl bg-gray-200 dark:bg-gray-700 shrink-0" />
+                  <div className="flex-1 space-y-2 py-1">
+                    <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-3/4" />
+                    <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded w-full" />
+                    <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
+                  </div>
+                </div>
+              ))}
+            </li>
+          ) : visible.length === 0 ? (
             <li className="flex flex-col items-center justify-center py-12 text-center">
               <svg
                 className="w-10 h-10 text-gray-300 dark:text-gray-600 mb-3"
