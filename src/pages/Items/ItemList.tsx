@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import PageMeta from "../../components/common/PageMeta";
 import TablePagination from "../../components/common/TablePagination";
@@ -99,9 +99,9 @@ export default function ItemList() {
     businessItemApi
       .list({ page: p, pageSize: ps })
       .then((r) => {
-        setItems(r.items ?? []);
-        setTotalPages(r.totalPages ?? 1);
-        setTotalCount(r.totalCount ?? 0);
+        setItems(r?.items ?? []);
+        setTotalPages(r?.totalPages ?? 1);
+        setTotalCount(r?.totalCount ?? 0);
       })
       .catch(() => toast.error("Failed to load items."))
       .finally(() => setLoading(false));

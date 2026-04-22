@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router";
 import toast from "react-hot-toast";
 import PageMeta from "../../components/common/PageMeta";
@@ -71,8 +71,8 @@ export default function BroadcastDetail() {
       setBroadcast(detail);
       setEditTitle(detail.title);
       setEditNote(detail.note ?? "");
-      setSubmissions(subs.items ?? []);
-      setSubTotalPages(subs.totalPages ?? 1);
+      setSubmissions(subs?.items ?? []);
+      setSubTotalPages(subs?.totalPages ?? 1);
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } } };
       toast.error(e?.response?.data?.message || "Failed to load broadcast");

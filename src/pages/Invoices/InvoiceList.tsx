@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import toast from "react-hot-toast";
 import { SkeletonTableRows } from "../../components/ui/skeleton/Skeleton";
@@ -132,8 +132,8 @@ export default function InvoiceList() {
         environmentMode: envMode,
       })
       .then((result) => {
-        setInvoices(result.items ?? []);
-        setTotalPages(result.totalPages ?? 1);
+        setInvoices(result?.items ?? []);
+        setTotalPages(result?.totalPages ?? 1);
       })
       .finally(() => setLoading(false));
   };
@@ -293,8 +293,8 @@ export default function InvoiceList() {
     invoiceApi
       .pendingApproval({ page: p, pageSize: ps })
       .then((r) => {
-        setPendingInvoices(r.items ?? []);
-        setPendingTotalPages(r.totalPages ?? 1);
+        setPendingInvoices(r?.items ?? []);
+        setPendingTotalPages(r?.totalPages ?? 1);
       })
       .catch(() => toast.error("Failed to load pending approvals."))
       .finally(() => setLoadingPending(false));

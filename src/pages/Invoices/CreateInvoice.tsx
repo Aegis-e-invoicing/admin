@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+﻿import { useEffect, useState, useCallback } from "react";
 import { useNavigate, useLocation, useSearchParams } from "react-router";
 import toast from "react-hot-toast";
 import PageMeta from "../../components/common/PageMeta";
@@ -263,16 +263,16 @@ export default function CreateInvoice() {
     Promise.all([
       partyApi
         .list({ pageSize: 100 })
-        .then((r) => r.items ?? [])
+        .then((r) => r?.items ?? [])
         .catch(() => [] as Party[]),
       businessItemApi
         .list({ pageSize: 100 })
-        .then((r) => r.items ?? [])
+        .then((r) => r?.items ?? [])
         .catch(() => [] as BusinessItemSummary[]),
       NRSApi.getTaxCategories().catch(() => [] as TaxCategory[]),
       invoiceApi
         .list({ pageSize: 100 })
-        .then((r) => r.items ?? [])
+        .then((r) => r?.items ?? [])
         .catch(() => [] as InvoiceSummary[]),
     ])
       .then(([p, bi, tc, inv]) => {

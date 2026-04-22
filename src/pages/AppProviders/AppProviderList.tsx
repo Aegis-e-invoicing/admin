@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import PageMeta from "../../components/common/PageMeta";
 import TablePagination from "../../components/common/TablePagination";
@@ -533,9 +533,9 @@ export default function AppProviderList() {
     appProviderApi
       .list(p, pageSize)
       .then((res) => {
-        setProviders(res.items ?? []);
-        setTotalPages(res.totalPages ?? 1);
-        setTotalCount(res.totalCount ?? 0);
+        setProviders(res?.items ?? []);
+        setTotalPages(res?.totalPages ?? 1);
+        setTotalCount(res?.totalCount ?? 0);
       })
       .catch(() => toast.error("Failed to load APP providers."))
       .finally(() => setLoading(false));

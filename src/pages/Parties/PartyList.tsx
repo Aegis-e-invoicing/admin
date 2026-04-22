@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import PageMeta from "../../components/common/PageMeta";
 import TablePagination from "../../components/common/TablePagination";
@@ -96,9 +96,9 @@ export default function PartyList() {
     partyApi
       .list({ page: p, pageSize: ps })
       .then((r) => {
-        setParties(r.items ?? []);
-        setTotalPages(r.totalPages ?? 1);
-        setTotalCount(r.totalCount ?? 0);
+        setParties(r?.items ?? []);
+        setTotalPages(r?.totalPages ?? 1);
+        setTotalCount(r?.totalCount ?? 0);
       })
       .catch(() => toast.error("Failed to load parties."))
       .finally(() => setLoading(false));

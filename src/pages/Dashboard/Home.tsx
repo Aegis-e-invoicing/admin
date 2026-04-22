@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import Chart from "react-apexcharts";
 import { ApexOptions } from "apexcharts";
@@ -537,13 +537,13 @@ export default function Home() {
     const invoicesPromise = !isAegis
       ? invoiceApi
           .list({ page: 1, pageSize: 5, environmentMode: envMode })
-          .then((r) => r.items)
+          .then((r) => r?.items ?? [])
           .catch(() => [])
       : Promise.resolve([]);
     const businessesPromise = isAegis
       ? businessesApi
           .list({ page: 1, pageSize: 5 })
-          .then((r) => r.items)
+          .then((r) => r?.items ?? [])
           .catch(() => [])
       : Promise.resolve([]);
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { SkeletonTableRows } from "../../components/ui/skeleton/Skeleton";
 import PageMeta from "../../components/common/PageMeta";
@@ -38,9 +38,9 @@ export default function ReceivedInvoiceList() {
     invoiceApi
       .receivedList({ page: p, pageSize: ps })
       .then((result) => {
-        setInvoices(result.items ?? []);
-        setTotalPages(result.totalPages ?? 1);
-        setTotalCount(result.totalCount ?? 0);
+        setInvoices(result?.items ?? []);
+        setTotalPages(result?.totalPages ?? 1);
+        setTotalCount(result?.totalCount ?? 0);
       })
       .catch(() => toast.error("Failed to load received invoices."))
       .finally(() => setLoading(false));

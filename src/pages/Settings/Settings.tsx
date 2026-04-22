@@ -198,7 +198,9 @@ export default function Settings() {
         appProviderApi.getBusinessSettings(businessId),
       ])
         .then(([providerList, settings]) => {
-          setAppProviders(providerList.items.filter((p) => p.isActive));
+          setAppProviders(
+            (providerList?.items ?? []).filter((p) => p.isActive),
+          );
           setActiveAdapterKey(settings.activeAdapterKey);
           setEnvMode(settings.environmentMode);
         })

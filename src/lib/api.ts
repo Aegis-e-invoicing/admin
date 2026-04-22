@@ -133,7 +133,10 @@ export interface PaymentVerification {
 
 export const paymentApi = {
   getPlans: () =>
-    api.get<ApiResponse<SubscriptionPlan[]>>("/payment/plans").then(unwrap),
+    api
+      .get<ApiResponse<SubscriptionPlan[]>>("/payment/plans")
+      .then(unwrap)
+      .then((arr) => arr ?? []),
 
   verify: (reference: string) =>
     api
@@ -343,13 +346,20 @@ export interface FIRSServiceCode {
 }
 export const NRSApi = {
   getTaxCategories: () =>
-    api.get<ApiResponse<TaxCategory[]>>("/FIRS/gettaxcategories").then(unwrap),
+    api
+      .get<ApiResponse<TaxCategory[]>>("/FIRS/gettaxcategories")
+      .then(unwrap)
+      .then((arr) => arr ?? []),
   getProductCodes: () =>
-    api.get<ApiResponse<ProductCode[]>>("/NRS/getproductcodes").then(unwrap),
+    api
+      .get<ApiResponse<ProductCode[]>>("/NRS/getproductcodes")
+      .then(unwrap)
+      .then((arr) => arr ?? []),
   getServiceCodes: () =>
     api
       .get<ApiResponse<FIRSServiceCode[]>>("/NRS/getservicecodes")
-      .then(unwrap),
+      .then(unwrap)
+      .then((arr) => arr ?? []),
 };
 
 export interface UploadInvoiceResult {
@@ -524,7 +534,10 @@ export const invoiceApi = {
 
   // ── Drafts ──────────────────────────────────────────────────────────────
   listDrafts: () =>
-    api.get<ApiResponse<InvoiceDraftSummary[]>>("/invoice/drafts").then(unwrap),
+    api
+      .get<ApiResponse<InvoiceDraftSummary[]>>("/invoice/drafts")
+      .then(unwrap)
+      .then((arr) => arr ?? []),
 
   saveDraft: (payload: SaveDraftPayload) =>
     api
@@ -779,7 +792,7 @@ export const aegisUserApi = {
       )
       .then(unwrap)
       .then((r) =>
-        r.items.map(
+        (r.items ?? []).map(
           (
             u: AegisUserSummary & { firstName?: string; lastLoginAt?: string },
           ) => ({
@@ -878,7 +891,7 @@ export const userMgmtApi = {
       >("/usermanagement/users")
       .then(unwrap)
       .then((r) =>
-        r.items.map((u) => ({
+        (r.items ?? []).map((u) => ({
           ...u,
           NRStName: u.firstName ?? u.NRStName,
           roles: (u.roles ?? []).map((role) =>
@@ -924,7 +937,10 @@ export interface UpdateRolePermissionsPayload {
 
 export const roleApi = {
   list: () =>
-    api.get<ApiResponse<RoleSummary[]>>("/role-management/roles").then(unwrap),
+    api
+      .get<ApiResponse<RoleSummary[]>>("/role-management/roles")
+      .then(unwrap)
+      .then((arr) => arr ?? []),
   create: (payload: CreateRolePayload) =>
     api
       .post<
@@ -941,21 +957,27 @@ export const miscApi = {
   getIndustries: () =>
     api
       .get<ApiResponse<{ name: string }[]>>("/miscellenous/industry")
-      .then(unwrap),
+      .then(unwrap)
+      .then((arr) => arr ?? []),
   getStates: () =>
     api
       .get<ApiResponse<{ name: string }[]>>("/miscellenous/states")
-      .then(unwrap),
+      .then(unwrap)
+      .then((arr) => arr ?? []),
   getCities: (state: string) =>
     api
       .get<ApiResponse<{ name: string }[]>>(`/miscellenous/cities/${state}`)
-      .then(unwrap),
+      .then(unwrap)
+      .then((arr) => arr ?? []),
 };
 
 // ── Flow Rules ───────────────────────────────────────────────────────────────
 export const flowRuleApi = {
   getAll: () =>
-    api.get<ApiResponse<FlowRule[]>>("/Business/flowrules").then(unwrap),
+    api
+      .get<ApiResponse<FlowRule[]>>("/Business/flowrules")
+      .then(unwrap)
+      .then((arr) => arr ?? []),
   upsert: (payload: FlowRulePayload) =>
     api
       .post<
@@ -1050,10 +1072,11 @@ export interface VatSchedule {
 export const scheduleApi = {
   list: (year?: number) =>
     api
-      .get<
-        ApiResponse<VatSchedule[]>
-      >("/vat-schedule", { params: year ? { year } : undefined })
-      .then(unwrap),
+      .get<ApiResponse<VatSchedule[]>>("/vat-schedule", {
+        params: year ? { year } : undefined,
+      })
+      .then(unwrap)
+      .then((arr) => arr ?? []),
 
   generate: (year: number, month: number) =>
     api
@@ -1115,7 +1138,8 @@ export const whtScheduleApi = {
       .get<ApiResponse<WhtSchedule[]>>("/wht-schedule", {
         params: year ? { year } : undefined,
       })
-      .then(unwrap),
+      .then(unwrap)
+      .then((arr) => arr ?? []),
 
   generate: (year: number, month: number) =>
     api

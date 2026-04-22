@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import PageMeta from "../../components/common/PageMeta";
 import TablePagination from "../../components/common/TablePagination";
@@ -96,8 +96,8 @@ export default function BusinessList() {
     businessesApi
       .list({ page, pageSize })
       .then((result) => {
-        setAllBusinesses(result.items ?? []);
-        setTotalPages(result.totalPages ?? 1);
+        setAllBusinesses(result?.items ?? []);
+        setTotalPages(result?.totalPages ?? 1);
       })
       .catch(() => {})
       .finally(() => setLoading(false));

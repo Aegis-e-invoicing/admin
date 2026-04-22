@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import toast from "react-hot-toast";
 import PageMeta from "../../components/common/PageMeta";
@@ -81,9 +81,9 @@ export default function BroadcastList() {
     setLoading(true);
     try {
       const res = await broadcastApi.list({ page: p, pageSize: 10 });
-      setBroadcasts(res.items ?? []);
-      setTotalCount(res.totalCount ?? 0);
-      setTotalPages(res.totalPages ?? 1);
+      setBroadcasts(res?.items ?? []);
+      setTotalCount(res?.totalCount ?? 0);
+      setTotalPages(res?.totalPages ?? 1);
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } } };
       toast.error(e?.response?.data?.message || "Failed to load broadcasts");
@@ -101,11 +101,11 @@ export default function BroadcastList() {
     }
     vendorGroupApi
       .list({ pageSize: 100 })
-      .then((r) => setGroups(r.items ?? []))
+      .then((r) => setGroups(r?.items ?? []))
       .catch(() => {});
     vendorApi
       .list({ pageSize: 200 })
-      .then((r) => setVendors(r.items ?? []))
+      .then((r) => setVendors(r?.items ?? []))
       .catch(() => {});
   }, [page]);
 

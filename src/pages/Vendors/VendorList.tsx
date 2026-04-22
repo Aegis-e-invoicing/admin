@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import PageMeta from "../../components/common/PageMeta";
 import TablePagination from "../../components/common/TablePagination";
@@ -86,9 +86,9 @@ export default function VendorList() {
         searchTerm: search || undefined,
         vendorGroupId: groupFilter || undefined,
       });
-      setVendors(res.items ?? []);
-      setTotalCount(res.totalCount ?? 0);
-      setTotalPages(res.totalPages ?? 1);
+      setVendors(res?.items ?? []);
+      setTotalCount(res?.totalCount ?? 0);
+      setTotalPages(res?.totalPages ?? 1);
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } } };
       toast.error(e?.response?.data?.message || "Failed to load vendors");
@@ -104,7 +104,7 @@ export default function VendorList() {
     }
     vendorGroupApi
       .list({ pageSize: 100 })
-      .then((r) => setGroups(r.items ?? []))
+      .then((r) => setGroups(r?.items ?? []))
       .catch(() => {});
   }, []);
 
