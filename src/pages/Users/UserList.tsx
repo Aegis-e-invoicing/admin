@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { SkeletonTableRows } from "../../components/ui/skeleton/Skeleton";
 import PageMeta from "../../components/common/PageMeta";
@@ -228,7 +228,7 @@ export default function UserList() {
       .finally(() => setLoading(false));
     if (!isAegis) {
       roleApi
-        .list()
+        .listForBusiness()
         .then(setAvailableRoles)
         .catch(() => {});
     }
@@ -605,8 +605,8 @@ export default function UserList() {
                         }
                         className={inputCls}
                       >
-                        {availableRoles.length > 0 ? (
-                          availableRoles.map((r) => (
+                        {availableRoles?.length > 0 ? (
+                          availableRoles?.map((r) => (
                             <option key={r.id} value={r.id}>
                               {r.name}
                               {r.isSystemRole ? "" : " (custom)"}
@@ -797,7 +797,7 @@ export default function UserList() {
               </tbody>
             </table>
           </div>
-        ) : users.length === 0 ? (
+        ) : users?.length === 0 ? (
           <div className="text-center py-16">
             <p className="text-gray-500 dark:text-gray-400 mb-3">
               No users found.
@@ -841,7 +841,7 @@ export default function UserList() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                {users.map((u) => (
+                {users?.map((u) => (
                   <tr
                     key={u.id}
                     className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"

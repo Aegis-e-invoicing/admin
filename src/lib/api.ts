@@ -166,6 +166,7 @@ export interface Address {
   state: string;
   country: string;
   postalCode: string;
+  lga?: string;
 }
 export interface DashboardStats {
   totalBusinesses: number;
@@ -344,6 +345,33 @@ export interface FIRSServiceCode {
   code: string;
   description: string;
 }
+export interface FIRSCurrency {
+  code: string;
+  name: string;
+  symbol: string;
+  symbolNative: string;
+}
+export interface FIRSState {
+  name: string;
+  code: string;
+}
+export interface FIRSLga {
+  name: string;
+  code: string;
+  state_code: string;
+}
+export interface FIRSCountry {
+  name: string;
+  alpha_2: string;
+}
+export interface FIRSInvoiceType {
+  code: string;
+  value: string;
+}
+export interface FIRSPaymentMeans {
+  code: string;
+  value: string;
+}
 export const NRSApi = {
   getTaxCategories: () =>
     api
@@ -358,6 +386,36 @@ export const NRSApi = {
   getServiceCodes: () =>
     api
       .get<ApiResponse<FIRSServiceCode[]>>("/NRS/getservicecodes")
+      .then(unwrap)
+      .then((arr) => arr ?? []),
+  getCurrencies: () =>
+    api
+      .get<ApiResponse<FIRSCurrency[]>>("/FIRS/getallcurrencies")
+      .then(unwrap)
+      .then((arr) => arr ?? []),
+  getInvoiceTypes: () =>
+    api
+      .get<ApiResponse<FIRSInvoiceType[]>>("/FIRS/getinvoicetypes")
+      .then(unwrap)
+      .then((arr) => arr ?? []),
+  getPaymentMeans: () =>
+    api
+      .get<ApiResponse<FIRSPaymentMeans[]>>("/FIRS/getpaymentmeans")
+      .then(unwrap)
+      .then((arr) => arr ?? []),
+  getStates: () =>
+    api
+      .get<ApiResponse<FIRSState[]>>("/FIRS/getallstates")
+      .then(unwrap)
+      .then((arr) => arr ?? []),
+  getLgas: () =>
+    api
+      .get<ApiResponse<FIRSLga[]>>("/FIRS/getalllgas")
+      .then(unwrap)
+      .then((arr) => arr ?? []),
+  getCountries: () =>
+    api
+      .get<ApiResponse<FIRSCountry[]>>("/FIRS/getallcountries")
       .then(unwrap)
       .then((arr) => arr ?? []),
 };
@@ -600,6 +658,7 @@ export interface CreatePartyPayload {
     state: string;
     country: string;
     postalCode?: string;
+    lga?: string;
   };
 }
 
@@ -746,6 +805,7 @@ export interface UpdateBusinessByAdminPayload {
     state: string;
     country: string;
     postalCode: string;
+    lga?: string;
   };
 }
 
@@ -895,7 +955,11 @@ export const userMgmtApi = {
           ...u,
           NRStName: u.firstName ?? u.NRStName,
           roles: (u.roles ?? []).map((role) =>
-            typeof role === "string" ? role : (role as { name: string }).name,
+            typeof role === "string"
+              ? role
+              : ((role as { roleName?: string; name?: string }).roleName ??
+                (role as { roleName?: string; name?: string }).name ??
+                ""),
           ),
         })),
       ),
@@ -941,6 +1005,17 @@ export const roleApi = {
       .get<ApiResponse<RoleSummary[]>>("/role-management/roles")
       .then(unwrap)
       .then((arr) => arr ?? []),
+  listForBusiness: () =>
+    api
+      .get<ApiResponse<RoleSummary[]>>("/role-management/roles")
+      .then(unwrap)
+      .then((arr) =>
+        (arr ?? []).filter(
+          (r) =>
+            r.category?.toLowerCase() === "operational" ||
+            r.category?.toLowerCase() === "custom",
+        ),
+      ),
   create: (payload: CreateRolePayload) =>
     api
       .post<

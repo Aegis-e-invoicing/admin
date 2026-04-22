@@ -7,12 +7,12 @@ interface EnvModeContextValue {
 }
 
 const EnvModeContext = createContext<EnvModeContextValue>({
-  envMode: 2, // Production default
+  envMode: 1, // Sandbox default
   setEnvMode: () => {},
 });
 
 export function EnvModeProvider({ children }: { children: ReactNode }) {
-  const [envMode, setEnvMode] = useState<AppEnvironmentMode>(2);
+  const [envMode, setEnvMode] = useState<AppEnvironmentMode>(1);
   return (
     <EnvModeContext.Provider value={{ envMode, setEnvMode }}>
       {children}

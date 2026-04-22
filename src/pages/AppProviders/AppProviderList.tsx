@@ -621,7 +621,7 @@ export default function AppProviderList() {
               </tbody>
             </table>
           </div>
-        ) : providers.length === 0 ? (
+        ) : providers?.length === 0 ? (
           <div className="text-center py-16">
             <p className="text-gray-500 dark:text-gray-400 mb-3">
               No providers configured yet.
@@ -656,7 +656,7 @@ export default function AppProviderList() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                {providers.map((p) => (
+                {providers?.map((p) => (
                   <tr
                     key={p.id}
                     className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"

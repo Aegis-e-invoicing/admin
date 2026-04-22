@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import PageMeta from "../../components/common/PageMeta";
 import { scheduleApi } from "../../lib/api";
@@ -94,10 +94,10 @@ export default function Schedules() {
 
   // ── Filtered list ─────────────────────────────────────────────────────────
   const filtered =
-    filterYear === "all"
+    (filterYear === "all"
       ? schedules
-      : schedules.filter((s) => s.year === filterYear);
-  const years = Array.from(new Set(schedules.map((s) => s.year))).sort(
+      : schedules?.filter((s) => s.year === filterYear)) ?? [];
+  const years = Array.from(new Set(schedules?.map((s) => s.year))).sort(
     (a, b) => b - a,
   );
 
@@ -110,7 +110,7 @@ export default function Schedules() {
       next.add(id);
       // In real mode, fetch items if not loaded
       if (!USE_MOCK) {
-        const sch = schedules.find((s) => s.id === id);
+        const sch = schedules?.find((s) => s.id === id);
         if (sch && !(sch as MockSchedule).items?.length) {
           try {
             const full = (await scheduleApi.getWithItems(
@@ -131,7 +131,7 @@ export default function Schedules() {
   };
 
   // ── Generate ──────────────────────────────────────────────────────────────
-  const alreadyExists = schedules.some(
+  const alreadyExists = schedules?.some(
     (s) => s.year === genYear && s.month === genMonth,
   );
 
@@ -384,7 +384,7 @@ export default function Schedules() {
               onClick={() => setShowGenerate(true)}
               className="text-brand-500 hover:text-brand-600 text-sm font-medium"
             >
-              Generate your NRSt schedule →
+              Generate your schedule →
             </button>
           )}
         </div>
@@ -558,7 +558,7 @@ export default function Schedules() {
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                            {sch.items.map((item, idx) => (
+                            {sch.items?.map((item, idx) => (
                               <tr
                                 key={item.id}
                                 className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"

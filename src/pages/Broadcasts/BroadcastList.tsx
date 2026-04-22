@@ -190,8 +190,12 @@ export default function BroadcastList() {
               </tbody>
             </table>
           </div>
-        ) : broadcasts.length === 0 ? (
-          <p className="text-sm text-gray-500">No broadcasts found.</p>
+        ) : broadcasts?.length === 0 ? (
+          <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-center py-16">
+            <p className="text-gray-500 dark:text-gray-400">
+              No broadcasts found.
+            </p>
+          </div>
         ) : (
           <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
             <table className="min-w-full text-sm">
@@ -206,7 +210,7 @@ export default function BroadcastList() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                {broadcasts.map((b) => (
+                {broadcasts?.map((b) => (
                   <tr
                     key={b.id}
                     className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
@@ -397,7 +401,7 @@ export default function BroadcastList() {
                   }}
                 >
                   <option value="">— Select group —</option>
-                  {groups.map((g) => (
+                  {groups?.map((g) => (
                     <option key={g.id} value={g.id}>
                       {g.name}
                     </option>
@@ -423,7 +427,7 @@ export default function BroadcastList() {
                       : "border-gray-200 dark:border-gray-700"
                   }`}
                 >
-                  {vendors.map((v) => (
+                  {vendors?.map((v) => (
                     <label
                       key={v.id}
                       className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer"

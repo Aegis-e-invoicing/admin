@@ -50,15 +50,18 @@ export default function ReceivedInvoiceList() {
     fetchInvoices(page, pageSize);
   }, [page, pageSize]);
 
-  const filteredInvoices = invoices.filter((inv) => {
-    const matchesSender = senderFilter
-      ? (inv.partyName ?? "").toLowerCase().includes(senderFilter.toLowerCase())
-      : true;
-    const matchesStatus = payStatusFilter
-      ? inv.paymentStatus === payStatusFilter
-      : true;
-    return matchesSender && matchesStatus;
-  });
+  const filteredInvoices =
+    invoices?.filter((inv) => {
+      const matchesSender = senderFilter
+        ? (inv.partyName ?? "")
+            .toLowerCase()
+            .includes(senderFilter.toLowerCase())
+        : true;
+      const matchesStatus = payStatusFilter
+        ? inv.paymentStatus === payStatusFilter
+        : true;
+      return matchesSender && matchesStatus;
+    }) ?? [];
 
   const handlePageSizeChange = (ps: number) => {
     setPageSize(ps);

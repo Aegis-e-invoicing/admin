@@ -235,7 +235,7 @@ export default function VendorList() {
             onChange={(e) => setGroupFilter(e.target.value)}
           >
             <option value="">All Groups</option>
-            {groups.map((g) => (
+            {groups?.map((g) => (
               <option key={g.id} value={g.id}>
                 {g.name}
               </option>
@@ -255,7 +255,7 @@ export default function VendorList() {
                 </tbody>
               </table>
             </div>
-          ) : vendors.length === 0 ? (
+          ) : vendors?.length === 0 ? (
             <div className="text-center py-16">
               <p className="text-gray-500 dark:text-gray-400">
                 No vendors found.
@@ -289,7 +289,7 @@ export default function VendorList() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                  {vendors.map((v) => (
+                  {vendors?.map((v) => (
                     <tr
                       key={v.id}
                       className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
@@ -440,7 +440,7 @@ export default function VendorList() {
                   <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 block">Group</label>
                   <select className={inputCls} value={form.vendorGroupId} onChange={(e) => setForm((f) => ({ ...f, vendorGroupId: e.target.value }))}>
                     <option value="">— No Group —</option>
-                    {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+                    {groups?.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
                   </select>
                 </div>
               </div>

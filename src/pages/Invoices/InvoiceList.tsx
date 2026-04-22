@@ -766,9 +766,9 @@ export default function InvoiceList() {
             className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors flex items-center gap-2 ${activeTab === "drafts" ? "border-brand-500 text-brand-600 dark:text-brand-400" : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"}`}
           >
             Drafts
-            {drafts.length > 0 && (
+            {drafts?.length > 0 && (
               <span className="inline-flex items-center justify-center h-4 min-w-[1rem] px-1 text-[10px] font-bold bg-gray-400 text-white rounded-full">
-                {drafts.length}
+                {drafts?.length}
               </span>
             )}
           </button>
@@ -829,7 +829,7 @@ export default function InvoiceList() {
                   </tbody>
                 </table>
               </div>
-            ) : invoices.length === 0 ? (
+            ) : invoices?.length === 0 ? (
               <div className="text-center py-16">
                 <p className="text-gray-500 dark:text-gray-400 mb-3">
                   No invoices found.
@@ -839,7 +839,7 @@ export default function InvoiceList() {
                     to="/invoices/create"
                     className="text-brand-500 hover:text-brand-600 text-sm font-medium"
                   >
-                    Create your NRSt invoice â†’
+                    Create your invoice
                   </Link>
                 )}
               </div>
@@ -875,7 +875,7 @@ export default function InvoiceList() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                    {invoices.map((inv) => (
+                    {invoices?.map((inv) => (
                       <tr
                         key={inv.id}
                         className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
@@ -1182,7 +1182,7 @@ export default function InvoiceList() {
                 </tbody>
               </table>
             </div>
-          ) : drafts.length === 0 ? (
+          ) : drafts?.length === 0 ? (
             <div className="text-center py-16">
               <svg
                 className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-3"
@@ -1227,7 +1227,7 @@ export default function InvoiceList() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                  {drafts.map((draft) => (
+                  {drafts?.map((draft) => (
                     <tr
                       key={draft.id}
                       className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"

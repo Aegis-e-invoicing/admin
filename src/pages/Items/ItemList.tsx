@@ -638,7 +638,7 @@ export default function ItemList() {
               </tbody>
             </table>
           </div>
-        ) : items.length === 0 ? (
+        ) : items?.length === 0 ? (
           <div className="text-center py-16">
             <p className="text-gray-500 dark:text-gray-400 mb-3">
               No items found.
@@ -648,7 +648,7 @@ export default function ItemList() {
                 onClick={openCreate}
                 className="text-brand-500 hover:text-brand-600 text-sm font-medium"
               >
-                Add your NRSt item →
+                Add your item →
               </button>
             )}
           </div>
@@ -677,7 +677,7 @@ export default function ItemList() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                {items.map((item) => {
+                {items?.map((item) => {
                   return (
                     <tr
                       key={item.id}

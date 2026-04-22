@@ -6,8 +6,12 @@ import { SkeletonTableRows } from "../../components/ui/skeleton/Skeleton";
 import {
   partyApi,
   tinValidationApi,
+  NRSApi,
   type Party,
   type CreatePartyPayload,
+  type FIRSState,
+  type FIRSLga,
+  type FIRSCountry,
 } from "../../lib/api";
 import { USE_MOCK, MOCK_PARTIES } from "../../lib/mockData";
 import { useIsAdmin, useIsAegis } from "../../context/AuthContext";
@@ -29,6 +33,7 @@ const emptyForm: CreatePartyPayload = {
     state: "",
     country: "",
     postalCode: "",
+    lga: "",
   },
 };
 
@@ -48,6 +53,26 @@ export default function PartyList() {
   const [form, setForm] = useState<CreatePartyPayload>(emptyForm);
   const [editingParty, setEditingParty] = useState<Party | null>(null);
   const [deactivateModal, setDeactivateModal] = useState<Party | null>(null);
+
+  const [states, setStates] = useState<FIRSState[]>([]);
+  const [allLgas, setAllLgas] = useState<FIRSLga[]>([]);
+  const [countries, setCountries] = useState<FIRSCountry[]>([]);
+  const filteredLgas = allLgas.filter(
+    (l) => !form.address.state || l.state_code === form.address.state,
+  );
+
+  useEffect(() => {
+    if (USE_MOCK) return;
+    NRSApi.getStates()
+      .then(setStates)
+      .catch(() => {});
+    NRSApi.getLgas()
+      .then(setAllLgas)
+      .catch(() => {});
+    NRSApi.getCountries()
+      .then(setCountries)
+      .catch(() => {});
+  }, []);
 
   // TIN validation (skipped in edit mode)
   const [tinStatus, setTinStatus] = useState<TinStatus>("idle");
@@ -127,6 +152,7 @@ export default function PartyList() {
         state: party.address?.state ?? "",
         country: party.address?.country ?? "",
         postalCode: party.address?.postalCode ?? "",
+        lga: party.address?.lga ?? "",
       },
     });
     setTinStatus("valid");
@@ -430,26 +456,9 @@ export default function PartyList() {
                     </div>
                     <div className="flex flex-col gap-1">
                       <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                        State *
-                      </label>
-                      <input
-                        value={form.address.state}
-                        onChange={(e) =>
-                          setForm((f) => ({
-                            ...f,
-                            address: { ...f.address, state: e.target.value },
-                          }))
-                        }
-                        className={inputCls}
-                        placeholder="Lagos"
-                        required
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
                         Country *
                       </label>
-                      <input
+                      <select
                         value={form.address.country}
                         onChange={(e) =>
                           setForm((f) => ({
@@ -458,9 +467,64 @@ export default function PartyList() {
                           }))
                         }
                         className={inputCls}
-                        placeholder="Nigeria"
                         required
-                      />
+                      >
+                        <option value="">Select country...</option>
+                        {countries.map((c) => (
+                          <option key={c.alpha_2} value={c.alpha_2}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                        State *
+                      </label>
+                      <select
+                        value={form.address.state}
+                        onChange={(e) =>
+                          setForm((f) => ({
+                            ...f,
+                            address: {
+                              ...f.address,
+                              state: e.target.value,
+                              lga: "",
+                            },
+                          }))
+                        }
+                        className={inputCls}
+                        required
+                      >
+                        <option value="">Select state…</option>
+                        {states.map((s) => (
+                          <option key={s.code} value={s.code}>
+                            {s.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                        LGA
+                      </label>
+                      <select
+                        value={form.address.lga ?? ""}
+                        onChange={(e) =>
+                          setForm((f) => ({
+                            ...f,
+                            address: { ...f.address, lga: e.target.value },
+                          }))
+                        }
+                        className={inputCls}
+                      >
+                        <option value="">Select LGA…</option>
+                        {filteredLgas.map((l) => (
+                          <option key={l.code} value={l.code}>
+                            {l.name}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                     <div className="flex flex-col gap-1">
                       <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
@@ -544,7 +608,7 @@ export default function PartyList() {
               </tbody>
             </table>
           </div>
-        ) : parties.length === 0 ? (
+        ) : parties?.length === 0 ? (
           <div className="text-center py-16">
             <p className="text-gray-500 dark:text-gray-400 mb-3">
               No parties found.
@@ -554,7 +618,7 @@ export default function PartyList() {
                 onClick={() => setShowForm(true)}
                 className="text-brand-500 hover:text-brand-600 text-sm font-medium"
               >
-                Add your NRSt party →
+                Add party →
               </button>
             )}
           </div>
@@ -584,7 +648,7 @@ export default function PartyList() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                  {parties.map((p) => (
+                  {parties?.map((p) => (
                     <tr
                       key={p.id}
                       className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"

@@ -4,7 +4,14 @@ import toast from "react-hot-toast";
 import Label from "../components/form/Label";
 import Input from "../components/form/input/InputField";
 import Button from "../components/ui/button/Button";
-import { businessApi, miscApi, tinValidationApi } from "../lib/api";
+import {
+  businessApi,
+  miscApi,
+  tinValidationApi,
+  NRSApi,
+  type FIRSState,
+  type FIRSLga,
+} from "../lib/api";
 import { USE_MOCK, MOCK_INDUSTRIES } from "../lib/mockData";
 import { useAuth } from "../context/AuthContext";
 
@@ -24,6 +31,7 @@ interface ProfileForm {
   state: string;
   country: string;
   postalCode: string;
+  lga: string;
 }
 
 type TinStatus = "idle" | "checking" | "valid" | "invalid" | "error";
@@ -35,6 +43,8 @@ export default function Onboarding() {
   const [industries, setIndustries] = useState<string[]>([]);
   const [loadingIndustries, setLoadingIndustries] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [firsStates, setFirsStates] = useState<FIRSState[]>([]);
+  const [allLgas, setAllLgas] = useState<FIRSLga[]>([]);
 
   // TIN validation
   const [tinStatus, setTinStatus] = useState<TinStatus>("idle");
@@ -83,8 +93,9 @@ export default function Onboarding() {
     street: "",
     city: "",
     state: "",
-    country: "Nigeria",
+    country: "NG",
     postalCode: "",
+    lga: "",
   });
 
   const [nrs, setNrs] = useState({ apiKey: "", clientSecret: "" });
@@ -101,6 +112,12 @@ export default function Onboarding() {
       .then((list) => setIndustries(list.map((i) => i.name)))
       .catch(() => setIndustries([]))
       .finally(() => setLoadingIndustries(false));
+    NRSApi.getStates()
+      .then(setFirsStates)
+      .catch(() => {});
+    NRSApi.getLgas()
+      .then(setAllLgas)
+      .catch(() => {});
   }, []);
 
   const pf =
@@ -153,6 +170,7 @@ export default function Onboarding() {
           state: profile.state,
           country: profile.country,
           postalCode: profile.postalCode,
+          lga: profile.lga || undefined,
         },
       });
       setStep("nrs");
@@ -438,11 +456,24 @@ export default function Onboarding() {
               </div>
               <div>
                 <Label>State</Label>
-                <Input
-                  placeholder="Lagos State"
+                <select
                   value={profile.state}
-                  onChange={pf("state")}
-                />
+                  onChange={(e) =>
+                    setProfile((prev) => ({
+                      ...prev,
+                      state: e.target.value,
+                      lga: "",
+                    }))
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+                >
+                  <option value="">Select state…</option>
+                  {firsStates.map((s) => (
+                    <option key={s.code} value={s.code}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <Label>Postal Code</Label>
@@ -450,6 +481,36 @@ export default function Onboarding() {
                   placeholder="100001"
                   value={profile.postalCode}
                   onChange={pf("postalCode")}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>LGA</Label>
+                <select
+                  value={profile.lga}
+                  onChange={pf("lga")}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+                >
+                  <option value="">Select LGA…</option>
+                  {allLgas
+                    .filter(
+                      (l) => !profile.state || l.state_code === profile.state,
+                    )
+                    .map((l) => (
+                      <option key={l.code} value={l.code}>
+                        {l.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+              <div>
+                <Label>Country</Label>
+                <Input
+                  placeholder="NG"
+                  value={profile.country}
+                  onChange={pf("country")}
+                  maxLength={2}
                 />
               </div>
             </div>

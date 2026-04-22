@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import PageMeta from "../../components/common/PageMeta";
 import { SkeletonTableRows } from "../../components/ui/skeleton/Skeleton";
@@ -137,7 +137,7 @@ export default function RoleList() {
     }
     setLoading(true);
     roleApi
-      .list()
+      .listForBusiness()
       .then(setRoles)
       .catch(() => toast.error("Failed to load roles."))
       .finally(() => setLoading(false));
@@ -409,7 +409,7 @@ export default function RoleList() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-              {roles.map((role) => (
+              {roles?.map((role) => (
                 <tr
                   key={role.id}
                   className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"

@@ -6,10 +6,14 @@ import { SkeletonTableRows } from "../../components/ui/skeleton/Skeleton";
 import {
   businessesApi,
   paymentApi,
+  NRSApi,
   type BusinessSummary,
   type SubscriptionPlan,
   type CreateBusinessByAdminPayload,
   type UpdateBusinessByAdminPayload,
+  type FIRSState,
+  type FIRSLga,
+  type FIRSCountry,
 } from "../../lib/api";
 import { USE_MOCK, MOCK_BUSINESSES } from "../../lib/mockData";
 import { usePermissions } from "../../hooks/usePermissions";
@@ -80,11 +84,15 @@ export default function BusinessList() {
     street: "",
     city: "",
     state: "",
-    country: "Nigeria",
+    country: "NG",
     postalCode: "",
+    lga: "",
   });
   const [editErrors, setEditErrors] = useState<Record<string, string>>({});
   const [editLoading, setEditLoading] = useState(false);
+  const [firsStates, setFirsStates] = useState<FIRSState[]>([]);
+  const [allLgas, setAllLgas] = useState<FIRSLga[]>([]);
+  const [allCountries, setAllCountries] = useState<FIRSCountry[]>([]);
 
   const load = () => {
     if (USE_MOCK) {
@@ -105,6 +113,19 @@ export default function BusinessList() {
 
   useEffect(() => {
     load();
+  }, []);
+
+  useEffect(() => {
+    if (USE_MOCK) return;
+    NRSApi.getStates()
+      .then(setFirsStates)
+      .catch(() => {});
+    NRSApi.getLgas()
+      .then(setAllLgas)
+      .catch(() => {});
+    NRSApi.getCountries()
+      .then(setAllCountries)
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -133,7 +154,7 @@ export default function BusinessList() {
 
   const openCreatePanel = () => {
     setShowCreatePanel(true);
-    if (plans.length === 0) {
+    if (plans?.length === 0) {
       setLoadingPlans(true);
       paymentApi
         .getPlans()
@@ -281,8 +302,9 @@ export default function BusinessList() {
       street: "",
       city: "",
       state: "",
-      country: "Nigeria",
+      country: "NG",
       postalCode: "",
+      lga: "",
     });
     setEditErrors({});
     setShowEditPanel(true);
@@ -316,8 +338,9 @@ export default function BusinessList() {
         street: editForm.street || "N/A",
         city: editForm.city || "N/A",
         state: editForm.state || "N/A",
-        country: editForm.country || "Nigeria",
+        country: editForm.country || "NG",
         postalCode: editForm.postalCode || "N/A",
+        lga: editForm.lga || undefined,
       },
     };
     try {
@@ -894,13 +917,13 @@ export default function BusinessList() {
                     <div className="flex justify-center py-4">
                       <div className="w-6 h-6 border-4 border-brand-500 border-t-transparent rounded-full animate-spin" />
                     </div>
-                  ) : plans.length === 0 ? (
+                  ) : plans?.length === 0 ? (
                     <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
                       No subscription plans found. Please seed the database.
                     </p>
                   ) : (
                     <div className="space-y-2">
-                      {plans.map((plan) => {
+                      {plans?.map((plan) => {
                         const isSelected = selectedPlans.some(
                           (p) => p.id === plan.id,
                         );
@@ -1206,15 +1229,75 @@ export default function BusinessList() {
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                        State
+                        Country
                       </label>
-                      <input
-                        value={editForm.state}
+                      <select
+                        value={editForm.country}
                         onChange={(e) =>
-                          setEditForm((f) => ({ ...f, state: e.target.value }))
+                          setEditForm((f) => ({
+                            ...f,
+                            country: e.target.value,
+                            state: "",
+                            lga: "",
+                          }))
                         }
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
-                      />
+                      >
+                        <option value="">Select country…</option>
+                        {allCountries.map((c) => (
+                          <option key={c.alpha_2} value={c.alpha_2}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                        State
+                      </label>
+                      <select
+                        value={editForm.state}
+                        onChange={(e) =>
+                          setEditForm((f) => ({
+                            ...f,
+                            state: e.target.value,
+                            lga: "",
+                          }))
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+                      >
+                        <option value="">Select state…</option>
+                        {firsStates.map((s) => (
+                          <option key={s.code} value={s.code}>
+                            {s.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                        LGA
+                      </label>
+                      <select
+                        value={editForm.lga}
+                        onChange={(e) =>
+                          setEditForm((f) => ({ ...f, lga: e.target.value }))
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+                      >
+                        <option value="">Select LGA…</option>
+                        {allLgas
+                          .filter(
+                            (l) =>
+                              !editForm.state ||
+                              l.state_code === editForm.state,
+                          )
+                          .map((l) => (
+                            <option key={l.code} value={l.code}>
+                              {l.name}
+                            </option>
+                          ))}
+                      </select>
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">

@@ -193,7 +193,7 @@ export default function VendorGroupList() {
                 </tbody>
               </table>
             </div>
-          ) : groups.length === 0 ? (
+          ) : groups?.length === 0 ? (
             <div className="text-center py-16">
               <p className="text-gray-500 dark:text-gray-400">
                 No vendor groups found.
@@ -224,7 +224,7 @@ export default function VendorGroupList() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                  {groups.map((g) => (
+                  {groups?.map((g) => (
                     <tr
                       key={g.id}
                       className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"

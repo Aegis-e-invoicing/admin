@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState, useCallback } from "react";
-import { useNavigate, useLocation, useSearchParams } from "react-router";
+import { useNavigate, useLocation, useSearchParams, Link } from "react-router";
 import toast from "react-hot-toast";
 import PageMeta from "../../components/common/PageMeta";
 import DatePicker from "../../components/form/date-picker";
@@ -11,6 +11,9 @@ import {
   type Party,
   type BusinessItemSummary,
   type TaxCategory,
+  type FIRSCurrency,
+  type FIRSInvoiceType,
+  type FIRSPaymentMeans,
   type CreateInvoicePayload,
   type InvoiceItemPayload,
   type DocumentReferenceDto,
@@ -28,29 +31,11 @@ import {
 const inputCls =
   "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-500";
 
-const INVOICE_TYPES = [
-  { code: "380", label: "Commercial Invoice (380)" },
-  { code: "381", label: "Credit Note (381)" },
-  { code: "383", label: "Debit Note (383)" },
-  { code: "386", label: "Prepayment Invoice (386)" },
-  { code: "388", label: "Tax Invoice (388)" },
-];
-
 const INVOICE_KINDS = [
   { code: "B2B", label: "B2B — Business to Business" },
   { code: "B2C", label: "B2C — Business to Consumer" },
   { code: "B2G", label: "B2G — Business to Government" },
 ];
-
-const PAYMENT_MEANS = [
-  { code: "10", label: "Cash (10)" },
-  { code: "20", label: "Cheque (20)" },
-  { code: "30", label: "Bank Transfer (30)" },
-  { code: "48", label: "Bank Card (48)" },
-  { code: "97", label: "Clearing between partners (97)" },
-];
-
-const CURRENCIES = ["NGN", "USD", "GBP", "EUR"];
 
 interface LineItem extends InvoiceItemPayload {
   _itemCode?: string;
@@ -165,6 +150,9 @@ export default function CreateInvoice() {
   const [parties, setParties] = useState<Party[]>([]);
   const [items, setItems] = useState<BusinessItemSummary[]>([]);
   const [taxCategories, setTaxCategories] = useState<TaxCategory[]>([]);
+  const [currencies, setCurrencies] = useState<FIRSCurrency[]>([]);
+  const [invoiceTypes, setInvoiceTypes] = useState<FIRSInvoiceType[]>([]);
+  const [paymentMeans, setPaymentMeans] = useState<FIRSPaymentMeans[]>([]);
   const [invoices, setInvoices] = useState<InvoiceSummary[]>([]);
   const [loadingLookups, setLoadingLookups] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -242,8 +230,8 @@ export default function CreateInvoice() {
 
   // Auto-match party from partyName once parties list loads
   useEffect(() => {
-    if (!fromInvoice?.partyName || !parties.length) return;
-    const matched = parties.find(
+    if (!fromInvoice?.partyName || !parties?.length) return;
+    const matched = parties?.find(
       (p) => p.name.toLowerCase() === fromInvoice.partyName.toLowerCase(),
     );
     if (matched) {
@@ -274,12 +262,18 @@ export default function CreateInvoice() {
         .list({ pageSize: 100 })
         .then((r) => r?.items ?? [])
         .catch(() => [] as InvoiceSummary[]),
+      NRSApi.getCurrencies().catch(() => [] as FIRSCurrency[]),
+      NRSApi.getInvoiceTypes().catch(() => [] as FIRSInvoiceType[]),
+      NRSApi.getPaymentMeans().catch(() => [] as FIRSPaymentMeans[]),
     ])
-      .then(([p, bi, tc, inv]) => {
+      .then(([p, bi, tc, inv, cur, invTypes, pmeans]) => {
         setParties(p);
         setItems(bi);
         setTaxCategories(tc);
         setInvoices(inv);
+        setCurrencies(cur);
+        setInvoiceTypes(invTypes);
+        setPaymentMeans(pmeans);
       })
       .finally(() => setLoadingLookups(false));
   }, []);
@@ -291,7 +285,7 @@ export default function CreateInvoice() {
     invoiceApi
       .listDrafts()
       .then((drafts) => {
-        const draft = drafts.find((d) => d.id === resumeId);
+        const draft = drafts?.find((d) => d.id === resumeId);
         if (!draft) {
           toast.error("Draft not found.");
           return;
@@ -324,7 +318,7 @@ export default function CreateInvoice() {
     ) =>
       setForm((prev) => ({ ...prev, [field]: e.target.value }));
 
-  const invoicesWithIRN = invoices.filter((inv) => !!inv.irn);
+  const invoicesWithIRN = invoices?.filter((inv) => !!inv.irn);
   const irnToRef = (irn: string): DocumentReferenceDto | null => {
     const inv = invoicesWithIRN.find((i) => i.irn === irn);
     return inv ? { irn, issueDate: inv.issueDate } : null;
@@ -361,7 +355,7 @@ export default function CreateInvoice() {
 
   const handleItemSelect = async (index: number, businessItemId: string) => {
     // First update with summary data so the UI responds immediately
-    const summary = items.find((i) => i.id === businessItemId);
+    const summary = items?.find((i) => i.id === businessItemId);
     setLineItems((prev) =>
       prev.map((li, i) =>
         i === index
@@ -513,7 +507,7 @@ export default function CreateInvoice() {
     }
     const payload = JSON.stringify({ form, lineItems, docRefs });
     const partyName =
-      parties.find((p) => p.id === form.partyId)?.name ?? undefined;
+      parties?.find((p) => p.id === form.partyId)?.name ?? undefined;
     setSavingDraft(true);
     try {
       if (draftId) {
@@ -669,7 +663,7 @@ export default function CreateInvoice() {
       billingReference: [{ irn, issueDate: inv.issueDate }],
     }));
     // Auto-match party by name
-    const matched = parties.find(
+    const matched = parties?.find(
       (p) => p.name.toLowerCase() === (inv.partyName ?? "").toLowerCase(),
     );
     if (matched) setForm((prev) => ({ ...prev, partyId: matched.id }));
@@ -901,18 +895,18 @@ export default function CreateInvoice() {
                   required
                 >
                   <option value="">Select party...</option>
-                  {parties.map((p) => (
+                  {parties?.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name} — {p.taxIdentificationNumber}
                     </option>
                   ))}
                 </select>
-                {parties.length === 0 && !isNote && (
+                {parties?.length === 0 && !isNote && (
                   <p className="text-xs text-amber-600 mt-1">
                     No parties found.{" "}
-                    <a href="/parties" className="underline">
-                      Add one NRSt.
-                    </a>
+                    <Link to="/parties" className="underline">
+                      Add one.
+                    </Link>
                   </p>
                 )}
               </div>
@@ -945,11 +939,21 @@ export default function CreateInvoice() {
                     onChange={handleFieldChange("invoiceTypeCode")}
                     className={inputCls}
                   >
-                    {INVOICE_TYPES.map((t) => (
-                      <option key={t.code} value={t.code}>
-                        {t.label}
-                      </option>
-                    ))}
+                    {invoiceTypes.length > 0 ? (
+                      invoiceTypes.map((t) => (
+                        <option key={t.code} value={t.code}>
+                          {t.value} ({t.code})
+                        </option>
+                      ))
+                    ) : (
+                      <>
+                        <option value="380">Commercial Invoice (380)</option>
+                        <option value="381">Credit Note (381)</option>
+                        <option value="383">Debit Note (383)</option>
+                        <option value="386">Prepayment Invoice (386)</option>
+                        <option value="388">Tax Invoice (388)</option>
+                      </>
+                    )}
                   </select>
                 </div>
               )}
@@ -963,11 +967,20 @@ export default function CreateInvoice() {
                   onChange={handleFieldChange("currencyCode")}
                   className={inputCls}
                 >
-                  {CURRENCIES.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
+                  {currencies.length > 0 ? (
+                    currencies.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.code} — {c.name}
+                      </option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="NGN">NGN</option>
+                      <option value="USD">USD</option>
+                      <option value="GBP">GBP</option>
+                      <option value="EUR">EUR</option>
+                    </>
+                  )}
                 </select>
               </div>
 
@@ -1005,11 +1018,21 @@ export default function CreateInvoice() {
                   className={inputCls}
                 >
                   <option value="">— None —</option>
-                  {PAYMENT_MEANS.map((m) => (
-                    <option key={m.code} value={m.code}>
-                      {m.label}
-                    </option>
-                  ))}
+                  {paymentMeans.length > 0 ? (
+                    paymentMeans.map((m) => (
+                      <option key={m.code} value={m.code}>
+                        {m.value} ({m.code})
+                      </option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="10">Cash (10)</option>
+                      <option value="20">Cheque (20)</option>
+                      <option value="30">Bank Transfer (30)</option>
+                      <option value="48">Bank Card (48)</option>
+                      <option value="97">Clearing between partners (97)</option>
+                    </>
+                  )}
                 </select>
               </div>
 
@@ -1342,7 +1365,7 @@ export default function CreateInvoice() {
                         required
                       >
                         <option value="">Select item...</option>
-                        {items.map((it) => (
+                        {items?.map((it) => (
                           <option key={it.id} value={it.id}>
                             {it.itemId} — {it.name}
                           </option>
@@ -1507,12 +1530,12 @@ export default function CreateInvoice() {
               })}
             </div>
 
-            {items.length === 0 && (
+            {items?.length === 0 && (
               <div className="mt-3 text-xs text-amber-600 dark:text-amber-400">
                 No business items found.{" "}
-                <a href="/items" className="underline">
-                  Add items NRSt.
-                </a>
+                <Link to="/items" className="underline">
+                  Add items.
+                </Link>
               </div>
             )}
           </div>
