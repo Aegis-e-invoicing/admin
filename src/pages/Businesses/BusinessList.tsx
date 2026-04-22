@@ -57,6 +57,9 @@ export default function BusinessList() {
     businessDescription: "",
     tin: "",
     industry: "",
+    businessRegistrationNumber: "",
+    serviceId: "",
+    nrsBusinessId: "",
     paymentReference: "",
     paymentAmountNaira: "",
   });
@@ -93,8 +96,8 @@ export default function BusinessList() {
     businessesApi
       .list({ page, pageSize })
       .then((result) => {
-        setAllBusinesses(result.items);
-        setTotalPages(result.totalPages);
+        setAllBusinesses(result.items ?? []);
+        setTotalPages(result.totalPages ?? 1);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -155,6 +158,9 @@ export default function BusinessList() {
       businessDescription: "",
       tin: "",
       industry: "",
+      businessRegistrationNumber: "",
+      serviceId: "",
+      nrsBusinessId: "",
       paymentReference: "",
       paymentAmountNaira: "",
     });
@@ -201,6 +207,10 @@ export default function BusinessList() {
       businessDescription: createForm.businessDescription,
       tin: createForm.tin,
       industry: createForm.industry || undefined,
+      businessRegistrationNumber:
+        createForm.businessRegistrationNumber || undefined,
+      serviceId: createForm.serviceId || undefined,
+      nrsBusinessId: createForm.nrsBusinessId || undefined,
       platformSubscriptionIds: selectedPlans.map((p) => p.id),
       billingCycle,
       paymentReference: createForm.paymentReference,
@@ -778,6 +788,54 @@ export default function BusinessList() {
                         {createErrors.tin}
                       </p>
                     )}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                      Business Reg. Number
+                    </label>
+                    <input
+                      value={createForm.businessRegistrationNumber}
+                      onChange={(e) =>
+                        setCreateForm((f) => ({
+                          ...f,
+                          businessRegistrationNumber: e.target.value,
+                        }))
+                      }
+                      placeholder="e.g. RC1234567"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                      FIRS Service ID
+                    </label>
+                    <input
+                      value={createForm.serviceId}
+                      onChange={(e) =>
+                        setCreateForm((f) => ({
+                          ...f,
+                          serviceId: e.target.value,
+                        }))
+                      }
+                      placeholder="8-character FIRS service ID"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                      NRS Business ID
+                    </label>
+                    <input
+                      value={createForm.nrsBusinessId}
+                      onChange={(e) =>
+                        setCreateForm((f) => ({
+                          ...f,
+                          nrsBusinessId: e.target.value,
+                        }))
+                      }
+                      placeholder="FIRS-assigned Business UUID"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">

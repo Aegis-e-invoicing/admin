@@ -38,9 +38,9 @@ export default function ReceivedInvoiceList() {
     invoiceApi
       .receivedList({ page: p, pageSize: ps })
       .then((result) => {
-        setInvoices(result.items);
-        setTotalPages(result.totalPages);
-        setTotalCount(result.totalCount);
+        setInvoices(result.items ?? []);
+        setTotalPages(result.totalPages ?? 1);
+        setTotalCount(result.totalCount ?? 0);
       })
       .catch(() => toast.error("Failed to load received invoices."))
       .finally(() => setLoading(false));
@@ -154,14 +154,27 @@ export default function ReceivedInvoiceList() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <tbody>
-                <SkeletonTableRows rows={pageSize} colWidths={["w-28", "w-36", "w-20", "w-24", "w-20", "w-28", "w-16"]} />
+                <SkeletonTableRows
+                  rows={pageSize}
+                  colWidths={[
+                    "w-28",
+                    "w-36",
+                    "w-20",
+                    "w-24",
+                    "w-20",
+                    "w-28",
+                    "w-16",
+                  ]}
+                />
               </tbody>
             </table>
           </div>
         ) : filteredInvoices.length === 0 ? (
           <div className="text-center py-16">
             <p className="text-gray-500 dark:text-gray-400">
-              {senderFilter || payStatusFilter ? "No invoices match your filters." : "No received invoices found."}
+              {senderFilter || payStatusFilter
+                ? "No invoices match your filters."
+                : "No received invoices found."}
             </p>
           </div>
         ) : (
@@ -228,16 +241,17 @@ export default function ReceivedInvoiceList() {
                       {inv.irn ? inv.irn.substring(0, 16) + "…" : "—"}
                     </td>
                     <td className="px-4 py-3">
-                      {inv.paymentStatus !== "PAID" && inv.paymentStatus !== "REJECTED" && (
-                        <button
-                          onClick={() =>
-                            setPayModal({ id: inv.id, code: inv.invoiceCode })
-                          }
-                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded-lg transition-colors whitespace-nowrap"
-                        >
-                          Reject
-                        </button>
-                      )}
+                      {inv.paymentStatus !== "PAID" &&
+                        inv.paymentStatus !== "REJECTED" && (
+                          <button
+                            onClick={() =>
+                              setPayModal({ id: inv.id, code: inv.invoiceCode })
+                            }
+                            className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded-lg transition-colors whitespace-nowrap"
+                          >
+                            Reject
+                          </button>
+                        )}
                     </td>
                   </tr>
                 ))}
@@ -291,11 +305,23 @@ export default function ReceivedInvoiceList() {
                 </span>
               </p>
               <div className="flex items-start gap-3 p-3 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
-                <svg className="w-5 h-5 text-red-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                <svg
+                  className="w-5 h-5 text-red-500 mt-0.5 shrink-0"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
                 </svg>
                 <p className="text-sm text-red-700 dark:text-red-400">
-                  This will mark the invoice as <strong>Rejected</strong> and report the rejection to <strong>NRS</strong>. The sender will be notified. This action cannot be undone.
+                  This will mark the invoice as <strong>Rejected</strong> and
+                  report the rejection to <strong>NRS</strong>. The sender will
+                  be notified. This action cannot be undone.
                 </p>
               </div>
             </div>

@@ -99,9 +99,9 @@ export default function ItemList() {
     businessItemApi
       .list({ page: p, pageSize: ps })
       .then((r) => {
-        setItems(r.items);
-        setTotalPages(r.totalPages);
-        setTotalCount(r.totalCount);
+        setItems(r.items ?? []);
+        setTotalPages(r.totalPages ?? 1);
+        setTotalCount(r.totalCount ?? 0);
       })
       .catch(() => toast.error("Failed to load items."))
       .finally(() => setLoading(false));

@@ -96,9 +96,9 @@ export default function PartyList() {
     partyApi
       .list({ page: p, pageSize: ps })
       .then((r) => {
-        setParties(r.items);
-        setTotalPages(r.totalPages);
-        setTotalCount(r.totalCount);
+        setParties(r.items ?? []);
+        setTotalPages(r.totalPages ?? 1);
+        setTotalCount(r.totalCount ?? 0);
       })
       .catch(() => toast.error("Failed to load parties."))
       .finally(() => setLoading(false));
@@ -241,8 +241,15 @@ export default function PartyList() {
       </div>
 
       {showForm && (
-        <div className="fixed inset-0 z-9999999 flex" aria-modal="true" role="dialog">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={handleCancelForm} />
+        <div
+          className="fixed inset-0 z-9999999 flex"
+          aria-modal="true"
+          role="dialog"
+        >
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={handleCancelForm}
+          />
           <div className="relative ml-auto w-full max-w-xl h-full bg-white dark:bg-gray-900 shadow-2xl flex flex-col">
             <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
               <div>
@@ -250,236 +257,254 @@ export default function PartyList() {
                   {editingParty ? "Edit Party" : "New Party"}
                 </h2>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  {editingParty ? "Update party details" : "Add a new supplier or customer"}
+                  {editingParty
+                    ? "Update party details"
+                    : "Add a new supplier or customer"}
                 </p>
               </div>
-              <button type="button" onClick={handleCancelForm} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500">✕</button>
+              <button
+                type="button"
+                onClick={handleCancelForm}
+                className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500"
+              >
+                ✕
+              </button>
             </div>
-        <form
-          onSubmit={handleSubmit}
-          className="flex-1 flex flex-col min-h-0"
-        >
-          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
-          {/* Core info */}
-          <fieldset className="space-y-3">
-          <legend className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-3">
-            Basic Information
-          </legend>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                Business Name *
-              </label>
-              <input
-                value={form.name}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, name: e.target.value }))
-                }
-                className={inputCls}
-                placeholder="e.g. Acme Ltd"
-                required
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                Tax Identification Number (TIN) *
-              </label>
-              <input
-                value={form.taxIdentificationNumber}
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    taxIdentificationNumber: e.target.value,
-                  }))
-                }
-                className={
-                  editingParty
-                    ? `${inputCls} opacity-60 cursor-not-allowed`
-                    : inputCls
-                }
-                placeholder="e.g. 12345678-0001"
-                readOnly={!!editingParty}
-                required
-              />
-              {tinStatus === "checking" && (
-                <p className="text-xs text-gray-400 mt-1 flex items-center gap-1.5">
-                  <span className="inline-block w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-                  Validating TIN...
-                </p>
-              )}
-              {tinStatus === "valid" && (
-                <p className="text-xs text-green-600 dark:text-green-400 mt-1">
-                  ✓ TIN verified{tinBusinessName ? ` — ${tinBusinessName}` : ""}
-                </p>
-              )}
-              {tinStatus === "invalid" && (
-                <p className="text-xs text-red-500 mt-1">
-                  ✕ TIN not found or not enrolled on NRS
-                </p>
-              )}
-              {tinStatus === "error" && (
-                <p className="text-xs text-orange-500 mt-1">
-                  ⚠ Could not verify TIN right now. Please try again.
-                </p>
-              )}
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                Email *
-              </label>
-              <input
-                value={form.email}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, email: e.target.value }))
-                }
-                className={inputCls}
-                placeholder="contact@party.com"
-                type="email"
-                required
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                Phone *
-              </label>
-              <input
-                value={form.phone}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, phone: e.target.value }))
-                }
-                className={inputCls}
-                placeholder="+234..."
-                required
-              />
-            </div>
-            <div className="flex flex-col gap-1 sm:col-span-2">
-              <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                Description *
-              </label>
-              <textarea
-                value={form.description}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, description: e.target.value }))
-                }
-                className={`${inputCls} resize-none`}
-                placeholder="Brief description of this party"
-                rows={2}
-                required
-              />
-            </div>
-          </div>
-
-          </fieldset>
-          {/* Address */}
-          <fieldset className="space-y-3">
-          <legend className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-3">
-            Address
-          </legend>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1 sm:col-span-2">
-              <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                Street *
-              </label>
-              <input
-                value={form.address.street}
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    address: { ...f.address, street: e.target.value },
-                  }))
-                }
-                className={inputCls}
-                placeholder="123 Main Street"
-                required
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                City *
-              </label>
-              <input
-                value={form.address.city}
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    address: { ...f.address, city: e.target.value },
-                  }))
-                }
-                className={inputCls}
-                placeholder="Lagos"
-                required
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                State *
-              </label>
-              <input
-                value={form.address.state}
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    address: { ...f.address, state: e.target.value },
-                  }))
-                }
-                className={inputCls}
-                placeholder="Lagos"
-                required
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                Country *
-              </label>
-              <input
-                value={form.address.country}
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    address: { ...f.address, country: e.target.value },
-                  }))
-                }
-                className={inputCls}
-                placeholder="Nigeria"
-                required
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                Postal Code
-              </label>
-              <input
-                value={form.address.postalCode ?? ""}
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    address: { ...f.address, postalCode: e.target.value },
-                  }))
-                }
-                className={inputCls}
-                placeholder="100001"
-              />
-            </div>
-          </div>
-          </fieldset>
-          </div>
-          <div className="sticky bottom-0 px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex gap-3">
-            <button
-              type="button"
-              onClick={handleCancelForm}
-              className="flex-1 px-4 py-2 text-sm font-medium border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            <form
+              onSubmit={handleSubmit}
+              className="flex-1 flex flex-col min-h-0"
             >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="flex-1 px-4 py-2 text-sm font-medium text-white bg-brand-500 hover:bg-brand-600 disabled:opacity-60 rounded-lg transition-colors"
-            >
-              {saving ? "Saving…" : editingParty ? "Update Party" : "Create Party"}
-            </button>
-          </div>
-        </form>
+              <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+                {/* Core info */}
+                <fieldset className="space-y-3">
+                  <legend className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-3">
+                    Basic Information
+                  </legend>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                        Business Name *
+                      </label>
+                      <input
+                        value={form.name}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, name: e.target.value }))
+                        }
+                        className={inputCls}
+                        placeholder="e.g. Acme Ltd"
+                        required
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                        Tax Identification Number (TIN) *
+                      </label>
+                      <input
+                        value={form.taxIdentificationNumber}
+                        onChange={(e) =>
+                          setForm((f) => ({
+                            ...f,
+                            taxIdentificationNumber: e.target.value,
+                          }))
+                        }
+                        className={
+                          editingParty
+                            ? `${inputCls} opacity-60 cursor-not-allowed`
+                            : inputCls
+                        }
+                        placeholder="e.g. 12345678-0001"
+                        readOnly={!!editingParty}
+                        required
+                      />
+                      {tinStatus === "checking" && (
+                        <p className="text-xs text-gray-400 mt-1 flex items-center gap-1.5">
+                          <span className="inline-block w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                          Validating TIN...
+                        </p>
+                      )}
+                      {tinStatus === "valid" && (
+                        <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                          ✓ TIN verified
+                          {tinBusinessName ? ` — ${tinBusinessName}` : ""}
+                        </p>
+                      )}
+                      {tinStatus === "invalid" && (
+                        <p className="text-xs text-red-500 mt-1">
+                          ✕ TIN not found or not enrolled on NRS
+                        </p>
+                      )}
+                      {tinStatus === "error" && (
+                        <p className="text-xs text-orange-500 mt-1">
+                          ⚠ Could not verify TIN right now. Please try again.
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                        Email *
+                      </label>
+                      <input
+                        value={form.email}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, email: e.target.value }))
+                        }
+                        className={inputCls}
+                        placeholder="contact@party.com"
+                        type="email"
+                        required
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                        Phone *
+                      </label>
+                      <input
+                        value={form.phone}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, phone: e.target.value }))
+                        }
+                        className={inputCls}
+                        placeholder="+234..."
+                        required
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1 sm:col-span-2">
+                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                        Description *
+                      </label>
+                      <textarea
+                        value={form.description}
+                        onChange={(e) =>
+                          setForm((f) => ({
+                            ...f,
+                            description: e.target.value,
+                          }))
+                        }
+                        className={`${inputCls} resize-none`}
+                        placeholder="Brief description of this party"
+                        rows={2}
+                        required
+                      />
+                    </div>
+                  </div>
+                </fieldset>
+                {/* Address */}
+                <fieldset className="space-y-3">
+                  <legend className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-3">
+                    Address
+                  </legend>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-1 sm:col-span-2">
+                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                        Street *
+                      </label>
+                      <input
+                        value={form.address.street}
+                        onChange={(e) =>
+                          setForm((f) => ({
+                            ...f,
+                            address: { ...f.address, street: e.target.value },
+                          }))
+                        }
+                        className={inputCls}
+                        placeholder="123 Main Street"
+                        required
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                        City *
+                      </label>
+                      <input
+                        value={form.address.city}
+                        onChange={(e) =>
+                          setForm((f) => ({
+                            ...f,
+                            address: { ...f.address, city: e.target.value },
+                          }))
+                        }
+                        className={inputCls}
+                        placeholder="Lagos"
+                        required
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                        State *
+                      </label>
+                      <input
+                        value={form.address.state}
+                        onChange={(e) =>
+                          setForm((f) => ({
+                            ...f,
+                            address: { ...f.address, state: e.target.value },
+                          }))
+                        }
+                        className={inputCls}
+                        placeholder="Lagos"
+                        required
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                        Country *
+                      </label>
+                      <input
+                        value={form.address.country}
+                        onChange={(e) =>
+                          setForm((f) => ({
+                            ...f,
+                            address: { ...f.address, country: e.target.value },
+                          }))
+                        }
+                        className={inputCls}
+                        placeholder="Nigeria"
+                        required
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                        Postal Code
+                      </label>
+                      <input
+                        value={form.address.postalCode ?? ""}
+                        onChange={(e) =>
+                          setForm((f) => ({
+                            ...f,
+                            address: {
+                              ...f.address,
+                              postalCode: e.target.value,
+                            },
+                          }))
+                        }
+                        className={inputCls}
+                        placeholder="100001"
+                      />
+                    </div>
+                  </div>
+                </fieldset>
+              </div>
+              <div className="sticky bottom-0 px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex gap-3">
+                <button
+                  type="button"
+                  onClick={handleCancelForm}
+                  className="flex-1 px-4 py-2 text-sm font-medium border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="flex-1 px-4 py-2 text-sm font-medium text-white bg-brand-500 hover:bg-brand-600 disabled:opacity-60 rounded-lg transition-colors"
+                >
+                  {saving
+                    ? "Saving…"
+                    : editingParty
+                      ? "Update Party"
+                      : "Create Party"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -512,7 +537,10 @@ export default function PartyList() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <tbody>
-                <SkeletonTableRows rows={10} colWidths={["w-36", "w-28", "w-36", "w-24", "w-16"]} />
+                <SkeletonTableRows
+                  rows={10}
+                  colWidths={["w-36", "w-28", "w-36", "w-24", "w-16"]}
+                />
               </tbody>
             </table>
           </div>

@@ -40,18 +40,38 @@ function ModalShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="fixed inset-0 z-9999999 flex" aria-modal="true" role="dialog">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+    <div
+      className="fixed inset-0 z-9999999 flex"
+      aria-modal="true"
+      role="dialog"
+    >
+      <div
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        onClick={onClose}
+      />
       <div className="relative ml-auto w-full max-w-xl h-full bg-white dark:bg-gray-900 shadow-2xl flex flex-col">
         <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
           <div>
-            <h2 className="text-base font-semibold text-gray-800 dark:text-white">{title}</h2>
-            {subtitle && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{subtitle}</p>}
+            <h2 className="text-base font-semibold text-gray-800 dark:text-white">
+              {title}
+            </h2>
+            {subtitle && (
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                {subtitle}
+              </p>
+            )}
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500">✕</button>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500"
+          >
+            ✕
+          </button>
         </div>
         <div className="flex-1 overflow-y-auto px-6 py-4">{children}</div>
-        <div className="sticky bottom-0 px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">{footer}</div>
+        <div className="sticky bottom-0 px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+          {footer}
+        </div>
       </div>
     </div>
   );
@@ -73,7 +93,6 @@ function Section({
     </div>
   );
 }
-
 
 // ── Create Modal ──────────────────────────────────────────────────────────────
 function CreateModal({
@@ -150,12 +169,29 @@ function CreateModal({
       onClose={onClose}
       footer={
         <div className="flex gap-3">
-          <button type="button" onClick={onClose} className="flex-1 px-4 py-2 text-sm font-medium border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">Cancel</button>
-          <button type="submit" form="create-provider-form" disabled={saving} className="flex-1 px-4 py-2 text-sm font-medium text-white bg-brand-500 hover:bg-brand-600 disabled:opacity-60 rounded-lg transition-colors">{saving ? "Saving…" : "Create Provider"}</button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 px-4 py-2 text-sm font-medium border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            form="create-provider-form"
+            disabled={saving}
+            className="flex-1 px-4 py-2 text-sm font-medium text-white bg-brand-500 hover:bg-brand-600 disabled:opacity-60 rounded-lg transition-colors"
+          >
+            {saving ? "Saving…" : "Create Provider"}
+          </button>
         </div>
       }
     >
-      <form id="create-provider-form" onSubmit={handleSubmit} className="flex flex-col gap-5">
+      <form
+        id="create-provider-form"
+        onSubmit={handleSubmit}
+        className="flex flex-col gap-5"
+      >
         <Section title="Identity">
           <div className="grid grid-cols-1 gap-4">
             <div className="flex flex-col gap-1">
@@ -263,7 +299,6 @@ function CreateModal({
             </div>
           </div>
         </Section>
-
       </form>
     </ModalShell>
   );
@@ -345,8 +380,21 @@ function EditModal({
       onClose={onClose}
       footer={
         <div className="flex gap-3">
-          <button type="button" onClick={onClose} className="flex-1 px-4 py-2 text-sm font-medium border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">Cancel</button>
-          <button type="submit" form="edit-provider-form" disabled={saving || loadingDetails} className="flex-1 px-4 py-2 text-sm font-medium text-white bg-brand-500 hover:bg-brand-600 disabled:opacity-60 rounded-lg transition-colors">{saving ? "Saving…" : "Save Changes"}</button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 px-4 py-2 text-sm font-medium border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            form="edit-provider-form"
+            disabled={saving || loadingDetails}
+            className="flex-1 px-4 py-2 text-sm font-medium text-white bg-brand-500 hover:bg-brand-600 disabled:opacity-60 rounded-lg transition-colors"
+          >
+            {saving ? "Saving…" : "Save Changes"}
+          </button>
         </div>
       }
     >
@@ -355,97 +403,103 @@ function EditModal({
           Loading provider details…
         </div>
       ) : (
-      <form id="edit-provider-form" onSubmit={handleSubmit} className="flex flex-col gap-5">
-        <p className="text-xs text-gray-500 dark:text-gray-400 -mt-1 mb-1">
-          Adapter cannot be changed. Credential fields are pre-filled — edit only what needs changing.
-        </p>
-        <Section title="Identity">
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1">
-              <label className={labelCls}>
-                Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                className={inputCls}
-                value={form.name}
-                onChange={(e) => set("name", e.target.value)}
-                required
-              />
+        <form
+          id="edit-provider-form"
+          onSubmit={handleSubmit}
+          className="flex flex-col gap-5"
+        >
+          <p className="text-xs text-gray-500 dark:text-gray-400 -mt-1 mb-1">
+            Adapter cannot be changed. Credential fields are pre-filled — edit
+            only what needs changing.
+          </p>
+          <Section title="Identity">
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1">
+                <label className={labelCls}>
+                  Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  className={inputCls}
+                  value={form.name}
+                  onChange={(e) => set("name", e.target.value)}
+                  required
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className={labelCls}>Description</label>
+                <input
+                  className={inputCls}
+                  value={form.description ?? ""}
+                  onChange={(e) => set("description", e.target.value)}
+                />
+              </div>
             </div>
-            <div className="flex flex-col gap-1">
-              <label className={labelCls}>Description</label>
-              <input
-                className={inputCls}
-                value={form.description ?? ""}
-                onChange={(e) => set("description", e.target.value)}
-              />
-            </div>
-          </div>
-        </Section>
+          </Section>
 
-        <Section title="Production">
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1">
-              <label className={labelCls}>Base URL</label>
-              <input
-                className={inputCls}
-                value={form.baseUrl ?? ""}
-                onChange={(e) => set("baseUrl", e.target.value)}
-                placeholder="Leave blank to keep current"
-              />
+          <Section title="Production">
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1">
+                <label className={labelCls}>Base URL</label>
+                <input
+                  className={inputCls}
+                  value={form.baseUrl ?? ""}
+                  onChange={(e) => set("baseUrl", e.target.value)}
+                  placeholder="Leave blank to keep current"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className={labelCls}>
+                  Credentials JSON{" "}
+                  {provider.hasProductionCredentials && (
+                    <span className="text-green-600 dark:text-green-400 font-normal normal-case">
+                      (configured)
+                    </span>
+                  )}
+                </label>
+                <textarea
+                  className={`${inputCls} font-mono resize-none`}
+                  rows={5}
+                  value={form.credentialsJson ?? ""}
+                  onChange={(e) => set("credentialsJson", e.target.value)}
+                  placeholder={'{\n  "key": "value"\n}'}
+                />
+              </div>
             </div>
-            <div className="flex flex-col gap-1">
-              <label className={labelCls}>
-                Credentials JSON{" "}
-                {provider.hasProductionCredentials && (
-                  <span className="text-green-600 dark:text-green-400 font-normal normal-case">
-                    (configured)
-                  </span>
-                )}
-              </label>
-              <textarea
-                className={`${inputCls} font-mono resize-none`}
-                rows={5}
-                value={form.credentialsJson ?? ""}
-                onChange={(e) => set("credentialsJson", e.target.value)}
-                placeholder={'{\n  "key": "value"\n}'}
-              />
-            </div>
-          </div>
-        </Section>
+          </Section>
 
-        <Section title="Sandbox (optional)">
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1">
-              <label className={labelCls}>Sandbox Base URL</label>
-              <input
-                className={inputCls}
-                value={form.sandboxBaseUrl ?? ""}
-                onChange={(e) => set("sandboxBaseUrl", e.target.value)}
-                placeholder="Leave blank to clear"
-              />
+          <Section title="Sandbox (optional)">
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1">
+                <label className={labelCls}>Sandbox Base URL</label>
+                <input
+                  className={inputCls}
+                  value={form.sandboxBaseUrl ?? ""}
+                  onChange={(e) => set("sandboxBaseUrl", e.target.value)}
+                  placeholder="Leave blank to clear"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className={labelCls}>
+                  Sandbox Credentials JSON{" "}
+                  {provider.hasSandboxCredentials && (
+                    <span className="text-green-600 dark:text-green-400 font-normal normal-case">
+                      (configured)
+                    </span>
+                  )}
+                </label>
+                <textarea
+                  className={`${inputCls} font-mono resize-none`}
+                  rows={5}
+                  value={form.sandboxCredentialsJson ?? ""}
+                  onChange={(e) =>
+                    set("sandboxCredentialsJson", e.target.value)
+                  }
+                  placeholder={'{\n  "key": "value"\n}'}
+                />
+              </div>
             </div>
-            <div className="flex flex-col gap-1">
-              <label className={labelCls}>
-                Sandbox Credentials JSON{" "}
-                {provider.hasSandboxCredentials && (
-                  <span className="text-green-600 dark:text-green-400 font-normal normal-case">
-                    (configured)
-                  </span>
-                )}
-              </label>
-              <textarea
-                className={`${inputCls} font-mono resize-none`}
-                rows={5}
-                value={form.sandboxCredentialsJson ?? ""}
-                onChange={(e) => set("sandboxCredentialsJson", e.target.value)}
-                placeholder={'{\n  "key": "value"\n}'}
-              />
-            </div>
-          </div>
-        </Section>
-
-      </form>
+          </Section>
+        </form>
       )}
     </ModalShell>
   );
@@ -479,9 +533,9 @@ export default function AppProviderList() {
     appProviderApi
       .list(p, pageSize)
       .then((res) => {
-        setProviders(res.items);
-        setTotalPages(res.totalPages);
-        setTotalCount(res.totalCount);
+        setProviders(res.items ?? []);
+        setTotalPages(res.totalPages ?? 1);
+        setTotalCount(res.totalCount ?? 0);
       })
       .catch(() => toast.error("Failed to load APP providers."))
       .finally(() => setLoading(false));
@@ -560,7 +614,10 @@ export default function AppProviderList() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <tbody>
-                <SkeletonTableRows rows={6} colWidths={["w-24", "w-36", "w-48", "w-28", "w-20", "w-16"]} />
+                <SkeletonTableRows
+                  rows={6}
+                  colWidths={["w-24", "w-36", "w-48", "w-28", "w-20", "w-16"]}
+                />
               </tbody>
             </table>
           </div>

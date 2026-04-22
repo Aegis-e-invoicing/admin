@@ -52,6 +52,9 @@ export interface CreateBusinessByAdminPayload {
   businessDescription: string;
   tin?: string;
   industry?: string;
+  businessRegistrationNumber?: string;
+  serviceId?: string;
+  nrsBusinessId?: string;
   platformSubscriptionIds: string[];
   billingCycle: number;
   paymentReference: string;
@@ -340,7 +343,7 @@ export interface FIRSServiceCode {
 }
 export const NRSApi = {
   getTaxCategories: () =>
-    api.get<ApiResponse<TaxCategory[]>>("/NRS/gettaxcategories").then(unwrap),
+    api.get<ApiResponse<TaxCategory[]>>("/FIRS/gettaxcategories").then(unwrap),
   getProductCodes: () =>
     api.get<ApiResponse<ProductCode[]>>("/NRS/getproductcodes").then(unwrap),
   getServiceCodes: () =>
@@ -422,7 +425,16 @@ export const invoiceApi = {
     environmentMode?: AppEnvironmentMode;
   }) =>
     api
-      .get<ApiResponse<PaginatedResult<InvoiceSummary>>>("/invoice", { params })
+      .get<ApiResponse<PaginatedResult<InvoiceSummary>>>("/invoice", {
+        params: {
+          pageNumber: params?.page ?? 1,
+          pageSize: params?.pageSize ?? 10,
+          ...(params?.status ? { status: params.status } : {}),
+          ...(params?.environmentMode !== undefined
+            ? { environmentMode: params.environmentMode }
+            : {}),
+        },
+      })
       .then(unwrap),
 
   get: (id: string) =>
@@ -439,9 +451,15 @@ export const invoiceApi = {
 
   pendingApproval: (params?: { page?: number; pageSize?: number }) =>
     api
-      .get<
-        ApiResponse<PaginatedResult<InvoiceSummary>>
-      >("/invoice/pending-approval", { params })
+      .get<ApiResponse<PaginatedResult<InvoiceSummary>>>(
+        "/invoice/pending-approval",
+        {
+          params: {
+            pageNumber: params?.page ?? 1,
+            pageSize: params?.pageSize ?? 10,
+          },
+        },
+      )
       .then(unwrap),
 
   submitToNRS: (id: string) =>
@@ -456,9 +474,15 @@ export const invoiceApi = {
 
   receivedList: (params?: { page?: number; pageSize?: number }) =>
     api
-      .get<
-        ApiResponse<PaginatedResult<InvoiceSummary>>
-      >("/invoice/received-invoices", { params })
+      .get<ApiResponse<PaginatedResult<InvoiceSummary>>>(
+        "/invoice/received-invoices",
+        {
+          params: {
+            pageNumber: params?.page ?? 1,
+            pageSize: params?.pageSize ?? 10,
+          },
+        },
+      )
       .then(unwrap),
 
   updateReceivedInvoicePaymentStatus: (
@@ -569,7 +593,13 @@ export interface CreatePartyPayload {
 export const partyApi = {
   list: (params?: { page?: number; pageSize?: number; searchTerm?: string }) =>
     api
-      .get<ApiResponse<PaginatedResult<Party>>>("/party", { params })
+      .get<ApiResponse<PaginatedResult<Party>>>("/party", {
+        params: {
+          pageNumber: params?.page ?? 1,
+          pageSize: Math.min(params?.pageSize ?? 10, 100),
+          ...(params?.searchTerm ? { searchTerm: params.searchTerm } : {}),
+        },
+      })
       .then(unwrap),
   create: (payload: CreatePartyPayload) =>
     api.post<ApiResponse<Party>>("/party", payload).then(unwrap),
@@ -666,9 +696,12 @@ export interface BusinessSummary {
 export const businessesApi = {
   list: (params?: { page?: number; pageSize?: number }) =>
     api
-      .get<
-        ApiResponse<PaginatedResult<BusinessSummary>>
-      >("/business", { params })
+      .get<ApiResponse<PaginatedResult<BusinessSummary>>>("/business", {
+        params: {
+          pageNumber: params?.page ?? 1,
+          pageSize: params?.pageSize ?? 20,
+        },
+      })
       .then(unwrap),
   suspend: (businessId: string, reason?: string) =>
     api.post(`/business/${businessId}/suspend`, { reason }),
@@ -1361,9 +1394,13 @@ export interface Vendor {
 export const vendorGroupApi = {
   list: (params?: { page?: number; pageSize?: number; searchTerm?: string }) =>
     api
-      .get<
-        ApiResponse<PaginatedResult<VendorGroup>>
-      >("/vendor/groups", { params })
+      .get<ApiResponse<PaginatedResult<VendorGroup>>>("/vendor/groups", {
+        params: {
+          pageNumber: params?.page ?? 1,
+          pageSize: Math.min(params?.pageSize ?? 10, 100),
+          ...(params?.searchTerm ? { searchTerm: params.searchTerm } : {}),
+        },
+      })
       .then(unwrap),
   get: (id: string) =>
     api.get<ApiResponse<VendorGroup>>(`/vendor/groups/${id}`).then(unwrap),
@@ -1395,7 +1432,16 @@ export const vendorApi = {
     vendorGroupId?: string;
   }) =>
     api
-      .get<ApiResponse<PaginatedResult<Vendor>>>("/vendor", { params })
+      .get<ApiResponse<PaginatedResult<Vendor>>>("/vendor", {
+        params: {
+          pageNumber: params?.page ?? 1,
+          pageSize: Math.min(params?.pageSize ?? 10, 100),
+          ...(params?.searchTerm ? { searchTerm: params.searchTerm } : {}),
+          ...(params?.vendorGroupId
+            ? { vendorGroupId: params.vendorGroupId }
+            : {}),
+        },
+      })
       .then(unwrap),
   get: (id: string) =>
     api.get<ApiResponse<Vendor>>(`/vendor/${id}`).then(unwrap),
@@ -1490,9 +1536,16 @@ export interface CreateBroadcastPayload {
 export const broadcastApi = {
   list: (params?: { page?: number; pageSize?: number; status?: string }) =>
     api
-      .get<
-        ApiResponse<PaginatedResult<BroadcastSummary>>
-      >("/invoice-broadcast", { params })
+      .get<ApiResponse<PaginatedResult<BroadcastSummary>>>(
+        "/invoice-broadcast",
+        {
+          params: {
+            pageNumber: params?.page ?? 1,
+            pageSize: params?.pageSize ?? 10,
+            ...(params?.status ? { status: params.status } : {}),
+          },
+        },
+      )
       .then(unwrap),
   get: (id: string) =>
     api
@@ -1530,9 +1583,15 @@ export const broadcastApi = {
       .then(unwrap),
   getSubmissions: (id: string, params?: { page?: number; pageSize?: number }) =>
     api
-      .get<
-        ApiResponse<PaginatedResult<BroadcastSubmission>>
-      >(`/invoice-broadcast/${id}/submissions`, { params })
+      .get<ApiResponse<PaginatedResult<BroadcastSubmission>>>(
+        `/invoice-broadcast/${id}/submissions`,
+        {
+          params: {
+            pageNumber: params?.page ?? 1,
+            pageSize: params?.pageSize ?? 10,
+          },
+        },
+      )
       .then(unwrap),
   markPaid: (invoiceIds: string[]) =>
     api

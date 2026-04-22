@@ -262,17 +262,17 @@ export default function CreateInvoice() {
     }
     Promise.all([
       partyApi
-        .list({ pageSize: 200 })
-        .then((r) => r.items)
+        .list({ pageSize: 100 })
+        .then((r) => r.items ?? [])
         .catch(() => [] as Party[]),
       businessItemApi
-        .list({ pageSize: 200 })
-        .then((r) => r.items)
-        .catch(() => [] as BusinessItem[]),
+        .list({ pageSize: 100 })
+        .then((r) => r.items ?? [])
+        .catch(() => [] as BusinessItemSummary[]),
       NRSApi.getTaxCategories().catch(() => [] as TaxCategory[]),
       invoiceApi
-        .list({ pageSize: 500 })
-        .then((r) => r.items)
+        .list({ pageSize: 100 })
+        .then((r) => r.items ?? [])
         .catch(() => [] as InvoiceSummary[]),
     ])
       .then(([p, bi, tc, inv]) => {
@@ -312,7 +312,7 @@ export default function CreateInvoice() {
         }
       })
       .catch(() => toast.error("Failed to load draft."));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleFieldChange =
@@ -1578,7 +1578,11 @@ export default function CreateInvoice() {
             disabled={savingDraft || submitting}
             className="px-5 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors"
           >
-            {savingDraft ? "Saving..." : draftId ? "Update Draft" : "Save Draft"}
+            {savingDraft
+              ? "Saving..."
+              : draftId
+                ? "Update Draft"
+                : "Save Draft"}
           </button>
           <button
             type="submit"

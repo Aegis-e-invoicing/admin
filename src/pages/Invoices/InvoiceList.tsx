@@ -132,10 +132,9 @@ export default function InvoiceList() {
         environmentMode: envMode,
       })
       .then((result) => {
-        setInvoices(result.items);
-        setTotalPages(result.totalPages);
+        setInvoices(result.items ?? []);
+        setTotalPages(result.totalPages ?? 1);
       })
-      .catch(() => toast.error("Failed to load invoices."))
       .finally(() => setLoading(false));
   };
 
@@ -221,7 +220,9 @@ export default function InvoiceList() {
   };
 
   const isAdmin = useIsAdmin();
-  const [activeTab, setActiveTab] = useState<"all" | "approvals" | "drafts">("all");
+  const [activeTab, setActiveTab] = useState<"all" | "approvals" | "drafts">(
+    "all",
+  );
   const [pendingInvoices, setPendingInvoices] = useState<InvoiceSummary[]>([]);
   const [loadingPending, setLoadingPending] = useState(false);
   const [drafts, setDrafts] = useState<InvoiceDraftSummary[]>([]);
@@ -292,8 +293,8 @@ export default function InvoiceList() {
     invoiceApi
       .pendingApproval({ page: p, pageSize: ps })
       .then((r) => {
-        setPendingInvoices(r.items);
-        setPendingTotalPages(r.totalPages);
+        setPendingInvoices(r.items ?? []);
+        setPendingTotalPages(r.totalPages ?? 1);
       })
       .catch(() => toast.error("Failed to load pending approvals."))
       .finally(() => setLoadingPending(false));
@@ -1148,7 +1149,9 @@ export default function InvoiceList() {
             page={pendingPage}
             totalPages={pendingTotalPages}
             onPrev={() => setPendingPage((p) => Math.max(1, p - 1))}
-            onNext={() => setPendingPage((p) => Math.min(pendingTotalPages, p + 1))}
+            onNext={() =>
+              setPendingPage((p) => Math.min(pendingTotalPages, p + 1))
+            }
           />
         </div>
       )}
@@ -1171,7 +1174,11 @@ export default function InvoiceList() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <tbody>
-                  <SkeletonTableRows cols={4} rows={5} colWidths={["w-24", "w-32", "w-20", "w-16"]} />
+                  <SkeletonTableRows
+                    cols={4}
+                    rows={5}
+                    colWidths={["w-24", "w-32", "w-20", "w-16"]}
+                  />
                 </tbody>
               </table>
             </div>
@@ -1190,7 +1197,9 @@ export default function InvoiceList() {
                   d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                 />
               </svg>
-              <p className="text-gray-500 dark:text-gray-400">No saved drafts.</p>
+              <p className="text-gray-500 dark:text-gray-400">
+                No saved drafts.
+              </p>
               <Link
                 to="/invoices/create"
                 className="inline-block mt-3 text-sm text-brand-500 hover:text-brand-600 font-medium"
@@ -1203,23 +1212,40 @@ export default function InvoiceList() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40">
-                    <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">Party</th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">Issue Date</th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">Last Saved</th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">Actions</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">
+                      Party
+                    </th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">
+                      Issue Date
+                    </th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">
+                      Last Saved
+                    </th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                   {drafts.map((draft) => (
-                    <tr key={draft.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                    <tr
+                      key={draft.id}
+                      className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
+                    >
                       <td className="px-4 py-3 text-gray-700 dark:text-gray-300">
-                        {draft.partyName ?? <span className="text-gray-400 italic">Unknown party</span>}
+                        {draft.partyName ?? (
+                          <span className="text-gray-400 italic">
+                            Unknown party
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-gray-500 dark:text-gray-400">
                         {draft.issueDate}
                       </td>
                       <td className="px-4 py-3 text-gray-500 dark:text-gray-400">
-                        {new Date(draft.updatedAt ?? draft.createdAt).toLocaleString()}
+                        {new Date(
+                          draft.updatedAt ?? draft.createdAt,
+                        ).toLocaleString()}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
@@ -1235,7 +1261,9 @@ export default function InvoiceList() {
                             onClick={() => handleDeleteDraft(draft.id)}
                             className="px-3 py-1 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
                           >
-                            {deletingDraftId === draft.id ? "Deleting..." : "Delete"}
+                            {deletingDraftId === draft.id
+                              ? "Deleting..."
+                              : "Delete"}
                           </button>
                         </div>
                       </td>
@@ -1612,7 +1640,6 @@ export default function InvoiceList() {
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl text-sm bg-white dark:bg-gray-900 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
                 >
                   <option value="PAID">Paid</option>
-
                 </select>
               </div>
               <div>
@@ -1621,16 +1648,34 @@ export default function InvoiceList() {
                   {payStatus === "PAID" ? (
                     <span className="text-red-500 font-normal">*required</span>
                   ) : (
-                    <span className="text-gray-400 font-normal">(optional)</span>
+                    <span className="text-gray-400 font-normal">
+                      (optional)
+                    </span>
                   )}
                   {/* NRS tooltip */}
                   <span className="relative inline-block ml-1 group align-middle">
-                    <svg className="w-3.5 h-3.5 text-gray-400 cursor-help inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <svg
+                      className="w-3.5 h-3.5 text-gray-400 cursor-help inline"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
                     </svg>
                     <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 rounded-lg bg-gray-900 text-white text-xs px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity z-50 shadow-lg">
-                      <strong className="block mb-1">Required by NRS for PAID invoices</strong>
-                      Enter the bank transfer reference, NEFT/RTGS transaction ID, or payment confirmation number. NRS uses this to match invoices to actual bank transactions during tax reconciliation and audit. Without it, the payment record may be flagged as unverifiable.
+                      <strong className="block mb-1">
+                        Required by NRS for PAID invoices
+                      </strong>
+                      Enter the bank transfer reference, NEFT/RTGS transaction
+                      ID, or payment confirmation number. NRS uses this to match
+                      invoices to actual bank transactions during tax
+                      reconciliation and audit. Without it, the payment record
+                      may be flagged as unverifiable.
                     </span>
                   </span>
                 </label>
@@ -1638,7 +1683,11 @@ export default function InvoiceList() {
                   type="text"
                   value={payReference}
                   onChange={(e) => setPayReference(e.target.value)}
-                  placeholder={payStatus === "PAID" ? "Bank transfer ref / transaction ID" : "e.g. REF-12345 (optional)"}
+                  placeholder={
+                    payStatus === "PAID"
+                      ? "Bank transfer ref / transaction ID"
+                      : "e.g. REF-12345 (optional)"
+                  }
                   className={`w-full px-3 py-2 border rounded-xl text-sm bg-white dark:bg-gray-900 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500 ${
                     payStatus === "PAID" && !payReference.trim()
                       ? "border-red-300 dark:border-red-700"
@@ -1647,7 +1696,8 @@ export default function InvoiceList() {
                 />
                 {payStatus === "PAID" && !payReference.trim() && (
                   <p className="mt-1 text-xs text-red-500">
-                    A payment reference is required by NRS when marking an invoice as Paid.
+                    A payment reference is required by NRS when marking an
+                    invoice as Paid.
                   </p>
                 )}
               </div>
@@ -1665,7 +1715,9 @@ export default function InvoiceList() {
               </button>
               <button
                 onClick={handleUpdatePaymentStatus}
-                disabled={updatingPay || (payStatus === "PAID" && !payReference.trim())}
+                disabled={
+                  updatingPay || (payStatus === "PAID" && !payReference.trim())
+                }
                 className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-xl disabled:opacity-50 transition-colors min-w-20"
               >
                 {updatingPay ? "Saving..." : "Confirm"}
