@@ -159,6 +159,8 @@ export interface BusinessProfile {
   isActive: boolean;
   registeredAddress: Address;
   onboardingCompleted?: boolean;
+  hasNrsCredentials?: boolean;
+  hasQrCodeConfig?: boolean;
 }
 export interface Address {
   street: string;
@@ -238,7 +240,7 @@ export const businessApi = {
       .get<ApiResponse<DashboardStats>>("/business/dashboard/stats")
       .then(unwrap),
 
-  updateNRSCredentials: (payload: { apiKey: string; clientSecret: string }) =>
+  updateNRSCredentials: (payload: { firsApiKey: string; firsClientSecret: string }) =>
     api.patch("/business/update-NRS-credentials", payload),
 
   updateQrCodeConfig: (payload: { publicKey: string; certificate: string }) =>
@@ -310,11 +312,18 @@ export interface CreateInvoicePayload {
   partyId: string;
   issueDate: string;
   dueDate?: string;
-  currencyCode: string;
-  invoiceTypeCode: string;
+  /** Nested object required by the Portal API */
+  invoiceType: { name: string; code: number };
+  /** Nested object required by the Portal API */
+  currency: { name: string; code: string };
+  /** Nested object required by the Portal API */
+  deliveryPeriod: { startDate: string; endDate: string };
+  /** Nested object required by the Portal API */
+  paymentMeans: { code: string; name: string };
   invoiceKind?: string;
-  paymentMeansCode?: string;
   note?: string;
+  paymentReference?: string;
+  paymentTerms?: string;
   orderReference?: string;
   billingReference?: DocumentReferenceDto[];
   dispatchDocumentReference?: DocumentReferenceDto;
@@ -322,13 +331,14 @@ export interface CreateInvoicePayload {
   originatorDocumentReference?: DocumentReferenceDto;
   contractDocumentReference?: DocumentReferenceDto;
   additionalDocumentReferences?: DocumentReferenceDto[];
-  items: InvoiceItemPayload[];
+  /** Maps to backend field 'InvoiceItems' */
+  invoiceItems: InvoiceItemPayload[];
 }
 export interface InvoiceItemPayload {
   businessItemId: string;
   quantity: number;
-  unitPrice: number;
-  lineDiscount?: number;
+  /** Maps to backend DiscountFee: { Amount, Code } where Code: 1=Percent, 2=NGN */
+  discountFee?: { amount: number; code: number };
 }
 
 // ── NRS ──────────────────────────────────────────────────────────────────────

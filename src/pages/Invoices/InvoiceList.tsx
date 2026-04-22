@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import toast from "react-hot-toast";
 import { SkeletonTableRows } from "../../components/ui/skeleton/Skeleton";
@@ -80,6 +80,7 @@ const PAY_STATUS_LABELS: Record<string, string> = {
 const STATUS_OPTIONS = [
   "",
   "DRAFT",
+  "CREATED",
   "PENDING_APPROVAL",
   "APPROVED",
   "SUBMITTED",

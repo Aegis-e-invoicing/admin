@@ -14,6 +14,10 @@ import {
   type AppEnvironmentMode,
   type ApiCredentials,
   type SftpCredentials,
+  type FIRSCountry,
+  type FIRSState,
+  type FIRSLga,
+  NRSApi,
 } from "../../lib/api";
 import {
   USE_MOCK,
@@ -38,7 +42,7 @@ function Section({
   description,
   children,
 }: {
-  title: string;
+  title: React.ReactNode;
   description?: string;
   children: React.ReactNode;
 }) {
@@ -69,6 +73,9 @@ export default function Settings() {
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [industries, setIndustries] = useState<string[]>([]);
+  const [nrsCountries, setNrsCountries] = useState<FIRSCountry[]>([]);
+  const [nrsStates, setNrsStates] = useState<FIRSState[]>([]);
+  const [nrsLgas, setNrsLgas] = useState<FIRSLga[]>([]);
   const [savingProfile, setSavingProfile] = useState(false);
 
   // NRS credentials state
@@ -96,8 +103,9 @@ export default function Settings() {
   // Flow rule state
   const [flowRule, setFlowRule] = useState<FlowRule | null>(null);
   const [flowRuleLoading, setFlowRuleLoading] = useState(false);
-  const [thresholdAmount, setThresholdAmount] = useState("");
   const [savingFlowRule, setSavingFlowRule] = useState(false);
+  /** The single approval threshold — invoices at/above this amount require admin approval */
+  const [thresholdAmount, setThresholdAmount] = useState("");
 
   // API credentials state
   const [apiCredentials, setApiCredentials] = useState<ApiCredentials | null>(
@@ -119,8 +127,10 @@ export default function Settings() {
   const [sftpOtp, setSftpOtp] = useState("");
   const [sftpNewPassword, setSftpNewPassword] = useState("");
 
-  // Profile edit form state
   const [profileForm, setProfileForm] = useState({
+    businessRegistrationNumber: "",
+    NRSBusinessId: "",
+    serviceId: "",
     description: "",
     contactEmail: "",
     contactPhone: "",
@@ -130,6 +140,7 @@ export default function Settings() {
     state: "",
     country: "",
     postalCode: "",
+    lga: "",
   });
 
   useEffect(() => {
@@ -141,6 +152,9 @@ export default function Settings() {
       const prof = MOCK_BUSINESS_PROFILE as unknown as BusinessProfile;
       setProfile(prof);
       setProfileForm({
+        businessRegistrationNumber: prof.businessRegistrationNumber ?? "",
+        NRSBusinessId: prof.NRSBusinessId ?? "",
+        serviceId: prof.serviceId ?? "",
         description: prof.description ?? "",
         contactEmail: prof.contactEmail ?? "",
         contactPhone: prof.contactPhone ?? "",
@@ -150,6 +164,7 @@ export default function Settings() {
         state: prof.registeredAddress?.state ?? "",
         country: prof.registeredAddress?.country ?? "",
         postalCode: prof.registeredAddress?.postalCode ?? "",
+        lga: prof.registeredAddress?.lga ?? "",
       });
       setIndustries(MOCK_INDUSTRIES.map((i) => i.name));
       // Load mock flow rule
@@ -170,10 +185,19 @@ export default function Settings() {
     Promise.all([
       businessApi.getProfile(),
       miscApi.getIndustries().catch(() => [] as { name: string }[]),
+      NRSApi.getCountries().catch(() => [] as FIRSCountry[]),
+      NRSApi.getStates().catch(() => [] as FIRSState[]),
+      NRSApi.getLgas().catch(() => [] as FIRSLga[]),
     ])
-      .then(([prof, industryList]) => {
+      .then(([prof, industryList, countries, states, lgas]) => {
         setProfile(prof);
+        setNrsCountries(countries);
+        setNrsStates(states);
+        setNrsLgas(lgas);
         setProfileForm({
+          businessRegistrationNumber: prof.businessRegistrationNumber ?? "",
+          NRSBusinessId: prof.NRSBusinessId ?? "",
+          serviceId: prof.serviceId ?? "",
           description: prof.description ?? "",
           contactEmail: prof.contactEmail ?? "",
           contactPhone: prof.contactPhone ?? "",
@@ -183,6 +207,7 @@ export default function Settings() {
           state: prof.registeredAddress?.state ?? "",
           country: prof.registeredAddress?.country ?? "",
           postalCode: prof.registeredAddress?.postalCode ?? "",
+          lga: prof.registeredAddress?.lga ?? "",
         });
         setIndustries(industryList.map((i) => i.name));
       })
@@ -340,6 +365,9 @@ export default function Settings() {
     setSavingProfile(true);
     try {
       await businessApi.updateProfile({
+        businessRegistrationNumber: profileForm.businessRegistrationNumber,
+        NRSBusinessId: profileForm.NRSBusinessId,
+        serviceId: profileForm.serviceId,
         description: profileForm.description,
         contactEmail: profileForm.contactEmail,
         contactPhone: profileForm.contactPhone,
@@ -350,6 +378,7 @@ export default function Settings() {
           state: profileForm.state,
           country: profileForm.country,
           postalCode: profileForm.postalCode,
+          lga: profileForm.lga,
         },
       });
       toast.success("Business profile updated.");
@@ -380,9 +409,13 @@ export default function Settings() {
     }
     setSavingNRS(true);
     try {
-      await businessApi.updateNRSCredentials(NRS);
+      await businessApi.updateNRSCredentials({
+        firsApiKey: NRS.apiKey,
+        firsClientSecret: NRS.clientSecret,
+      });
       toast.success("NRS credentials updated.");
       setNRS({ apiKey: "", clientSecret: "" });
+      setProfile((prev) => prev ? { ...prev, hasNrsCredentials: true } : prev);
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } } };
       toast.error(
@@ -404,6 +437,7 @@ export default function Settings() {
       await businessApi.updateQrCodeConfig(qr);
       toast.success("QR code configuration updated.");
       setQr({ publicKey: "", certificate: "" });
+      setProfile((prev) => prev ? { ...prev, hasQrCodeConfig: true } : prev);
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } } };
       toast.error(e?.response?.data?.message || "Failed to update QR config.");
@@ -471,46 +505,50 @@ export default function Settings() {
 
   const handleSaveFlowRule = async (e: React.FormEvent) => {
     e.preventDefault();
-    const amount = parseFloat(thresholdAmount);
-    if (isNaN(amount) || amount <= 0) {
-      toast.error("Please enter a valid threshold amount.");
+    const threshold = parseFloat(thresholdAmount);
+    if (isNaN(threshold) || threshold <= 0) {
+      toast.error("Please enter a valid approval threshold amount.");
       return;
     }
     setSavingFlowRule(true);
+    // minAmount = threshold (where approval kicks in)
+    // maxAmount = effectively unlimited — no gaps, no ambiguity
+    const payload = {
+      name: "Approval Threshold",
+      description: "Invoices at or above this amount require admin approval",
+      minAmount: threshold,
+      maxAmount: 999_999_999_999,
+      requiresClientAdminApproval: true,
+      priority: flowRule?.priority ?? 1,
+    };
     try {
       if (USE_MOCK) {
         await new Promise<void>((r) => setTimeout(r, 700));
         setFlowRule((prev) =>
           prev
-            ? { ...prev, minAmount: amount }
-            : {
-                id: "rule-new",
-                name: "Approval Threshold",
-                description:
-                  "Invoices above this amount require admin approval",
-                minAmount: amount,
-                maxAmount: 999_999_999_999,
-                requiresClientAdminApproval: true,
-                priority: 1,
-              },
+            ? { ...prev, ...payload }
+            : { id: "rule-new", ...payload },
         );
-        toast.success("Approval rule saved.");
+        toast.success("Approval threshold saved.");
       } else {
-        await flowRuleApi.upsert({
-          name: "Approval Threshold",
-          description: "Invoices above this amount require admin approval",
-          minAmount: amount,
-          maxAmount: 999_999_999_999,
-          requiresClientAdminApproval: true,
-          priority: 1,
-        });
-        toast.success("Approval rule saved.");
+        // If a rule already exists, delete it first to avoid overlap errors
+        if (flowRule) {
+          await flowRuleApi.delete(flowRule.id);
+        }
+        await flowRuleApi.upsert(payload);
+        toast.success("Approval threshold saved.");
+        const rules = await flowRuleApi.getAll();
+        const active = Array.isArray(rules) ? (rules[0] ?? null) : null;
+        setFlowRule(active);
+        if (active) setThresholdAmount(String(active.minAmount));
       }
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } } };
-      toast.error(
-        e?.response?.data?.message || "Failed to save approval rule.",
-      );
+      const e = err as { response?: { data?: { message?: string; data?: { value?: { message?: string } } } } };
+      const msg =
+        e?.response?.data?.data?.value?.message ||
+        e?.response?.data?.message ||
+        "Failed to save approval threshold.";
+      toast.error(msg);
     } finally {
       setSavingFlowRule(false);
     }
@@ -524,22 +562,16 @@ export default function Settings() {
         await new Promise<void>((r) => setTimeout(r, 700));
         setFlowRule(null);
         setThresholdAmount("");
-        toast.success(
-          "Approval rule removed. All invoices will be auto-approved.",
-        );
+        toast.success("Approval rule removed. All invoices will be auto-approved.");
       } else {
         await flowRuleApi.delete(flowRule.id);
         setFlowRule(null);
         setThresholdAmount("");
-        toast.success(
-          "Approval rule removed. All invoices will be auto-approved.",
-        );
+        toast.success("Approval rule removed. All invoices will be auto-approved.");
       }
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } } };
-      toast.error(
-        e?.response?.data?.message || "Failed to remove approval rule.",
-      );
+      toast.error(e?.response?.data?.message || "Failed to remove approval rule.");
     } finally {
       setSavingFlowRule(false);
     }
@@ -674,73 +706,96 @@ export default function Settings() {
         {/* ── CLIENT ADMIN / USER VIEW ──────────────────────────────────── */}
         {!isAegis && (
           <>
-            {/* Business Info (read-only) */}
+            {/* Business Profile */}
             {profile && (
               <Section
-                title="Business Information"
-                description="Core registration details (read-only)"
+                title="Business Profile"
+                description={canEdit ? "Manage your core registration details, contact info, and address." : "Core registration details (read-only)"}
               >
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p className="text-xs font-medium text-gray-400 dark:text-gray-500 mb-0.5">
-                      Business Name
-                    </p>
-                    <p className="text-gray-800 dark:text-white font-medium">
-                      {profile.name}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-gray-400 dark:text-gray-500 mb-0.5">
-                      TIN
-                    </p>
-                    <p className="text-gray-800 dark:text-white font-mono">
-                      {profile.taxIdentificationNumber || "—"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-gray-400 dark:text-gray-500 mb-0.5">
-                      Reg. Number
-                    </p>
-                    <p className="text-gray-800 dark:text-white font-mono">
-                      {profile.businessRegistrationNumber || "—"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-gray-400 dark:text-gray-500 mb-0.5">
-                      NRS Business ID
-                    </p>
-                    <p className="text-gray-800 dark:text-white font-mono">
-                      {profile.NRSBusinessId || "—"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-gray-400 dark:text-gray-500 mb-0.5">
-                      Service ID
-                    </p>
-                    <p className="text-gray-800 dark:text-white font-mono">
-                      {profile.serviceId || "—"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-gray-400 dark:text-gray-500 mb-0.5">
-                      Subscription Plan
-                    </p>
-                    <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-brand-50 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400">
-                      {user?.subscriptionTier ?? "—"}
-                    </span>
-                  </div>
-                </div>
-              </Section>
-            )}
+                {canEdit ? (
+                  <form onSubmit={handleSaveProfile} className="space-y-6">
+                    {/* Core details */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                          Business Name
+                        </p>
+                        <p className="text-sm font-medium text-gray-800 dark:text-white bg-gray-50 dark:bg-gray-800/50 px-3 py-2 rounded-lg border border-transparent">
+                          {profile.name}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                          TIN
+                        </p>
+                        <p className="text-sm font-mono text-gray-800 dark:text-white bg-gray-50 dark:bg-gray-800/50 px-3 py-2 rounded-lg border border-transparent">
+                          {profile.taxIdentificationNumber || "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                          Subscription Plan
+                        </p>
+                        <div className="bg-gray-50 dark:bg-gray-800/50 px-3 py-2 rounded-lg border border-transparent flex items-center">
+                          <span className="inline-block px-2 py-0.5 rounded-md text-xs font-medium bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400">
+                            {user?.subscriptionTier ?? "—"}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                          Reg. Number
+                        </label>
+                        <input
+                          value={profileForm.businessRegistrationNumber}
+                          onChange={(e) =>
+                            setProfileForm((f) => ({
+                              ...f,
+                              businessRegistrationNumber: e.target.value,
+                            }))
+                          }
+                          className={inputCls}
+                          placeholder="RC123456"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                          NRS Business ID
+                        </label>
+                        <input
+                          value={profileForm.NRSBusinessId}
+                          onChange={(e) =>
+                            setProfileForm((f) => ({
+                              ...f,
+                              NRSBusinessId: e.target.value,
+                            }))
+                          }
+                          className={inputCls}
+                          placeholder="e.g. uuid"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                          Service ID
+                        </label>
+                        <input
+                          value={profileForm.serviceId}
+                          onChange={(e) =>
+                            setProfileForm((f) => ({
+                              ...f,
+                              serviceId: e.target.value,
+                            }))
+                          }
+                          className={inputCls}
+                          placeholder="e.g. Srv123"
+                        />
+                      </div>
+                    </div>
 
-            {/* Editable Business Profile */}
-            {canEdit && (
-              <Section
-                title="Contact & Address"
-                description="Update your business contact details and address"
-              >
-                <form onSubmit={handleSaveProfile}>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <hr className="border-gray-200 dark:border-gray-700" />
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="flex flex-col gap-1">
                       <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
                         Contact Email
@@ -753,9 +808,10 @@ export default function Settings() {
                             contactEmail: e.target.value,
                           }))
                         }
-                        className={inputCls}
+                        className={`${inputCls} bg-gray-50 dark:bg-gray-700/50 cursor-not-allowed opacity-80`}
                         type="email"
                         placeholder="contact@business.com"
+                        disabled
                       />
                     </div>
                     <div className="flex flex-col gap-1">
@@ -847,25 +903,9 @@ export default function Settings() {
                     </div>
                     <div className="flex flex-col gap-1">
                       <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                        State
-                      </label>
-                      <input
-                        value={profileForm.state}
-                        onChange={(e) =>
-                          setProfileForm((f) => ({
-                            ...f,
-                            state: e.target.value,
-                          }))
-                        }
-                        className={inputCls}
-                        placeholder="State"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
                         Country
                       </label>
-                      <input
+                      <select
                         value={profileForm.country}
                         onChange={(e) =>
                           setProfileForm((f) => ({
@@ -874,8 +914,62 @@ export default function Settings() {
                           }))
                         }
                         className={inputCls}
-                        placeholder="Nigeria"
-                      />
+                      >
+                        <option value="">Select country</option>
+                        {nrsCountries.map((c) => (
+                          <option key={c.alpha_2} value={c.alpha_2}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                        State
+                      </label>
+                      <select
+                        value={profileForm.state}
+                        onChange={(e) =>
+                          setProfileForm((f) => ({
+                            ...f,
+                            state: e.target.value,
+                            lga: "", // Reset LGA when state changes
+                          }))
+                        }
+                        className={inputCls}
+                      >
+                        <option value="">Select state</option>
+                        {nrsStates.map((s) => (
+                          <option key={s.code} value={s.code}>
+                            {s.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                        LGA
+                      </label>
+                      <select
+                        value={profileForm.lga}
+                        onChange={(e) =>
+                          setProfileForm((f) => ({
+                            ...f,
+                            lga: e.target.value,
+                          }))
+                        }
+                        className={inputCls}
+                        disabled={!profileForm.state}
+                      >
+                        <option value="">Select LGA</option>
+                        {nrsLgas
+                          .filter((l) => l.state_code === profileForm.state)
+                          .map((l) => (
+                            <option key={l.code} value={l.code}>
+                              {l.name}
+                            </option>
+                          ))}
+                      </select>
                     </div>
                     <div className="flex flex-col gap-1">
                       <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
@@ -904,13 +998,75 @@ export default function Settings() {
                     </button>
                   </div>
                 </form>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-xs font-medium text-gray-400 dark:text-gray-500 mb-0.5">
+                      Business Name
+                    </p>
+                    <p className="text-gray-800 dark:text-white font-medium">
+                      {profile.name}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-gray-400 dark:text-gray-500 mb-0.5">
+                      TIN
+                    </p>
+                    <p className="text-gray-800 dark:text-white font-mono">
+                      {profile.taxIdentificationNumber || "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-gray-400 dark:text-gray-500 mb-0.5">
+                      Reg. Number
+                    </p>
+                    <p className="text-gray-800 dark:text-white font-mono">
+                      {profile.businessRegistrationNumber || "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-gray-400 dark:text-gray-500 mb-0.5">
+                      NRS Business ID
+                    </p>
+                    <p className="text-gray-800 dark:text-white font-mono">
+                      {profile.NRSBusinessId || "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-gray-400 dark:text-gray-500 mb-0.5">
+                      Service ID
+                    </p>
+                    <p className="text-gray-800 dark:text-white font-mono">
+                      {profile.serviceId || "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-gray-400 dark:text-gray-500 mb-0.5">
+                      Subscription Plan
+                    </p>
+                    <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-brand-50 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400">
+                      {user?.subscriptionTier ?? "—"}
+                    </span>
+                  </div>
+                </div>
+              )}
               </Section>
             )}
 
             {/* NRS Credentials */}
             {canEdit && (
               <Section
-                title="NRS Credentials"
+                title={
+                  <span className="flex items-center gap-2">
+                    NRS Credentials
+                    {profile?.hasNrsCredentials && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg>
+                        Configured
+                      </span>
+                    )}
+                  </span>
+                }
                 description="Update your NRS API key and client secret. Values are stored securely and never displayed."
               >
                 <form onSubmit={handleSaveNRS}>
@@ -925,7 +1081,7 @@ export default function Settings() {
                           setNRS((f) => ({ ...f, apiKey: e.target.value }))
                         }
                         className={inputCls}
-                        placeholder="Enter new API key"
+                        placeholder={profile?.hasNrsCredentials ? "••••••••  (already configured)" : "Enter new API key"}
                         autoComplete="off"
                       />
                     </div>
@@ -942,7 +1098,7 @@ export default function Settings() {
                           }))
                         }
                         className={inputCls}
-                        placeholder="Enter new client secret"
+                        placeholder={profile?.hasNrsCredentials ? "••••••••  (already configured)" : "Enter new client secret"}
                         type="password"
                         autoComplete="new-password"
                       />
@@ -954,7 +1110,7 @@ export default function Settings() {
                       disabled={savingNRS}
                       className="px-5 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-xl disabled:opacity-50 transition-colors"
                     >
-                      {savingNRS ? "Updating…" : "Update Credentials"}
+                      {savingNRS ? "Updating…" : profile?.hasNrsCredentials ? "Update Credentials" : "Save Credentials"}
                     </button>
                   </div>
                 </form>
@@ -964,7 +1120,17 @@ export default function Settings() {
             {/* QR Code Configuration */}
             {canEdit && (
               <Section
-                title="QR Code Configuration"
+                title={
+                  <span className="flex items-center gap-2">
+                    QR Code Configuration
+                    {profile?.hasQrCodeConfig && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg>
+                        Configured
+                      </span>
+                    )}
+                  </span>
+                }
                 description="Update your public key and certificate for QR code generation on invoices."
               >
                 <form onSubmit={handleSaveQr}>
@@ -980,7 +1146,7 @@ export default function Settings() {
                         }
                         className={`${inputCls} resize-none font-mono text-xs`}
                         rows={4}
-                        placeholder="-----BEGIN PUBLIC KEY-----&#10;...&#10;-----END PUBLIC KEY-----"
+                        placeholder={profile?.hasQrCodeConfig ? "••••••••  (already configured — paste to replace)" : "-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----"}
                       />
                     </div>
                     <div className="flex flex-col gap-1">
@@ -994,7 +1160,7 @@ export default function Settings() {
                         }
                         className={`${inputCls} resize-none font-mono text-xs`}
                         rows={4}
-                        placeholder="-----BEGIN CERTIFICATE-----&#10;...&#10;-----END CERTIFICATE-----"
+                        placeholder={profile?.hasQrCodeConfig ? "••••••••  (already configured — paste to replace)" : "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----"}
                       />
                     </div>
                   </div>
@@ -1004,7 +1170,7 @@ export default function Settings() {
                       disabled={savingQr}
                       className="px-5 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-xl disabled:opacity-50 transition-colors"
                     >
-                      {savingQr ? "Updating…" : "Update QR Config"}
+                      {savingQr ? "Updating…" : profile?.hasQrCodeConfig ? "Update QR Config" : "Save QR Config"}
                     </button>
                   </div>
                 </form>
@@ -1099,11 +1265,10 @@ export default function Settings() {
               </Section>
             )}
 
-            {/* Approval Rule — admin only */}
             {isAdmin && !isAegis && (
               <Section
                 title="Approval Rule"
-                description="Set a threshold amount. Invoices above this amount will require admin approval before being pushed to NRS."
+                description="Set the minimum invoice amount that requires admin approval before submission to NRS. Invoices below this threshold are auto-approved."
               >
                 {flowRuleLoading ? (
                   <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
@@ -1112,75 +1277,50 @@ export default function Settings() {
                   </div>
                 ) : (
                   <>
-                    {!flowRule && (
+                    {/* Status banner */}
+                    {!flowRule ? (
                       <div className="mb-4 flex items-start gap-3 p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700">
-                        <svg
-                          className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                          strokeWidth={2}
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                          />
+                        <svg className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                         </svg>
                         <p className="text-sm text-amber-700 dark:text-amber-300">
-                          No approval rule configured — all invoices are
-                          auto-approved.
+                          No approval rule configured — all invoices are auto-approved.
                         </p>
                       </div>
-                    )}
-                    {flowRule && (
-                      <div className="mb-4 flex items-start gap-3 p-3 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700">
-                        <svg
-                          className="w-4 h-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                          strokeWidth={2}
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                          />
+                    ) : (
+                      <div className="flex items-start gap-2 mb-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-800">
+                        <svg className="w-4 h-4 text-green-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        <p className="text-sm text-green-700 dark:text-green-300">
-                          Active rule: invoices above{" "}
-                          <span className="font-semibold">
-                            ₦{flowRule.minAmount.toLocaleString()}
-                          </span>{" "}
-                          require approval.
-                        </p>
+                        <div className="text-sm text-green-700 dark:text-green-300 space-y-0.5">
+                          <p>
+                            <span className="font-semibold">Below ₦{flowRule.minAmount.toLocaleString()}</span>
+                            {" "}— auto-approved.
+                          </p>
+                          <p>
+                            <span className="font-semibold">At or above ₦{flowRule.minAmount.toLocaleString()}</span>
+                            {" "}— requires admin approval.
+                          </p>
+                        </div>
                       </div>
                     )}
+
                     <form onSubmit={handleSaveFlowRule}>
                       <div className="flex flex-col gap-1 max-w-xs">
                         <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                          Threshold Amount (₦)
+                          Approval Threshold (₦)
                         </label>
                         <input
                           type="text"
                           inputMode="numeric"
-                          value={
-                            thresholdAmount
-                              ? parseInt(thresholdAmount, 10).toLocaleString()
-                              : ""
-                          }
-                          onChange={(e) =>
-                            setThresholdAmount(
-                              e.target.value.replace(/\D/g, ""),
-                            )
-                          }
+                          value={thresholdAmount ? parseInt(thresholdAmount, 10).toLocaleString() : ""}
+                          onChange={(e) => setThresholdAmount(e.target.value.replace(/\D/g, ""))}
                           className={inputCls}
                           placeholder="e.g. 1,000,000"
                         />
                         <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                          Invoices with a total at or above this amount will go
-                          to Pending Approval.
+                          Invoices at or above this amount will go to Pending Approval.
+                          Everything below is auto-approved.
                         </p>
                       </div>
                       <div className="flex items-center gap-3 mt-5">
@@ -1189,11 +1329,7 @@ export default function Settings() {
                           disabled={savingFlowRule || !thresholdAmount}
                           className="px-5 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-xl disabled:opacity-50 transition-colors"
                         >
-                          {savingFlowRule
-                            ? "Saving…"
-                            : flowRule
-                              ? "Update Rule"
-                              : "Set Rule"}
+                          {savingFlowRule ? "Saving…" : flowRule ? "Update Threshold" : "Set Threshold"}
                         </button>
                         {flowRule && (
                           <button

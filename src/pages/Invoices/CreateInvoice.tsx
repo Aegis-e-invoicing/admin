@@ -1,4 +1,4 @@
-﻿import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate, useLocation, useSearchParams, Link } from "react-router";
 import toast from "react-hot-toast";
 import PageMeta from "../../components/common/PageMeta";
@@ -37,10 +37,22 @@ const INVOICE_KINDS = [
   { code: "B2G", label: "B2G — Business to Government" },
 ];
 
+/** Lightweight tax entry stored per line item — carries the rate configured on the business item itself */
+interface ItemTaxEntry {
+  code: string;
+  name: string;
+  isPercentage: boolean;
+  /** Percentage rate (e.g. 8 for 8%) — from the item, NOT from the NRS reference list */
+  percent: number;
+  /** Flat amount (when isPercentage = false) */
+  flatAmount?: number;
+}
+
 interface LineItem extends InvoiceItemPayload {
   _itemCode?: string;
   _description?: string;
-  _taxCategoryCode?: string;
+  /** All active tax entries for this line, carrying the item's own configured rates */
+  _taxCategories: ItemTaxEntry[];
   _discountType: "amount" | "percent";
   _discountPercent: number;
 }
@@ -178,6 +190,8 @@ export default function CreateInvoice() {
     paymentMeansCode: "30",
     note: "",
     orderReference: "",
+    deliveryStartDate: new Date().toISOString().substring(0, 10),
+    deliveryEndDate: new Date().toISOString().substring(0, 10),
   });
 
   const [docRefs, setDocRefs] = useState<{
@@ -209,7 +223,7 @@ export default function CreateInvoice() {
       lineDiscount: 0,
       _description: "",
       _itemCode: "",
-      _taxCategoryCode: "",
+      _taxCategories: [],
       _discountType: "amount",
       _discountPercent: 0,
     },
@@ -365,7 +379,7 @@ export default function CreateInvoice() {
               unitPrice: summary?.unitPrice ?? 0,
               _description: "",
               _itemCode: summary?.itemId ?? "",
-              _taxCategoryCode: "",
+              _taxCategories: [],
               lineDiscount: 0,
               _discountPercent: 0,
             }
@@ -375,22 +389,35 @@ export default function CreateInvoice() {
 
     if (!businessItemId) return;
 
-    // Fetch full item to get taxCategories and itemDescription
+    // Fetch full item to get ALL tax categories with their configured rates
     try {
       let itemDescription: string;
       let itemCode: string;
-      let taxCode: string;
+      let taxEntries: ItemTaxEntry[];
 
       if (USE_MOCK) {
         const mockFull = MOCK_ITEMS.find((m) => m.id === businessItemId);
         itemDescription = mockFull?.itemDescription ?? summary?.name ?? "";
         itemCode = mockFull?.itemId ?? summary?.itemId ?? "";
-        taxCode = mockFull?.taxCategories?.[0]?.code ?? "";
+        taxEntries = (mockFull?.taxCategories ?? []).map((tc: { code: string; name: string; isPercentage: boolean; percent?: number; flatAmount?: number }) => ({
+          code: tc.code,
+          name: tc.name,
+          isPercentage: tc.isPercentage ?? true,
+          percent: tc.percent ?? 0,
+          flatAmount: tc.flatAmount,
+        }));
       } else {
         const full = await businessItemApi.getById(businessItemId);
         itemDescription = full?.itemDescription ?? summary?.name ?? "";
         itemCode = full?.itemId ?? summary?.itemId ?? "";
-        taxCode = full?.taxCategories?.[0]?.code ?? "";
+        // Use the rates stored on the item — NOT the NRS reference list
+        taxEntries = (full?.taxCategories ?? []).map((tc) => ({
+          code: tc.code,
+          name: tc.name,
+          isPercentage: tc.isPercentage,
+          percent: tc.percent ?? 0,
+          flatAmount: tc.flatAmount,
+        }));
       }
 
       setLineItems((prev) =>
@@ -400,14 +427,53 @@ export default function CreateInvoice() {
                 ...li,
                 _description: itemDescription,
                 _itemCode: itemCode,
-                _taxCategoryCode: taxCode,
+                _taxCategories: taxEntries,
               }
             : li,
         ),
       );
     } catch {
-      // leave description/taxCode empty — user can fill manually
+      // leave description/taxCategories empty — user can fill manually
     }
+  };
+
+  /** Add a tax category to a line — creates an entry using the NRS reference rate as default */
+  const addTaxToLine = (index: number, code: string) => {
+    if (!code) return;
+    const nrsCat = taxCategories.find((t) => t.code === code);
+    if (!nrsCat) return;
+    const parsedRate = parseTaxPercent(nrsCat.percent);
+    setLineItems((prev) =>
+      prev.map((li, i) =>
+        i === index
+          ? {
+              ...li,
+              _taxCategories: li._taxCategories.some((t) => t.code === code)
+                ? li._taxCategories
+                : [
+                    ...li._taxCategories,
+                    {
+                      code,
+                      name: nrsCat.value,
+                      isPercentage: true,
+                      percent: parsedRate,
+                    },
+                  ],
+            }
+          : li,
+      ),
+    );
+  };
+
+  /** Remove a tax category from a line */
+  const removeTaxFromLine = (index: number, code: string) => {
+    setLineItems((prev) =>
+      prev.map((li, i) =>
+        i === index
+          ? { ...li, _taxCategories: li._taxCategories.filter((t) => t.code !== code) }
+          : li,
+      ),
+    );
   };
 
   const handleLineChange = (
@@ -456,7 +522,7 @@ export default function CreateInvoice() {
         lineDiscount: 0,
         _description: "",
         _itemCode: "",
-        _taxCategoryCode: "",
+        _taxCategories: [],
         _discountType: "amount",
         _discountPercent: 0,
       },
@@ -474,23 +540,37 @@ export default function CreateInvoice() {
       ? lineSubtotal(li) * (li._discountPercent / 100)
       : (li.lineDiscount ?? 0);
   const lineNet = (li: LineItem) => lineSubtotal(li) - lineDiscountAmt(li);
+  /** Sum of all tax amounts for a single line using each tax entry's own stored rate */
   const lineTax = (li: LineItem) => {
-    const tc = taxCategories.find((t) => t.code === li._taxCategoryCode);
-    const rate = tc ? parseTaxPercent(tc.percent) : 0;
-    return lineNet(li) * (rate / 100);
+    const net = lineNet(li);
+    return li._taxCategories.reduce((sum, entry) => {
+      if (entry.isPercentage) {
+        return sum + net * (entry.percent / 100);
+      }
+      // Flat amount tax
+      return sum + (entry.flatAmount ?? 0);
+    }, 0);
   };
 
   const grandSubtotal = lineItems.reduce((s, li) => s + lineNet(li), 0);
 
+  /** Group taxes by category code across all line items, using the item's stored rates */
   const taxBreakdown = lineItems.reduce<
     Record<string, { label: string; amount: number }>
   >((acc, li) => {
-    const tc = taxCategories.find((t) => t.code === li._taxCategoryCode);
-    if (!tc || parseTaxPercent(tc.percent) === 0) return acc;
-    const key = tc.code;
-    if (!acc[key])
-      acc[key] = { label: `${tc.value} (${tc.percent}%)`, amount: 0 };
-    acc[key].amount += lineTax(li);
+    const net = lineNet(li);
+    li._taxCategories.forEach((entry) => {
+      const taxAmt = entry.isPercentage
+        ? net * (entry.percent / 100)
+        : (entry.flatAmount ?? 0);
+      if (taxAmt === 0 && entry.isPercentage) return; // skip zero-rate percentage entries
+      const key = entry.code;
+      const label = entry.isPercentage
+        ? `${entry.name} (${entry.percent}%)`
+        : `${entry.name} (flat)`;
+      if (!acc[key]) acc[key] = { label, amount: 0 };
+      acc[key].amount += taxAmt;
+    });
     return acc;
   }, {});
 
@@ -552,14 +632,32 @@ export default function CreateInvoice() {
       return;
     }
 
+    // Resolve nested objects from loaded lookup arrays (fall back to code-only if not loaded yet)
+    const selectedCurrency = currencies.find((c) => c.code === form.currencyCode);
+    const selectedInvoiceType = invoiceTypes.find((t) => t.code === form.invoiceTypeCode);
+    const selectedPaymentMeans = paymentMeans.find((m) => m.code === form.paymentMeansCode);
+
     const payload: CreateInvoicePayload = {
       partyId: form.partyId,
       issueDate: form.issueDate,
       dueDate: form.dueDate || undefined,
-      currencyCode: form.currencyCode,
-      invoiceTypeCode: form.invoiceTypeCode,
+      invoiceType: {
+        name: selectedInvoiceType?.value ?? form.invoiceTypeCode,
+        code: parseInt(form.invoiceTypeCode, 10),
+      },
+      currency: {
+        name: selectedCurrency?.name ?? form.currencyCode,
+        code: form.currencyCode,
+      },
+      deliveryPeriod: {
+        startDate: form.deliveryStartDate || form.issueDate,
+        endDate: form.deliveryEndDate || form.dueDate || form.issueDate,
+      },
+      paymentMeans: {
+        code: form.paymentMeansCode,
+        name: selectedPaymentMeans?.value ?? form.paymentMeansCode,
+      },
       invoiceKind: form.invoiceKind || undefined,
-      paymentMeansCode: form.paymentMeansCode || undefined,
       note: form.note || undefined,
       orderReference: form.orderReference || undefined,
       billingReference:
@@ -575,15 +673,16 @@ export default function CreateInvoice() {
         docRefs.additionalDocumentReferences.length > 0
           ? docRefs.additionalDocumentReferences
           : undefined,
-      items: lineItems.map(
-        (li) =>
-          ({
-            businessItemId: li.businessItemId,
-            quantity: li.quantity,
-            unitPrice: li.unitPrice,
-            lineDiscount: lineDiscountAmt(li) || undefined,
-          }) satisfies InvoiceItemPayload,
-      ),
+      invoiceItems: lineItems.map((li) => {
+        const discountAmt = lineDiscountAmt(li);
+        // FeeStandardUnit: 1 = Percent, 2 = NGN (flat amount)
+        const discountCode = li._discountType === "percent" ? 1 : 2;
+        return ({
+          businessItemId: li.businessItemId,
+          quantity: li.quantity,
+          discountFee: discountAmt > 0 ? { amount: discountAmt, code: discountCode } : undefined,
+        }) satisfies InvoiceItemPayload;
+      }),
     };
 
     setSubmitting(true);
@@ -675,11 +774,29 @@ export default function CreateInvoice() {
   };
 
   const handleIssueDateChange = useCallback((_: Date[], dateStr: string) => {
-    setForm((prev) => ({ ...prev, issueDate: dateStr }));
+    setForm((prev) => ({
+      ...prev,
+      issueDate: dateStr,
+      // Keep deliveryStartDate in sync with issueDate unless user has changed it independently
+      deliveryStartDate: prev.deliveryStartDate === prev.issueDate ? dateStr : prev.deliveryStartDate,
+    }));
   }, []);
 
   const handleDueDateChange = useCallback((_: Date[], dateStr: string) => {
-    setForm((prev) => ({ ...prev, dueDate: dateStr }));
+    setForm((prev) => ({
+      ...prev,
+      dueDate: dateStr,
+      // Keep deliveryEndDate in sync with dueDate unless user has changed it independently
+      deliveryEndDate: prev.deliveryEndDate === prev.dueDate ? dateStr : prev.deliveryEndDate,
+    }));
+  }, []);
+
+  const handleDeliveryStartDateChange = useCallback((_: Date[], dateStr: string) => {
+    setForm((prev) => ({ ...prev, deliveryStartDate: dateStr }));
+  }, []);
+
+  const handleDeliveryEndDateChange = useCallback((_: Date[], dateStr: string) => {
+    setForm((prev) => ({ ...prev, deliveryEndDate: dateStr }));
   }, []);
 
   if (loadingLookups) {
@@ -1010,7 +1127,7 @@ export default function CreateInvoice() {
 
               <div>
                 <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                  Payment Method
+                  Payment Method <span className="text-error-500">*</span>
                 </label>
                 <select
                   value={form.paymentMeansCode}
@@ -1034,6 +1151,32 @@ export default function CreateInvoice() {
                     </>
                   )}
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
+                  Delivery Start Date <span className="text-error-500">*</span>
+                  <InfoTooltip text="Start of the delivery period for goods/services on this invoice (required by FIRS)." />
+                </label>
+                <DatePicker
+                  id="invoice-delivery-start-date"
+                  placeholder="Delivery start date"
+                  defaultDate={form.deliveryStartDate}
+                  onChange={handleDeliveryStartDateChange}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
+                  Delivery End Date <span className="text-error-500">*</span>
+                  <InfoTooltip text="End of the delivery period for goods/services on this invoice (required by FIRS)." />
+                </label>
+                <DatePicker
+                  id="invoice-delivery-end-date"
+                  placeholder="Delivery end date"
+                  defaultDate={form.deliveryEndDate}
+                  onChange={handleDeliveryEndDateChange}
+                />
               </div>
 
               <div className="sm:col-span-2 lg:col-span-3">
@@ -1340,18 +1483,21 @@ export default function CreateInvoice() {
               </div>
 
               {lineItems.map((li, index) => {
-                const tc = taxCategories.find(
-                  (t) => t.code === li._taxCategoryCode,
-                );
-                const taxRate = tc ? parseTaxPercent(tc.percent) : 0;
                 const net = lineNet(li);
                 const tax = lineTax(li);
+                const hasTax = tax > 0;
+                // Tax codes already applied — for filtering the add-tax dropdown
+                const appliedCodes = li._taxCategories.map((t) => t.code);
+                // NRS categories NOT yet applied to this line
+                const availableTaxCats = taxCategories.filter(
+                  (t) => !appliedCodes.includes(t.code),
+                );
                 return (
                   <div
                     key={index}
                     className="grid grid-cols-12 gap-2 items-start border border-gray-100 dark:border-gray-700 rounded-xl p-3 lg:border-0 lg:p-0 lg:rounded-none"
                   >
-                    {/* Item */}
+                    {/* Item + multi-tax badges */}
                     <div className="col-span-12 lg:col-span-4">
                       <label className="text-xs text-gray-400 lg:hidden mb-0.5 block">
                         Item
@@ -1371,25 +1517,59 @@ export default function CreateInvoice() {
                           </option>
                         ))}
                       </select>
+
+                      {/* Tax category tags — shown once an item is selected */}
                       {li.businessItemId && (
-                        <select
-                          value={li._taxCategoryCode}
-                          onChange={(e) =>
-                            handleLineChange(
-                              index,
-                              "_taxCategoryCode",
-                              e.target.value,
-                            )
-                          }
-                          className={`${inputCls} mt-1 text-xs`}
-                        >
-                          <option value="">— No tax / Exempt —</option>
-                          {taxCategories.map((cat) => (
-                            <option key={cat.code} value={cat.code}>
-                              {cat.value} ({cat.percent}%)
-                            </option>
-                          ))}
-                        </select>
+                        <div className="mt-1.5 space-y-1">
+                          {li._taxCategories.length === 0 && (
+                            <span className="inline-block text-xs text-gray-400 italic">No tax / Exempt</span>
+                          )}
+                          {li._taxCategories.map((entry) => {
+                            const lineNetAmt = lineNet(li);
+                            const taxAmt = entry.isPercentage
+                              ? lineNetAmt * (entry.percent / 100)
+                              : (entry.flatAmount ?? 0);
+                            const rateLabel = entry.isPercentage
+                              ? `${entry.percent}%`
+                              : "flat";
+                            return (
+                              <span
+                                key={entry.code}
+                                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700"
+                              >
+                                <span>
+                                  {entry.name} ({rateLabel}) = ₦{taxAmt.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => removeTaxFromLine(index, entry.code)}
+                                  className="text-amber-400 hover:text-red-500 transition-colors leading-none text-sm"
+                                  title="Remove tax"
+                                >
+                                  &times;
+                                </button>
+                              </span>
+                            );
+                          })}
+
+                          {/* Add-tax dropdown — only shows if there are still available NRS categories */}
+                          {availableTaxCats.length > 0 && (
+                            <select
+                              value=""
+                              onChange={(e) => {
+                                if (e.target.value) addTaxToLine(index, e.target.value);
+                              }}
+                              className={`${inputCls} text-xs mt-0.5`}
+                            >
+                              <option value="">+ Add tax category...</option>
+                              {availableTaxCats.map((cat) => (
+                                <option key={cat.code} value={cat.code}>
+                                  {cat.value} ({cat.percent}%)
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                        </div>
                       )}
                     </div>
 
@@ -1486,17 +1666,17 @@ export default function CreateInvoice() {
                       </span>
                     </div>
 
-                    {/* Tax */}
+                    {/* Tax — total across all tax categories for this line */}
                     <div className="col-span-5 lg:col-span-1 flex flex-col items-end justify-center">
                       <label className="text-xs text-gray-400 lg:hidden mb-0.5">
                         Tax
                       </label>
                       <span
-                        className={`text-xs font-medium ${taxRate > 0 ? "text-amber-600 dark:text-amber-400" : "text-gray-400"}`}
+                        className={`text-xs font-medium ${hasTax ? "text-amber-600 dark:text-amber-400" : "text-gray-400"}`}
                       >
                         {!li.businessItemId
                           ? "—"
-                          : taxRate > 0
+                          : hasTax
                             ? `₦${tax.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
                             : "Exempt"}
                       </span>

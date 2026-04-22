@@ -457,15 +457,15 @@ export default function ItemList() {
                       return (
                         <div
                           key={idx}
-                          className="p-3 border border-gray-200 dark:border-gray-600 rounded-lg flex flex-col gap-2"
+                          className="flex flex-wrap items-center gap-2 p-2 border border-gray-200 dark:border-gray-600 rounded-lg"
                         >
-                          {/* Row 1: FIRS code dropdown (full width) */}
+                          {/* FIRS code — grows to fill available space */}
                           <select
                             value={tc.code}
                             onChange={(e) =>
                               applyNRSTaxCategory(idx, e.target.value)
                             }
-                            className={inputCls}
+                            className={`${inputCls} flex-1 min-w-0`}
                           >
                             <option value="">— Select FIRS code —</option>
                             {taxCategories.map((nrs) => (
@@ -479,80 +479,77 @@ export default function ItemList() {
                             ))}
                           </select>
 
-                          {/* Row 2: type toggle + value input + auto-filled label + remove */}
-                          <div className="flex items-center gap-2">
-                            {/* % / Flat toggle — disabled when rate is known from FIRS */}
-                            <select
-                              value={tc.isPercentage ? "percent" : "flat"}
+                          {/* % / Flat toggle */}
+                          <select
+                            value={tc.isPercentage ? "percent" : "flat"}
+                            disabled={percentKnown}
+                            onChange={(e) =>
+                              updateTaxEntry(idx, {
+                                isPercentage: e.target.value === "percent",
+                                percent:
+                                  e.target.value === "percent"
+                                    ? (tc.percent ?? 0)
+                                    : undefined,
+                                flatAmount:
+                                  e.target.value === "flat"
+                                    ? (tc.flatAmount ?? 0)
+                                    : undefined,
+                              })
+                            }
+                            className={`${inputCls} w-24 flex-none ${percentKnown ? "opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-700" : ""}`}
+                          >
+                            <option value="percent">%</option>
+                            <option value="flat">Flat ₦</option>
+                          </select>
+
+                          {/* Value input */}
+                          {tc.isPercentage ? (
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              step="0.01"
+                              value={tc.percent ?? ""}
                               disabled={percentKnown}
                               onChange={(e) =>
                                 updateTaxEntry(idx, {
-                                  isPercentage: e.target.value === "percent",
-                                  percent:
-                                    e.target.value === "percent"
-                                      ? (tc.percent ?? 0)
-                                      : undefined,
-                                  flatAmount:
-                                    e.target.value === "flat"
-                                      ? (tc.flatAmount ?? 0)
-                                      : undefined,
+                                  percent: parseFloat(e.target.value) || 0,
                                 })
                               }
-                              className={`${inputCls} w-28 flex-none ${percentKnown ? "opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-700" : ""}`}
-                            >
-                              <option value="percent">%</option>
-                              <option value="flat">Flat ₦</option>
-                            </select>
+                              placeholder="Rate %"
+                              className={`${inputCls} w-24 flex-none ${percentKnown ? "opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-700" : ""}`}
+                              required
+                            />
+                          ) : (
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={tc.flatAmount ?? ""}
+                              onChange={(e) =>
+                                updateTaxEntry(idx, {
+                                  flatAmount: parseFloat(e.target.value) || 0,
+                                })
+                              }
+                              placeholder="Amount ₦"
+                              className={`${inputCls} w-24 flex-none`}
+                              required
+                            />
+                          )}
 
-                            {/* Value input — disabled (auto-filled) when rate is known from FIRS */}
-                            {tc.isPercentage ? (
-                              <input
-                                type="number"
-                                min="0"
-                                max="100"
-                                step="0.01"
-                                value={tc.percent ?? ""}
-                                disabled={percentKnown}
-                                onChange={(e) =>
-                                  updateTaxEntry(idx, {
-                                    percent: parseFloat(e.target.value) || 0,
-                                  })
-                                }
-                                placeholder="Rate %"
-                                className={`${inputCls} flex-1 ${percentKnown ? "opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-700" : ""}`}
-                                required
-                              />
-                            ) : (
-                              <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={tc.flatAmount ?? ""}
-                                onChange={(e) =>
-                                  updateTaxEntry(idx, {
-                                    flatAmount: parseFloat(e.target.value) || 0,
-                                  })
-                                }
-                                placeholder="Amount ₦"
-                                className={`${inputCls} flex-1`}
-                                required
-                              />
-                            )}
+                          {percentKnown && (
+                            <span className="text-xs text-gray-400 dark:text-gray-500 flex-none">
+                              Auto-filled
+                            </span>
+                          )}
 
-                            {percentKnown && (
-                              <span className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap flex-none">
-                                Auto-filled
-                              </span>
-                            )}
-
-                            <button
-                              type="button"
-                              onClick={() => removeTaxEntry(idx)}
-                              className="text-red-500 hover:text-red-600 text-xs font-medium flex-none"
-                            >
-                              Remove
-                            </button>
-                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeTaxEntry(idx)}
+                            className="text-red-500 hover:text-red-600 text-xs font-medium flex-none"
+                          >
+                            Remove
+                          </button>
                         </div>
                       );
                     })}

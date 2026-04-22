@@ -191,7 +191,10 @@ export default function Onboarding() {
     }
     setLoading(true);
     try {
-      await businessApi.updateNRSCredentials(nrs);
+      await businessApi.updateNRSCredentials({
+        firsApiKey: nrs.apiKey,
+        firsClientSecret: nrs.clientSecret,
+      });
       setStep("qr");
     } catch (err: unknown) {
       const msg =
@@ -510,7 +513,6 @@ export default function Onboarding() {
                   placeholder="NG"
                   value={profile.country}
                   onChange={pf("country")}
-                  maxLength={2}
                 />
               </div>
             </div>
