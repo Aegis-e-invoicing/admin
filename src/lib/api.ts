@@ -380,12 +380,12 @@ export const NRSApi = {
       .then((arr) => arr ?? []),
   getProductCodes: () =>
     api
-      .get<ApiResponse<ProductCode[]>>("/NRS/getproductcodes")
+      .get<ApiResponse<ProductCode[]>>("/FIRS/getproductcodes")
       .then(unwrap)
       .then((arr) => arr ?? []),
   getServiceCodes: () =>
     api
-      .get<ApiResponse<FIRSServiceCode[]>>("/NRS/getservicecodes")
+      .get<ApiResponse<FIRSServiceCode[]>>("/FIRS/getservicecodes")
       .then(unwrap)
       .then((arr) => arr ?? []),
   getCurrencies: () =>
@@ -705,6 +705,23 @@ export interface BusinessItemSummary {
   createdAt: string;
 }
 
+export interface ItemCategory {
+  id: string;
+  name: string;
+  description?: string;
+  createdAt: string;
+}
+
+export const itemCategoryApi = {
+  list: () =>
+    api
+      .get<ApiResponse<ItemCategory[]>>("/itemcategory", {
+        params: { pageNumber: 1, pageSize: 200 },
+      })
+      .then(unwrap)
+      .then((arr) => arr ?? []),
+};
+
 /** Full item detail returned by GET /businessitem/{id}. */
 export interface BusinessItem {
   id: string;
@@ -726,7 +743,6 @@ export interface CreateBusinessItemPayload {
   name: string;
   itemType: "Goods" | "Service";
   serviceCode: { code: string; name: string };
-  itemCategoryName: string;
   itemDescription: string;
   unitPrice: number;
   taxCategories: BusinessItemTaxCategory[];
@@ -931,11 +947,11 @@ export interface UserSummary {
   lastLogin?: string;
 }
 export interface CreateUserPayload {
-  NRStName: string;
+  firstName: string;
   lastName: string;
   email: string;
   phoneNumber?: string;
-  roleId: string;
+  roleIds: string[];
 }
 
 export const userMgmtApi = {
@@ -965,7 +981,13 @@ export const userMgmtApi = {
       ),
   create: (payload: CreateUserPayload) =>
     api
-      .post<ApiResponse<UserSummary>>("/usermanagement/users", payload)
+      .post<ApiResponse<UserSummary>>("/usermanagement/users", {
+        firstName: payload.firstName,
+        lastName: payload.lastName,
+        email: payload.email,
+        phoneNumber: payload.phoneNumber,
+        roleIds: payload.roleIds,
+      })
       .then(unwrap),
   activate: (userId: string) =>
     api.post(`/usermanagement/users/${userId}/activate`),
@@ -1010,11 +1032,10 @@ export const roleApi = {
       .get<ApiResponse<RoleSummary[]>>("/role-management/roles")
       .then(unwrap)
       .then((arr) =>
-        (arr ?? []).filter(
-          (r) =>
-            r.category?.toLowerCase() === "operational" ||
-            r.category?.toLowerCase() === "custom",
-        ),
+        (arr ?? []).filter((r) => {
+          const nameLower = r.name?.toLowerCase();
+          return nameLower !== "clientadmin" && nameLower !== "clientuser";
+        }),
       ),
   create: (payload: CreateRolePayload) =>
     api
