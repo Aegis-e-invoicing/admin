@@ -58,8 +58,40 @@ interface LineItem extends InvoiceItemPayload {
 }
 
 function parseTaxPercent(percent: string): number {
-  const n = parseFloat(percent);
-  return isNaN(n) ? 0 : n;
+  const match = percent.match(/(\d+(\.\d+)?)/);
+  return match ? parseFloat(match[1]) : 0;
+}
+
+/**
+ * A helper component for a delimited currency/price input (read-only version for CreateInvoice).
+ */
+function PriceInput({
+  value,
+  className,
+}: {
+  value: number;
+  className?: string;
+}) {
+  const formatted = value.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+  return (
+    <div className={`${className} bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 flex items-center justify-end px-3 select-none`}>
+      {formatted}
+    </div>
+  );
+}
+
+interface ItemTaxEntry {
+  code: string;
+  name: string;
+  isPercentage: boolean;
+  /** Percentage rate (e.g. 8 for 8%) — from the item, NOT from the NRS reference list */
+  percent: number;
+  /** Flat amount (when isPercentage = false) */
+  flatAmount?: number;
 }
 
 function InfoTooltip({ text }: { text: string }) {
@@ -399,7 +431,7 @@ export default function CreateInvoice() {
         const mockFull = MOCK_ITEMS.find((m) => m.id === businessItemId);
         itemDescription = mockFull?.itemDescription ?? summary?.name ?? "";
         itemCode = mockFull?.itemId ?? summary?.itemId ?? "";
-        taxEntries = (mockFull?.taxCategories ?? []).map((tc: { code: string; name: string; isPercentage: boolean; percent?: number; flatAmount?: number }) => ({
+        taxEntries = (mockFull?.taxCategories ?? []).map((tc: any) => ({
           code: tc.code,
           name: tc.name,
           isPercentage: tc.isPercentage ?? true,
@@ -695,7 +727,7 @@ export default function CreateInvoice() {
         setShowPushModal(true);
       } else {
         const result = await invoiceApi.create(payload);
-        toast.success("Invoice created successfully.");
+        // Toast removed to prevent double-toast as the modal already confirms creation
         setCreatedInvoiceId(result.id);
         setShowPushModal(true);
       }
@@ -1538,7 +1570,7 @@ export default function CreateInvoice() {
                                 className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700"
                               >
                                 <span>
-                                  {entry.name} ({rateLabel}) = ₦{taxAmt.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                  {entry.name} ({rateLabel}) = ₦{taxAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </span>
                                 <button
                                   type="button"
@@ -1578,12 +1610,9 @@ export default function CreateInvoice() {
                       <label className="text-xs text-gray-400 lg:hidden mb-0.5 block">
                         Unit Price
                       </label>
-                      <input
-                        type="number"
+                      <PriceInput
                         value={li.unitPrice}
-                        readOnly
-                        tabIndex={-1}
-                        className={`${inputCls} text-right bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 cursor-default select-none`}
+                        className={`${inputCls} h-[38px]`}
                       />
                     </div>
 
@@ -1661,7 +1690,8 @@ export default function CreateInvoice() {
                       <span className="text-sm font-semibold text-gray-800 dark:text-white">
                         ₦
                         {net.toLocaleString(undefined, {
-                          maximumFractionDigits: 0,
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
                         })}
                       </span>
                     </div>
@@ -1677,7 +1707,7 @@ export default function CreateInvoice() {
                         {!li.businessItemId
                           ? "—"
                           : hasTax
-                            ? `₦${tax.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+                            ? `₦${tax.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                             : "Exempt"}
                       </span>
                     </div>

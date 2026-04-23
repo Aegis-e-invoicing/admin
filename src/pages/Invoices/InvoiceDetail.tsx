@@ -171,10 +171,9 @@ export default function InvoiceDetail() {
         setInvoice((prev) => (prev ? { ...prev, paymentStatus } : prev));
         toast.success("Payment status updated.");
       } else {
-        await invoiceApi.updatePaymentStatus({
-          invoiceId: invoice.id,
+        await invoiceApi.updatePaymentStatus(invoice.id, {
           paymentStatus,
-          paymentReference: paymentRef || undefined,
+          reference: paymentRef || undefined,
         });
         setInvoice((prev) => (prev ? { ...prev, paymentStatus } : prev));
         toast.success("Payment status updated.");
@@ -211,14 +210,48 @@ export default function InvoiceDetail() {
     );
   }
 
-  // Compute mock line item totals
+  // Compute line item totals and taxes
   const lineItems = USE_MOCK
     ? MOCK_LINE_ITEMS.map((li) => {
         const lineTotal = li.quantity * li.unitPrice;
         const vatAmt = lineTotal * (li.vatRate / 100);
-        return { ...li, lineTotal, vatAmt, grossTotal: lineTotal + vatAmt };
+        return {
+          ...li,
+          lineTotal,
+          vatAmt,
+          grossTotal: lineTotal + vatAmt,
+          taxEntries: [
+            { name: "VAT", rate: `${li.vatRate}%`, amount: vatAmt },
+          ],
+        };
       })
-    : [];
+    : (invoice.invoiceItems || []).map((li) => {
+        const lineTotal = li.quantity * li.unitPrice;
+        
+        // Calculate all taxes for this line item based on its specific tax categories
+        const taxEntries = (li.taxCategories || []).map((tc) => {
+          const amount = tc.isPercentage
+            ? lineTotal * ((tc.percent ?? 0) / 100)
+            : (tc.flatAmount ?? 0);
+          return {
+            name: tc.name,
+            rate: tc.isPercentage ? `${tc.percent}%` : "flat",
+            amount,
+          };
+        });
+
+        const totalLineTax = taxEntries.reduce((sum, t) => sum + t.amount, 0);
+
+        return {
+          description: li.itemDescription,
+          quantity: li.quantity,
+          unitPrice: li.unitPrice,
+          taxEntries,
+          totalLineTax,
+          lineTotal,
+          grossTotal: lineTotal + totalLineTax,
+        };
+      });
 
   const fmtDate = (d?: string) =>
     d
@@ -333,7 +366,7 @@ export default function InvoiceDetail() {
           </div>
 
           {/* Line Items */}
-          {USE_MOCK && (
+          {lineItems.length > 0 && (
             <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
               <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
                 <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
@@ -354,7 +387,7 @@ export default function InvoiceDetail() {
                         Unit Price
                       </th>
                       <th className="px-4 py-3 text-right font-medium text-gray-500 dark:text-gray-400">
-                        VAT
+                        Tax
                       </th>
                       <th className="px-4 py-3 text-right font-medium text-gray-500 dark:text-gray-400">
                         Total
@@ -377,10 +410,17 @@ export default function InvoiceDetail() {
                           ₦{li.unitPrice.toLocaleString()}
                         </td>
                         <td className="px-4 py-3 text-right text-gray-500 dark:text-gray-500 text-xs">
-                          ₦{li.vatAmt.toLocaleString()} ({li.vatRate}%)
+                          <div className="flex flex-col items-end gap-1">
+                            {li.taxEntries.map((te, tidx) => (
+                              <span key={tidx}>
+                                ₦{(te.amount ?? 0).toLocaleString()} ({te.rate})
+                              </span>
+                            ))}
+                            {li.taxEntries.length === 0 && <span>—</span>}
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-right font-medium text-gray-800 dark:text-white">
-                          ₦{li.grossTotal.toLocaleString()}
+                          ₦{(li.grossTotal ?? 0).toLocaleString()}
                         </td>
                       </tr>
                     ))}
@@ -493,7 +533,7 @@ export default function InvoiceDetail() {
                   VAT (7.5%)
                 </span>
                 <span className="text-sm font-medium text-amber-600 dark:text-amber-400">
-                  ₦{invoice.totalTaxAmount.toLocaleString()}
+                  ₦{invoice.totalTaxAmount?.toLocaleString()}
                 </span>
               </div>
               <div className="border-t border-gray-100 dark:border-gray-700 pt-3 flex justify-between items-center">

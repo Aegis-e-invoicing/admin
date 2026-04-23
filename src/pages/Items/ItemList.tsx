@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import PageMeta from "../../components/common/PageMeta";
 import TablePagination from "../../components/common/TablePagination";
@@ -36,6 +36,80 @@ const emptyForm: CreateBusinessItemPayload = {
   unitPrice: 0,
   taxCategories: [],
 };
+
+/**
+ * A helper component for a delimited currency/price input.
+ * Shows formatted value (e.g. 1,000,000.00) while maintaining numeric state.
+ */
+function PriceInput({
+  value,
+  onChange,
+  className,
+  placeholder,
+  required,
+}: {
+  value: number;
+  onChange: (val: number) => void;
+  className?: string;
+  placeholder?: string;
+  required?: boolean;
+}) {
+  const [displayValue, setDisplayValue] = useState("");
+
+  // Sync display value when the numeric value changes from outside (e.g. reset or edit)
+  useEffect(() => {
+    if (value === 0 && displayValue === "") return;
+    const formatted = value.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+    // Only update if the numeric essence is different to avoid cursor jumps while typing
+    if (parseFloat(displayValue.replace(/,/g, "")) !== value) {
+      setDisplayValue(value === 0 ? "" : formatted);
+    }
+  }, [value]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/,/g, "");
+    if (raw === "" || raw === ".") {
+      setDisplayValue(e.target.value);
+      onChange(0);
+      return;
+    }
+
+    const num = parseFloat(raw);
+    if (!isNaN(num)) {
+      setDisplayValue(e.target.value);
+      onChange(num);
+    }
+  };
+
+  const handleBlur = () => {
+    // On blur, format properly
+    if (value === 0) {
+      setDisplayValue("");
+    } else {
+      setDisplayValue(
+        value.toLocaleString("en-US", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }),
+      );
+    }
+  };
+
+  return (
+    <input
+      type="text"
+      value={displayValue}
+      onChange={handleChange}
+      onBlur={handleBlur}
+      className={className}
+      placeholder={placeholder}
+      required={required}
+    />
+  );
+}
 
 export default function ItemList() {
   const isAdmin = useIsAdmin();
@@ -137,6 +211,10 @@ export default function ItemList() {
     e.preventDefault();
     if (!form.name || !form.itemDescription || form.unitPrice <= 0) {
       toast.error("Name, description and a positive unit price are required.");
+      return;
+    }
+    if (form.taxCategories.length === 0) {
+      toast.error("At least one tax category is required for each item.");
       return;
     }
     setSaving(true);
@@ -397,19 +475,16 @@ export default function ItemList() {
                     <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
                       Unit Price (NGN) *
                     </label>
-                    <input
-                      value={form.unitPrice === 0 ? "" : form.unitPrice}
-                      onChange={(e) =>
+                    <PriceInput
+                      value={form.unitPrice}
+                      onChange={(val) =>
                         setForm((f) => ({
                           ...f,
-                          unitPrice: parseFloat(e.target.value) || 0,
+                          unitPrice: val,
                         }))
                       }
                       className={inputCls}
                       placeholder="0.00"
-                      type="number"
-                      min="0.01"
-                      step="0.01"
                       required
                     />
                   </div>

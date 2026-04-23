@@ -104,7 +104,16 @@ function AppEnvSwitcher() {
   const [pendingAdapter, setPendingAdapter] = useState<string | null>(null);
   const [pendingEnvToggle, setPendingEnvToggle] = useState(false);
 
+  const isAegis = useIsAegis();
+
   useEffect(() => {
+    // If it's an Aegis superadmin, they don't have a specific business provider to manage,
+    // but they can still switch the UI environment mode.
+    if (isAegis) {
+      setAdapters([]); // No specific adapters to manage
+      return;
+    }
+    
     if (!canManage || !user?.businessId) return;
 
     if (USE_MOCK) {
@@ -127,7 +136,7 @@ function AppEnvSwitcher() {
         setGlobalEnvMode(s.environmentMode);
       })
       .catch(() => {});
-  }, [canManage, user?.businessId]);
+  }, [canManage, user?.businessId, isAegis]);
 
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
@@ -139,7 +148,8 @@ function AppEnvSwitcher() {
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
-  if (!canManage || !user?.businessId) return null;
+  // Visible if user is Aegis superadmin OR a client admin with a businessId
+  if (!isAegis && (!canManage || !user?.businessId)) return null;
 
   const activeAdapter = adapters.find((a) => a.adapterKey === activeKey);
   const isTest = envMode === 1;
@@ -181,10 +191,13 @@ function AppEnvSwitcher() {
     const prev = envMode;
     setEnvMode(next);
     setGlobalEnvMode(next);
+    
+    if (isAegis) return; // AegisAdmin toggles are only local to the UI
+
     if (!USE_MOCK) {
       setSaving(true);
       try {
-        await appProviderApi.setBusinessEnvironment(user.businessId!, next);
+        await appProviderApi.setBusinessEnvironment(user!.businessId!, next);
       } catch {
         setEnvMode(prev);
         setGlobalEnvMode(prev);
@@ -202,69 +215,71 @@ function AppEnvSwitcher() {
     <>
       <div className="flex items-center gap-3">
         {/* APP provider selector */}
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] uppercase tracking-wide text-gray-400 dark:text-gray-500 font-medium leading-none whitespace-nowrap">
-            App Provider
-          </span>
-          <div className="relative" ref={dropRef}>
-            <button
-              onClick={() => setDropOpen((o) => !o)}
-              disabled={saving}
-              title="Select Access Point Provider"
-              className="flex items-center gap-1.5 h-9 px-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
-            >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                className="text-gray-400 dark:text-gray-500"
+        {!isAegis && (
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] uppercase tracking-wide text-gray-400 dark:text-gray-500 font-medium leading-none whitespace-nowrap">
+              App Provider
+            </span>
+            <div className="relative" ref={dropRef}>
+              <button
+                onClick={() => setDropOpen((o) => !o)}
+                disabled={saving}
+                title="Select Access Point Provider"
+                className="flex items-center gap-1.5 h-9 px-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
               >
-                <path
-                  d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              <span>{activeAdapter?.displayName ?? "Select APP"}</span>
-              <svg
-                width="12"
-                height="12"
-                viewBox="0 0 24 24"
-                fill="none"
-                className={`transition-transform ${dropOpen ? "rotate-180" : ""}`}
-              >
-                <path
-                  d="M6 9l6 6 6-6"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  className="text-gray-400 dark:text-gray-500"
+                >
+                  <path
+                    d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                <span>{activeAdapter?.displayName ?? "Select APP"}</span>
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  className={`transition-transform ${dropOpen ? "rotate-180" : ""}`}
+                >
+                  <path
+                    d="M6 9l6 6 6-6"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
 
-            {dropOpen && adapters.length > 0 && (
-              <div className="absolute top-full right-0 mt-1 w-44 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg py-1 z-999999">
-                {adapters.map((a) => (
-                  <button
-                    key={a.adapterKey}
-                    onClick={() => requestAdapterChange(a.adapterKey)}
-                    className={`w-full text-left px-3 py-2 text-xs transition-colors ${
-                      a.adapterKey === activeKey
-                        ? "bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 font-medium"
-                        : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
-                    }`}
-                  >
-                    {a.displayName}
-                  </button>
-                ))}
-              </div>
-            )}
+              {dropOpen && adapters.length > 0 && (
+                <div className="absolute top-full right-0 mt-1 w-44 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg py-1 z-999999">
+                  {adapters.map((a) => (
+                    <button
+                      key={a.adapterKey}
+                      onClick={() => requestAdapterChange(a.adapterKey)}
+                      className={`w-full text-left px-3 py-2 text-xs transition-colors ${
+                        a.adapterKey === activeKey
+                          ? "bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 font-medium"
+                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                      }`}
+                    >
+                      {a.displayName}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Sandbox / Production toggle */}
         <div className="flex items-center gap-2">

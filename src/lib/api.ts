@@ -235,9 +235,11 @@ export const businessApi = {
   getProfile: () =>
     api.get<ApiResponse<BusinessProfile>>("/business/me").then(unwrap),
 
-  getDashboardStats: () =>
+  getDashboardStats: (environmentMode?: AppEnvironmentMode) =>
     api
-      .get<ApiResponse<DashboardStats>>("/business/dashboard/stats")
+      .get<ApiResponse<DashboardStats>>("/business/dashboard/stats", {
+        params: environmentMode != null ? { environmentMode } : {},
+      })
       .then(unwrap),
 
   updateNRSCredentials: (payload: { firsApiKey: string; firsClientSecret: string }) =>
@@ -282,6 +284,16 @@ export const businessApi = {
 };
 
 // ── Invoices ──────────────────────────────────────────────────────────────────
+export interface InvoiceItem {
+  id: string;
+  itemDescription: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  /** Detailed tax categories applied to this line item (from backend projection) */
+  taxCategories?: BusinessItemTaxCategory[];
+}
+
 export interface InvoiceSummary {
   id: string;
   invoiceCode: string;
@@ -295,6 +307,7 @@ export interface InvoiceSummary {
   source: string;
   partyName?: string;
   qrCodeImage?: string;
+  invoiceItems?: InvoiceItem[];
 }
 export interface PaginatedResult<T> {
   items: T[];
@@ -516,7 +529,7 @@ export const invoiceApi = {
       .then(unwrap),
 
   get: (id: string) =>
-    api.get<ApiResponse<unknown>>(`/invoice/${id}`).then(unwrap),
+    api.get<ApiResponse<{ invoice: InvoiceSummary }>>(`/invoice/${id}`).then(unwrap).then(data => data.invoice),
 
   create: (payload: CreateInvoicePayload) =>
     api.post<ApiResponse<InvoiceSummary>>("/invoice", payload).then(unwrap),

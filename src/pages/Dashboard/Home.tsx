@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import Chart from "react-apexcharts";
 import { ApexOptions } from "apexcharts";
@@ -533,13 +533,11 @@ export default function Home() {
       setLoading(false);
       return;
     }
-    const statsPromise = businessApi.getDashboardStats().catch(() => null);
-    const invoicesPromise = !isAegis
-      ? invoiceApi
-          .list({ page: 1, pageSize: 5, environmentMode: envMode })
-          .then((r) => r?.items ?? [])
-          .catch(() => [])
-      : Promise.resolve([]);
+    const statsPromise = businessApi.getDashboardStats(envMode).catch(() => null);
+    const invoicesPromise = invoiceApi
+      .list({ page: 1, pageSize: 5, environmentMode: envMode })
+      .then((r) => r?.items ?? [])
+      .catch(() => []);
     const businessesPromise = isAegis
       ? businessesApi
           .list({ page: 1, pageSize: 5 })
