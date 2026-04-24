@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import * as XLSX from "xlsx";
 import toast from "react-hot-toast";
 import PageMeta from "../../components/common/PageMeta";
@@ -6,6 +6,7 @@ import { whtScheduleApi } from "../../lib/api";
 import type { WhtSchedule } from "../../lib/api";
 import { USE_MOCK, MOCK_WHT_SCHEDULES } from "../../lib/mockData";
 import { useIsAdmin } from "../../context/AuthContext";
+import { useEnvMode } from "../../context/EnvModeContext";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const MONTHS = [
@@ -87,6 +88,7 @@ function DueBadge({ dueDate, status }: { dueDate: string; status: string }) {
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function WhtSchedules() {
   const isAdmin = useIsAdmin();
+  const { envMode } = useEnvMode();
   const [schedules, setSchedules] = useState<WhtSchedule[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -106,6 +108,8 @@ export default function WhtSchedules() {
 
   // ── Load ──────────────────────────────────────────────────────────────────
   useEffect(() => {
+    setLoading(true);
+    setSchedules([]);
     if (USE_MOCK) {
       setTimeout(() => {
         setSchedules(MOCK_WHT_SCHEDULES as WhtSchedule[]);
@@ -115,11 +119,11 @@ export default function WhtSchedules() {
     }
     setLoading(true);
     whtScheduleApi
-      .list()
+      .list(undefined, envMode)
       .then((res) => setSchedules(res))
       .catch(() => toast.error("Failed to load WHT schedules."))
       .finally(() => setLoading(false));
-  }, []);
+  }, [envMode]);
 
   // ── Filtered list ─────────────────────────────────────────────────────────
   const filtered =

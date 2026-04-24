@@ -107,27 +107,31 @@ function AppEnvSwitcher() {
   const isAegis = useIsAegis();
 
   useEffect(() => {
-    // If it's an Aegis superadmin, they don't have a specific business provider to manage,
-    // but they can still switch the UI environment mode.
+    // AegisAdmin: no specific business provider — local toggle only
     if (isAegis) {
-      setAdapters([]); // No specific adapters to manage
+      setAdapters([]);
       return;
     }
-    
-    if (!canManage || !user?.businessId) return;
+
+    if (!user?.businessId) return;
 
     if (USE_MOCK) {
-      setAdapters(MOCK_ADAPTER_OPTIONS);
+      if (canManage) setAdapters(MOCK_ADAPTER_OPTIONS);
       setActiveKey(MOCK_BUSINESS_APP_SETTINGS.activeAdapterKey);
       setEnvMode(MOCK_BUSINESS_APP_SETTINGS.environmentMode);
       setGlobalEnvMode(MOCK_BUSINESS_APP_SETTINGS.environmentMode);
       return;
     }
 
-    appProviderApi
-      .getAdapterOptions()
-      .then(setAdapters)
-      .catch(() => {});
+    // Load adapter options only for admins who can manage settings
+    if (canManage) {
+      appProviderApi
+        .getAdapterOptions()
+        .then(setAdapters)
+        .catch(() => {});
+    }
+
+    // Load the business env mode for ALL client users with a businessId
     appProviderApi
       .getBusinessSettings(user.businessId)
       .then((s) => {
@@ -148,8 +152,8 @@ function AppEnvSwitcher() {
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
-  // Visible if user is Aegis superadmin OR a client admin with a businessId
-  if (!isAegis && (!canManage || !user?.businessId)) return null;
+  // Visible for Aegis users OR any client user that has a businessId
+  if (!isAegis && !user?.businessId) return null;
 
   const activeAdapter = adapters.find((a) => a.adapterKey === activeKey);
   const isTest = envMode === 1;
@@ -191,8 +195,9 @@ function AppEnvSwitcher() {
     const prev = envMode;
     setEnvMode(next);
     setGlobalEnvMode(next);
-    
-    if (isAegis) return; // AegisAdmin toggles are only local to the UI
+
+    // AegisAdmin and non-admin client users toggle locally only — no backend persist
+    if (isAegis || !canManage) return;
 
     if (!USE_MOCK) {
       setSaving(true);
@@ -214,8 +219,8 @@ function AppEnvSwitcher() {
   return (
     <>
       <div className="flex items-center gap-3">
-        {/* APP provider selector */}
-        {!isAegis && (
+        {/* APP provider selector — only shown to admins who can manage settings */}
+        {!isAegis && canManage && (
           <div className="flex items-center gap-2">
             <span className="text-[10px] uppercase tracking-wide text-gray-400 dark:text-gray-500 font-medium leading-none whitespace-nowrap">
               App Provider

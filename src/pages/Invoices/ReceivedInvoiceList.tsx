@@ -1,10 +1,11 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { SkeletonTableRows } from "../../components/ui/skeleton/Skeleton";
 import PageMeta from "../../components/common/PageMeta";
 import TablePagination from "../../components/common/TablePagination";
 import { invoiceApi, type InvoiceSummary } from "../../lib/api";
 import { USE_MOCK, MOCK_RECEIVED_INVOICES } from "../../lib/mockData";
+import { useEnvMode } from "../../context/EnvModeContext";
 
 const PAY_STATUS_COLORS: Record<string, string> = {
   PAID: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
@@ -15,6 +16,7 @@ const PAY_STATUS_COLORS: Record<string, string> = {
 };
 
 export default function ReceivedInvoiceList() {
+  const { envMode } = useEnvMode();
   const [invoices, setInvoices] = useState<InvoiceSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -36,7 +38,7 @@ export default function ReceivedInvoiceList() {
     }
     setLoading(true);
     invoiceApi
-      .receivedList({ page: p, pageSize: ps })
+      .receivedList({ page: p, pageSize: ps, environmentMode: envMode })
       .then((result) => {
         setInvoices(result?.items ?? []);
         setTotalPages(result?.totalPages ?? 1);
@@ -48,7 +50,8 @@ export default function ReceivedInvoiceList() {
 
   useEffect(() => {
     fetchInvoices(page, pageSize);
-  }, [page, pageSize]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, pageSize, envMode]);
 
   const filteredInvoices =
     invoices?.filter((inv) => {

@@ -563,7 +563,7 @@ export const invoiceApi = {
     payload: { paymentStatus: string; reference?: string },
   ) => api.patch(`/invoice/update-payment-status/${id}`, payload),
 
-  receivedList: (params?: { page?: number; pageSize?: number }) =>
+  receivedList: (params?: { page?: number; pageSize?: number; environmentMode?: AppEnvironmentMode }) =>
     api
       .get<ApiResponse<PaginatedResult<InvoiceSummary>>>(
         "/invoice/received-invoices",
@@ -571,6 +571,9 @@ export const invoiceApi = {
           params: {
             pageNumber: params?.page ?? 1,
             pageSize: params?.pageSize ?? 10,
+            ...(params?.environmentMode !== undefined
+              ? { environmentMode: params.environmentMode }
+              : {}),
           },
         },
       )
@@ -1189,10 +1192,13 @@ export interface VatSchedule {
 }
 
 export const scheduleApi = {
-  list: (year?: number) =>
+  list: (year?: number, environmentMode?: AppEnvironmentMode) =>
     api
       .get<ApiResponse<VatSchedule[]>>("/vat-schedule", {
-        params: year ? { year } : undefined,
+        params: {
+          ...(year ? { year } : {}),
+          ...(environmentMode !== undefined ? { environmentMode } : {}),
+        },
       })
       .then(unwrap)
       .then((arr) => arr ?? []),
@@ -1252,10 +1258,13 @@ export interface WhtSchedule {
 }
 
 export const whtScheduleApi = {
-  list: (year?: number) =>
+  list: (year?: number, environmentMode?: AppEnvironmentMode) =>
     api
       .get<ApiResponse<WhtSchedule[]>>("/wht-schedule", {
-        params: year ? { year } : undefined,
+        params: {
+          ...(year ? { year } : {}),
+          ...(environmentMode !== undefined ? { environmentMode } : {}),
+        },
       })
       .then(unwrap)
       .then((arr) => arr ?? []),
@@ -1495,7 +1504,7 @@ export const analyticsV2Api = {
       .then(unwrap);
   },
   /** Fetch both dashboards in parallel and merge into a single result. */
-  getAll: (): Promise<Required<AnalyticsV2Result>> => {
+  getAll: (environmentMode?: AppEnvironmentMode): Promise<Required<AnalyticsV2Result>> => {
     const root = (
       (import.meta.env.VITE_API_BASE_URL as string) ||
       "http://localhost:5000/api/v1"
@@ -1504,7 +1513,12 @@ export const analyticsV2Api = {
       api
         .get<
           ApiResponse<AnalyticsV2Result>
-        >(`${root}/v2/business/dashboard-analytics`, { params: { dashboardType: t } })
+        >(`${root}/v2/business/dashboard-analytics`, {
+          params: {
+            dashboardType: t,
+            ...(environmentMode !== undefined ? { environmentMode } : {}),
+          },
+        })
         .then(unwrap);
     return Promise.all([call(0), call(1)]).then(([g, v]) => ({
       generalDashboard: g.generalDashboard!,

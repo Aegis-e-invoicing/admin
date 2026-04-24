@@ -5,6 +5,7 @@ import PageMeta from "../../components/common/PageMeta";
 import { analyticsV2Api, type AnalyticsV2Result } from "../../lib/api";
 import { USE_MOCK, MOCK_ANALYTICS_V2 } from "../../lib/mockData";
 import { Skeleton, SkeletonStatCard, SkeletonChart } from "../../components/ui/skeleton/Skeleton";
+import { useEnvMode } from "../../context/EnvModeContext";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const fmt = (n: number) =>
@@ -338,6 +339,7 @@ function DateRangeFilter({
 
 // ─────────────────────────────────────────────────────────────────────────────
 export default function Analytics() {
+  const { envMode } = useEnvMode();
   const [data, setData] = useState<Required<AnalyticsV2Result> | null>(null);
   const [loading, setLoading] = useState(true);
   const today = new Date().toISOString().slice(0, 10);
@@ -350,6 +352,8 @@ export default function Analytics() {
   const [dateTo, setDateTo] = useState(today);
 
   useEffect(() => {
+    setLoading(true);
+    setData(null);
     if (USE_MOCK) {
       setTimeout(() => {
         setData(MOCK_ANALYTICS_V2 as Required<AnalyticsV2Result>);
@@ -358,13 +362,13 @@ export default function Analytics() {
       return;
     }
     analyticsV2Api
-      .getAll()
+      .getAll(envMode)
       .catch(() => null)
       .then((d) => {
         setData(d);
         setLoading(false);
       });
-  }, []);
+  }, [envMode]);
 
   const filteredData = useMemo(() => {
     if (!data) return null;

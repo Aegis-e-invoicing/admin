@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import PageMeta from "../../components/common/PageMeta";
 import { scheduleApi } from "../../lib/api";
@@ -6,6 +6,7 @@ import type { VatSchedule } from "../../lib/api";
 import { USE_MOCK, MOCK_VAT_SCHEDULES } from "../../lib/mockData";
 import type { MockSchedule } from "../../lib/mockData";
 import { useIsAdmin } from "../../context/AuthContext";
+import { useEnvMode } from "../../context/EnvModeContext";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const MONTHS = [
@@ -59,6 +60,7 @@ function buildYearMonthOptions() {
 
 export default function Schedules() {
   const isAdmin = useIsAdmin();
+  const { envMode } = useEnvMode();
   const [schedules, setSchedules] = useState<MockSchedule[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -78,6 +80,8 @@ export default function Schedules() {
 
   // ── Load ─────────────────────────────────────────────────────────────────
   useEffect(() => {
+    setLoading(true);
+    setSchedules([]);
     if (USE_MOCK) {
       setTimeout(() => {
         setSchedules(MOCK_VAT_SCHEDULES as MockSchedule[]);
@@ -86,11 +90,11 @@ export default function Schedules() {
       return;
     }
     scheduleApi
-      .list()
+      .list(undefined, envMode)
       .then((res) => setSchedules(res as unknown as MockSchedule[]))
       .catch(() => toast.error("Failed to load schedules."))
       .finally(() => setLoading(false));
-  }, []);
+  }, [envMode]);
 
   // ── Filtered list ─────────────────────────────────────────────────────────
   const filtered =
