@@ -189,27 +189,12 @@ function AppEnvSwitcher() {
   };
 
   // Step 2: confirmed → apply
-  const confirmEnvToggle = async () => {
+  const confirmEnvToggle = () => {
     setPendingEnvToggle(false);
     const next: AppEnvironmentMode = isTest ? 2 : 1;
-    const prev = envMode;
     setEnvMode(next);
     setGlobalEnvMode(next);
-
-    // AegisAdmin and non-admin client users toggle locally only — no backend persist
-    if (isAegis || !canManage) return;
-
-    if (!USE_MOCK) {
-      setSaving(true);
-      try {
-        await appProviderApi.setBusinessEnvironment(user!.businessId!, next);
-      } catch {
-        setEnvMode(prev);
-        setGlobalEnvMode(prev);
-      } finally {
-        setSaving(false);
-      }
-    }
+    // Header toggle is always session-only — business default is set via Settings page
   };
 
   const pendingAdapterName = adapters.find(

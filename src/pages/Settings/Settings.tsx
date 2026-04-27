@@ -33,6 +33,7 @@ import {
   useCanManageAppSettings,
   useAuth,
 } from "../../context/AuthContext";
+import { useEnvMode } from "../../context/EnvModeContext";
 
 const inputCls =
   "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-500";
@@ -69,6 +70,7 @@ export default function Settings() {
   const isAdmin = useIsAdmin();
   const canManageAppSettings = useCanManageAppSettings();
   const canEdit = isAdmin || isAegis;
+  const { setEnvMode: setGlobalEnvMode } = useEnvMode();
 
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
@@ -488,6 +490,7 @@ export default function Settings() {
     try {
       await appProviderApi.setBusinessEnvironment(businessId, mode);
       setEnvMode(mode);
+      setGlobalEnvMode(mode);
       toast.success(
         `Environment switched to ${mode === 1 ? "Sandbox" : "Production"}.`,
       );
